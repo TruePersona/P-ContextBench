@@ -1,0 +1,591 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "50f90a6f17de473f9ca15f00afdedf7a",
+      "name": "Alicia Gonzalez",
+      "verification_date": "2026-04-15"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed lists age 29 and Q85 gives DOB August 14, 1996 which is consistent with age 29 as of interview date 2026-04-15.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.age", "source_b_ref": "Q85", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed states city Chico, state CA, zipcode 95928; Q08 confirms Avenues neighborhood north of downtown Chico near Chico State — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.city/state/zip", "source_b_ref": "Q08", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed lists education_level 'bachelors' with bachelors_field 'stem'; Q90 confirms BS in Computer Science, UC Davis 2018, with studio art minor — consistent, interview enriches with institution, year, minor.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.education_level", "source_b_ref": "Q90", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed marital_status 'divorced'; Q84 confirms divorce finalized 2024, dating casually — consistent and enriched.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.marital_status", "source_b_ref": "Q84", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed cultural_background states parents immigrated from Medellin, Colombia before Alicia was born; Q01 confirms parents came from Medellin in the late 80s, Alicia born in Sacramento a year later — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q01, Q86, Q87", "action": "NO_CHANGE", "resolution": null},
+            {"id": 6, "text": "Seed occupation 'computer_or_information_research_scientist' matches Q16/Q65 — 'computer and information research scientist' at Chico State-affiliated lab.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.occupation", "source_b_ref": "Q16, Q65", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 6, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Profile identity fields (age 29, gender Female, location Chico CA 95928, education BS CS UC Davis 2018 + studio art minor, occupation research scientist at Chico State-affiliated lab) match interview Q85-Q90, Q16, Q65.", "verdict": "consistent", "gap": false, "source_a_ref": "Q16, Q65, Q85-Q90", "source_b_ref": "extracted_profile.identity", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Profile preferences.home_and_lifestyle records apartment rent $1,650 in the Avenues — matches Q08, Q56, Q58.", "verdict": "consistent", "gap": false, "source_a_ref": "Q08, Q56, Q58", "source_b_ref": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Profile marital_status text 'Divorced (finalized 2024); currently dating casually' accurately captures Q84.", "verdict": "consistent", "gap": false, "source_a_ref": "Q84", "source_b_ref": "extracted_profile.marital_status", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Summaries.demographer correctly characterizes parents' occupations (RN mother, truck driver / small-business owner father) from Q100-Q107.", "verdict": "consistent", "gap": false, "source_a_ref": "Q100-Q107", "source_b_ref": "summaries.demographer", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Interview Q97 notes Arden-Arcade area of Sacramento at age 16 — this geographic detail is absent from preferences.life_events_and_transitions and demographer summary.", "verdict": "consistent", "gap": true, "source_a_ref": "Q97", "source_b_ref": "preferences.life_events_and_transitions", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 1}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Single-person household in home_and_lifestyle is consistent with social_and_relationships (divorced, no partner cohabiting, one cat).", "verdict": "consistent", "gap": false, "field_a": "preferences.home_and_lifestyle", "field_b": "preferences.social_and_relationships", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Occupation description in work_and_career matches identity.occupation and technology toolkit description.", "verdict": "consistent", "gap": false, "field_a": "preferences.work_and_career", "field_b": "preferences.technology", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "life_events_and_transitions places graduation at 2018; demographer summary computes upward-mobility narrative consistently — no conflict.", "verdict": "consistent", "gap": false, "field_a": "preferences.life_events_and_transitions", "field_b": "summaries.demographer", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 3, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Age 16 residence in Arden-Arcade area of Sacramento (Q97) absent from profile; relevant to life_events_and_transitions.", "gap": true, "interview_ref": "Q97", "should_be_in": "preferences.life_events_and_transitions", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Lived in Arden-Arcade area of Sacramento at age 16, with both parents and (when home from college) brother Mateo (Q97-Q99)'."},
+            {"id": 2, "text": "Parents' specific educational attainment (dad: Colombian high school + some US community college, no degree; mom: Associate's in nursing from Sacramento City College) is absent from profile details though summarized.", "gap": true, "interview_ref": "Q100, Q101", "should_be_in": "preferences.cultural_and_linguistic", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Father completed Colombian high school plus some U.S. community college coursework with no degree; mother earned an Associate\u2019s degree in nursing (RN) from Sacramento City College (Q100, Q101)'."},
+            {"id": 3, "text": "Mother retired approximately 3 years ago (Q103) is a demographic fact not in profile.", "gap": true, "interview_ref": "Q103", "should_be_in": "preferences.social_and_relationships", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Mother Elena retired from pediatric nursing approximately three years ago (Q103)'."},
+            {"id": 4, "text": "Uncle Tío Hernán in Fresno, and brother Mateo's wife Priya Raman (sister-in-law) with children Maya (6) and Luca (3) are incompletely captured.", "gap": true, "interview_ref": "Q05, Q06", "should_be_in": "preferences.social_and_relationships", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Has a paternal uncle, T\u00edo Hern\u00e1n, who lives in Fresno with his wife; relationship is warm but not close (Q06)'."}
+          ],
+          "summary": {"present": 0, "missing": 4}
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed describes modest travel budget and culturally immersive travel; Q59/Q62 confirm conference travel out-of-pocket of ~$400 and $3,500 Colombia trip savings earmark — consistent budget-constrained behavior.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.travel_persona", "source_b_ref": "Q59, Q62", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed's 'relaxed, sometimes disorganized work style' aligns with Q15's acknowledgment of ~60% predictable rhythm and occasional deadline-driven disappearances.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.professional_persona", "source_b_ref": "Q15", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed positions Alicia as a working salaried research scientist; Q16/Q72/Q74 confirm salary ~$94k gross / ~$7,830 monthly gross — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.skills_and_expertise", "source_b_ref": "Q16, Q72", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed implies entrepreneurial ambitions (career_goals: 'launching a startup'); Q61 freedom fund and Q108 startup aspiration confirm savings-driven preparation — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.career_goals_and_ambitions", "source_b_ref": "Q61, Q108", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed culinary_persona highlights fusion cooking; Q05/Q32/Q44 show consistent home-cooking behavior, Sunday batch cooking, sancocho from scratch — consistent, enriched.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.culinary_persona", "source_b_ref": "Q05, Q32, Q44", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 1}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Profile summary in work_and_career captures salary, hours, advising duties, and publishing rate accurately from Q16/Q65/Q68.", "verdict": "consistent", "gap": false, "source_a_ref": "Q16, Q65, Q68", "source_b_ref": "preferences.work_and_career", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "behavioral_economist summary captures emergency fund, 403(b), Roth IRA, freedom fund, and identity-driven career choice accurately.", "verdict": "consistent", "gap": false, "source_a_ref": "Q61, Q62, Q02", "source_b_ref": "summaries.behavioral_economist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Profile notes student loans ~$14,000 — actually this is missing from preferences as a detail though present in the summary context. Needs to be explicit in life_events or a debt-related field; current profile omits explicit debt detail.", "verdict": "consistent", "gap": true, "source_a_ref": "Q63", "source_b_ref": "preferences", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "FSA/glasses/therapy copay detail (Q36, Q40) is summarized in health_and_wellness indirectly but the FSA mechanism itself is underspecified in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q36, Q40", "source_b_ref": "preferences.health_and_wellness", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Profile entertainment section accurately captures Instagram art account followers (~8,400) and Twitter departure from Q48.", "verdict": "consistent", "gap": false, "source_a_ref": "Q48", "source_b_ref": "preferences.entertainment", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Savings described in behavioral_economist summary are consistent with life_events_and_transitions (divorce reshaping finances) and home_and_lifestyle (lives alone, prioritized solitude over savings maximization).", "verdict": "consistent", "gap": false, "field_a": "summaries.behavioral_economist", "field_b": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Moderate drinking (food_and_dining) is not contradicted by health_and_wellness which notes the post-divorce overdrinking-flagged-by-therapist episode was resolved.", "verdict": "consistent", "gap": false, "field_a": "preferences.food_and_dining", "field_b": "preferences.health_and_wellness", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Hackathon quarterly cadence (hobbies_and_recreation) does not conflict with work schedule (work_and_career) which notes schedule-breaking events.", "verdict": "consistent", "gap": false, "field_a": "preferences.hobbies_and_recreation", "field_b": "preferences.work_and_career", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 3, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Specific debt — federal student loans ~$14,000 at ~$180/month standard plan (Q63) — is not captured as a detail in any preference subcategory.", "gap": true, "interview_ref": "Q63", "should_be_in": "preferences.work_and_career", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Carries approximately $14,000 in federal student loan debt on standard repayment plan, paying about $180/month; no credit card, car, or personal loan debt (Q63)'."},
+            {"id": 2, "text": "Detailed budget numbers — monthly total ~$3,300 typical, ~$4,100 recently; groceries ~$550; car ~$280; streaming ~$150; summer electric peaks $220 — not captured.", "gap": true, "interview_ref": "Q56, Q57, Q59", "should_be_in": "preferences.home_and_lifestyle", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Monthly spending is typically ~$3,300, running ~$4,100 last month including an $800 Wacom Cintiq tablet; recurring line items include groceries/dining ~$550, car/insurance/gas ~$280, studio rent $300, therapy+yoga ~$200, internet/phone/streaming ~$150; summer electric bill spikes to ~$220 during triple-digit heat (Q56, Q57, Q59)'."},
+            {"id": 3, "text": "Retirement allocation (85% stocks / 15% bonds, three-fund style) and FSA front-loading behavior not captured.", "gap": true, "interview_ref": "Q40, Q61", "should_be_in": "preferences.work_and_career", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Retirement allocation is ~85% stocks, 15% bonds in a passive three-fund index style; front-loads FSA contributions for therapy copays and glasses (Q40, Q61)'."},
+            {"id": 4, "text": "$700 vet bill in March (Q59) for cat's dental issue — paid via credit card and repaid same cycle (Q60) — not captured.", "gap": true, "interview_ref": "Q59, Q60", "should_be_in": "preferences.home_and_lifestyle", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Paid a $700 veterinary bill in March for Pixel\u2019s dental procedure; used credit card and paid off same cycle to avoid carrying a balance (Q59, Q60)'."},
+            {"id": 5, "text": "Benefits detail — PPO premium $180/mo, deductible $1,500, $2,000 conference travel budget, 20 PTO + 10 sick, 4% 403(b) match, tuition reimbursement unused — not captured at detail level.", "gap": true, "interview_ref": "Q40, Q76", "should_be_in": "preferences.work_and_career", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Employer benefits: PPO with ~$180/month pre-tax premium and $1,500 deductible, dental/vision, 20 days PTO plus federal holidays, 10 sick days, 403(b) with 4% match, $2,000 annual conference travel budget, and unused tuition reimbursement (Q40, Q76)'."}
+          ],
+          "summary": {"present": 0, "missing": 5}
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed cultural_background emphasizes Colombian collectivism and mentoring Latinx community; Q17/Q28 confirm Mujeres en STEM mentoring — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q17, Q28", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed career_goals mention policy advocacy for open collaborative science; Q24/Q25 show detailed tech-antitrust and open-source AI regulation views — consistent and enriched.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.career_goals_and_ambitions", "source_b_ref": "Q24, Q25", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed does not specify political party; interview Q95/Q96 establish strong Democrat progressive — gap filled, no contradiction.", "verdict": "consistent", "gap": true, "source_a_ref": "seed (no political field)", "source_b_ref": "Q95, Q96", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed mentions community through volunteer tutoring; Q17 confirms Mujeres en STEM tutoring plus Butte County arts walk planning and Latinx en IA paper reviews — enriched, consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q17", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "community_and_civic summary captures voting behavior, mentoring, bail-fund donation, protest participation, and professional service — matches Q17, Q21, Q23, Q26, Q29.", "verdict": "consistent", "gap": false, "source_a_ref": "Q17, Q21, Q23, Q26, Q29", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "political_scientist summary captures strong-Democrat identification, progressive issue cluster, selective institutional trust, and multi-modal civic engagement — matches Q23-Q29, Q95-Q96.", "verdict": "consistent", "gap": false, "source_a_ref": "Q23-Q29, Q95-Q96", "source_b_ref": "summaries.political_scientist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Profile captures BLM 2020 protest and subsequent smaller protests — matches Q21/Q26/Q29.", "verdict": "consistent", "gap": false, "source_a_ref": "Q21, Q26, Q29", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Alicia's evolution from libertarian-adjacent to progressive (Q24) and shift to viewing housing as first-order issue (Q25) not preserved at detail granularity in community_and_civic.", "verdict": "consistent", "gap": true, "source_a_ref": "Q24, Q25", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Inherited policing experience (dad being pulled over repeatedly, 'siempre las manos en el volante' teaching) captured only obliquely in summary; absent from preferences details.", "verdict": "consistent", "gap": true, "source_a_ref": "Q20", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "community_and_civic's BLM participation aligns with cultural_and_linguistic's conversations about anti-Blackness and colorism within Latinx communities — internally consistent.", "verdict": "consistent", "gap": false, "field_a": "preferences.community_and_civic", "field_b": "preferences.cultural_and_linguistic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "political_scientist summary's assertion of 'low trust in Catholic Church' is consistent with arts_and_culture/cultural_and_linguistic retention of ritual traditions (candles on D\u00eda de los Muertos, Christmas mass with parents).", "verdict": "consistent", "gap": false, "field_a": "summaries.political_scientist", "field_b": "preferences.cultural_and_linguistic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Civic engagement level in community_and_civic aligns with media_and_information_diet candidate research routine — cross-reinforcing.", "verdict": "consistent", "gap": false, "field_a": "preferences.community_and_civic", "field_b": "preferences.media_and_information_diet", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 3, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Evolution of political views from libertarian-adjacent early-college to progressive (Q24 follow-up), influenced by Piketty, CRT, 2016 election, is underspecified in profile preferences.", "gap": true, "interview_ref": "Q24", "should_be_in": "preferences.community_and_civic", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Political views evolved from libertarian-adjacent in early college to strongly progressive after grad exposure to economics (Piketty), critical race theorists, and the 2016 election (Q24)'."},
+            {"id": 2, "text": "Views on housing policy — moved from treating it as sub-issue to first-order political issue after Camp Fire displacement in Chico (Q25) — not captured as specific detail.", "gap": true, "interview_ref": "Q25", "should_be_in": "preferences.community_and_civic", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Views housing as a first-order political issue after watching Camp Fire displacement price friends out of Chico (Q25)'."},
+            {"id": 3, "text": "Inherited policing narrative from father (Q20 follow-up: 'siempre las manos en el volante') not in detail array.", "gap": true, "interview_ref": "Q20", "should_be_in": "preferences.community_and_civic", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Shaped by inherited experience of father being pulled over ~monthly in 1990s while driving a beige Chevy Astro van; was taught \u201csiempre las manos en el volante\u201d long before she could drive (Q20)'."},
+            {"id": 4, "text": "AI regulation position evolved from 'let researchers self-govern' to favoring third-party audits, liability regimes, and open-source inclusion (Q25 follow-up) not captured in detail.", "gap": true, "interview_ref": "Q25", "should_be_in": "preferences.work_and_career", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'On AI regulation, moved from a researcher-self-governance position two years ago to favoring third-party audits, liability regimes, and open-source as a hedge against four-company consolidation (Q25)'."}
+          ],
+          "summary": {"present": 0, "missing": 4}
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed persona 'fuses scientific precision with artistic chaos… laid-back yet competitive… occasionally losing track of deadlines' is confirmed by Q01/Q15/Q16 interview content.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.persona", "source_b_ref": "Q01, Q15, Q16", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed hobbies_and_interests mention yoga for balance; Q18/Q31/Q45 confirm yoga as mental-health regulation tool — consistent and enriched.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.hobbies_and_interests", "source_b_ref": "Q18, Q31, Q45", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed emphasizes novelty-seeking, abstraction, speculative fiction — consistent with Q01's 'life in draft form' and Q50 journaling practice.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.hobbies_and_interests", "source_b_ref": "Q01, Q50", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed does not mention GAD diagnosis; Q31 discloses diagnosed GAD at 26 with sertraline — gap, no contradiction.", "verdict": "consistent", "gap": true, "source_a_ref": "seed (no mental health fields)", "source_b_ref": "Q31, Q45", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed does not mention divorce; Q01/Q02/Q84 disclose marriage at 23, divorce at 27 finalized 2024 — gap filled.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.marital_status", "source_b_ref": "Q01, Q02, Q84", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 3}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "psychologist summary captures GAD management regimen, narrative/iterative self-concept ('life in draft form'), earned-secure attachment, curiosity-dominant motivation — matches Q01, Q31, Q45, Q50, Q109.", "verdict": "consistent", "gap": false, "source_a_ref": "Q01, Q31, Q45, Q50, Q109", "source_b_ref": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "social_and_relationships details (Tuesday dinners with Priya ~4 years, near-daily voice memos with Valentina, biweekly calls to abuela) are faithful to interview.", "verdict": "consistent", "gap": false, "source_a_ref": "Q05, Q07", "source_b_ref": "preferences.social_and_relationships", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Profile captures Q44 rough-patch narrative (Priya visit, sancocho) but does not preserve the specific emotional content — acceptable at summary granularity.", "verdict": "consistent", "gap": true, "source_a_ref": "Q44", "source_b_ref": "preferences.life_events_and_transitions", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Coping strategies detail (paper journal daily, dropped doomscrolling) from Q50 is mentioned in media_and_information_diet details — consistent.", "verdict": "consistent", "gap": false, "source_a_ref": "Q50", "source_b_ref": "preferences.media_and_information_diet", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Sertraline side-effect transparency (mild sleep, reduced libido, Q45 follow-up) is absent from health details.", "verdict": "consistent", "gap": true, "source_a_ref": "Q45", "source_b_ref": "preferences.health_and_wellness", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "health_and_wellness's sertraline + therapy regimen is consistent with psychologist summary's emotional regulation description.", "verdict": "consistent", "gap": false, "field_a": "preferences.health_and_wellness", "field_b": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "social_and_relationships attachment density aligns with psychologist summary's 'earned-secure' framing.", "verdict": "consistent", "gap": false, "field_a": "preferences.social_and_relationships", "field_b": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "life_events_and_transitions narrative is consistent with psychologist summary's 'narrative self-concept' and with community_and_civic civic engagement pattern as self-reconstruction post-divorce.", "verdict": "consistent", "gap": false, "field_a": "preferences.life_events_and_transitions", "field_b": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 3, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Dr. Patel biweekly video therapy for 18 months (Q04) not noted as a detail (only via health_and_wellness 'biweekly therapy' summary), and the 1-year delay before starting therapy (Q36) is absent.", "gap": true, "interview_ref": "Q04, Q36", "should_be_in": "preferences.health_and_wellness", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Sees Dr. Patel every other Thursday via video; has been in therapy about 18 months; delayed starting therapy for approximately a year before finally beginning (Q04, Q36)'."},
+            {"id": 2, "text": "Sertraline side effects (mild sleep disturbance, reduced libido) from Q45 follow-up are not captured.", "gap": true, "interview_ref": "Q45", "should_be_in": "preferences.health_and_wellness", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Reports that sertraline has flattened anxiety peaks and valleys with minimal side effects \u2014 mild sleep disturbance and some reduced libido (Q45)'."},
+            {"id": 3, "text": "Post-divorce overdrinking episode flagged by therapist and voluntarily cut back (Q38) not captured in food_and_dining or health_and_wellness details.", "gap": true, "interview_ref": "Q38", "should_be_in": "preferences.health_and_wellness", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'During the worst of the divorce, drank roughly two glasses of wine nightly alone for a few months; therapist flagged it and she cut back (Q38)'."},
+            {"id": 4, "text": "Brother Mateo's anxiety (Q46) and mother's postpartum depression after him (Q46) — family mental health context — not captured.", "gap": true, "interview_ref": "Q46", "should_be_in": "preferences.social_and_relationships", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Brother Mateo has anxiety (runs in the family, therapy only, no meds); mother experienced postpartum depression after Mateo but did not disclose until Alicia was diagnosed with GAD (Q46)'."},
+            {"id": 5, "text": "Specific rough-patch weekend — Saturday in bed, Priya flew up, sancocho + Table Mountain trip (Q44) — not explicitly in profile.", "gap": true, "interview_ref": "Q44", "should_be_in": "preferences.life_events_and_transitions", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Around October 2025, reacted hard to ex-husband Daniel\u2019s remarriage announcement \u2014 spent a Saturday in bed; best friend Priya Raman flew up from Oakland the next weekend, they cooked sancocho and drove to Table Mountain (Q43, Q44)'."}
+          ],
+          "summary": {"present": 0, "missing": 5}
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "No INCONSISTENT observations were found across any of the four experts or four directions (0 inconsistencies). However, 18 gap findings with disposition NEEDS_ENRICHMENT were identified in Direction 4, requiring the profile to be augmented with additional interview detail. No FLAG_FOR_REVIEW observations remain, so the corrected profile is ready for downstream use.",
+    "final_status": "Verification complete. The draft extracted profile accurately represents the seed and interview on all compared claims. Corrections applied are purely additive enrichments from Direction 4. Corrected profile, with summaries carried over verbatim and a hidden_facts registry generated, is canonical and ready for Step 3."
+  },
+  "corrected_extracted_profile": {
+    "participant_id": "50f90a6f17de473f9ca15f00afdedf7a",
+    "name": "Alicia Gonzalez",
+    "age": 29,
+    "gender": "Female",
+    "marital_status": "Divorced (finalized 2024); currently dating casually",
+    "location": "Chico, CA 95928",
+    "education": "Bachelor of Science in Computer Science, UC Davis (2018), with minor in studio art",
+    "occupation": "Computer and information research scientist at an AI research lab affiliated with Chico State University; focuses on machine learning, NLP, and generative models",
+    "preferences": {
+      "_note": "Same 18 subcategories as the draft profile, with gaps filled per Direction 4 NEEDS_ENRICHMENT resolutions and inconsistencies resolved. Every correction traces back to an observation in the verification report above.",
+      "health_and_wellness": {
+        "summary": "Takes an active, integrative approach to health, combining Western medicine (SSRI, inhalers, PPO-based preventive care) with yoga, hiking, home remedies, and therapy; diagnosed with generalized anxiety disorder and mild asthma.",
+        "details": [
+          "Diagnosed with generalized anxiety disorder at age 26; manages with sertraline 50 mg daily and biweekly therapy with Dr. Patel via video (Q31, Q45)",
+          "Mild asthma diagnosed at age 8; uses albuterol rescue inhaler and Flovent maintenance inhaler during wildfire smoke season (Q31, Q33)",
+          "Attends in-person yoga at Roots Yoga Studio Tuesday and Thursday mornings at 6:30 (Q18)",
+          "Hikes weekends with the Chico Outdoor Club and runs in Bidwell Park several mornings a week (Q08, Q15)",
+          "Pro-vaccination; up to date on flu, Covid boosters, HPV, and travel immunizations (Q41)",
+          "Uses Colombian home remedies: aguapanela with lime for colds, arnica gel for sore muscles; tried acupuncture four sessions for anxiety (Q37)",
+          "Sprained ankle hiking in spring 2025; wisdom teeth extracted summer 2024 (Q33)",
+          "Air purifier (Coway) and P100 mask for wildfire smoke season (Q10)",
+          "Sees Dr. Patel every other Thursday via video; has been in therapy about 18 months; delayed starting therapy for approximately a year before beginning (Q04, Q36)",
+          "Reports sertraline has flattened anxiety peaks and valleys with minimal side effects — mild sleep disturbance and some reduced libido (Q45)",
+          "During the worst of the divorce, drank roughly two glasses of wine nightly alone for a few months; therapist flagged it and she cut back (Q38)",
+          "Manages anxiety via sertraline, biweekly therapy, yoga, caffeine cut-off after 2 pm, morning journaling, and hiking (Q45, Q50)",
+          "Uses melatonin occasionally for insomnia; uses a half-used marijuana cartridge roughly once every two months for wind-down (Q39)",
+          "Biweekly therapy copay is about $40/session, paid partly out-of-pocket; finds Chico mental health network thin with long waits (Q36)"
+        ],
+        "evidence": "Q04, Q08, Q10, Q15, Q18, Q31, Q32, Q33, Q36, Q37, Q38, Q39, Q41, Q45, Q50"
+      },
+      "food_and_dining": {
+        "summary": "Intermediate-to-advanced home cook who specializes in Colombian cuisine with fusion experimentation; pairs food with craft coffee and natural wine; eats out moderately at local Chico establishments.",
+        "details": [
+          "Cooks traditional Colombian dishes: bandeja paisa, arepas with aji amarillo-spiced pork, quinoa empanadas, chimichurri plantains, sancocho (Q05, Q44)",
+          "Frequent customer at La Cocina de Chuy taqueria two blocks from her apartment, roughly once a week (Q08)",
+          "Buys coffee beans from local Chico roaster Naked Lounge every two weeks; drinks 2-3 cups pour-over daily (Q39, Q08)",
+          "Drinks red wine, especially natural wines (tempranillo, old-vine garnacha); prefers mezcal old fashioned at bars (Q38)",
+          "Sunday batch cooking when organized: lentil stew, arroz con pollo, roasted vegetables (Q32)",
+          "Moderate drinker: 3-5 drinks per week (Q38)",
+          "When busy, defaults to toast and coffee for stretches rather than cooking (Q32)",
+          "Cooked sancocho from scratch with Priya during emotional recovery weekend (Q44)"
+        ],
+        "evidence": "Q05, Q08, Q32, Q38, Q39, Q44"
+      },
+      "travel": {
+        "summary": "Mixes meticulous research with spontaneous curiosity; favors rugged adventure travel and culturally immersive destinations on a modest budget; currently saving for a Colombia trip to visit her grandmother.",
+        "details": [
+          "Conference travel twice a year to venues like NeurIPS, ICML, EMNLP; $400 out of pocket after reimbursement (Q59, Q76)",
+          "Weekend getaways to Lake Tahoe and Portland's street-art neighborhoods (seed travel persona)",
+          "Favors rugged destinations like Patagonia's Torres del Paine and Granada's Alhambra (seed travel persona)",
+          "Travels to Medellin, Colombia every 2-3 years; most recent trip was 10 days to help after abuela's stroke ~14 months ago (Q35)",
+          "Saving approximately $3,500 for a summer Colombia trip to see her grandmother (Q62)",
+          "Drives 2017 Subaru Outback to Sacramento roughly once a month to see parents (Q05)",
+          "Drove with Priya to Table Mountain during post-news emotional-reset weekend (Q44)"
+        ],
+        "evidence": "Q05, Q15, Q35, Q44, Q59, Q62, Q76"
+      },
+      "social_and_relationships": {
+        "summary": "Divorced, dating casually; maintains a dense network of family (parents, brother, niece/nephew, grandmother in Medellin, cousin Valentina) and chosen family (long-running Tuesday dinner calls with Priya, tight Chico crew), with a clear pattern of weekly or daily contact with core people.",
+        "details": [
+          "Divorced from ex-husband Daniel, finalized 2024; he remarried in October 2025 (Q02, Q43, Q84)",
+          "Casually dating Ben, a musician, for about two months; 6 dates in (Q07, Q18)",
+          "Weekly Tuesday night video cooking dinners with best friend Priya Raman (data scientist in Oakland) for nearly 4 years (Q07)",
+          "Talks to cousin Valentina (social worker at an Oakland nonprofit, 3 years older, moved from Miami after her own breakup) almost daily via voice memos (Q05)",
+          "Calls grandmother Lucía (84, lives in Medellin) in Medellin every other Sunday in Spanish (Q05)",
+          "FaceTime drawing sessions with niece Maya (age 6) on Saturday mornings (Q05)",
+          "Close Chico friends: Jamal (research/hackathon partner), Sofia (Chico Outdoor Club organizer), Marcus (painter with studio nearby) (Q07)",
+          "Sees parents Elena and Rafael in Sacramento about once a month, last Sunday for lunch (Q05)",
+          "Has one older brother, Mateo (6 years older, in San Jose), with wife Priya Raman-sister-in-law and children Maya (6) and Luca (3); sees them every 6-8 weeks (Q05)",
+          "Has paternal uncle Tío Hernán in Fresno with wife; relationship warm but not close (Q06)",
+          "Still exchanges birthday texts with ex-husband Daniel's mother (Q06)",
+          "Mother Elena retired from pediatric nursing approximately three years ago (Q103)",
+          "Brother Mateo has anxiety (therapy only, no meds); mother had postpartum depression after Mateo but did not disclose until Alicia was diagnosed (Q46)",
+          "Close enough to Maya to be called 'Tia Ali'; niece does Spanish immersion on Saturdays and ballet on Wednesdays (Q05, Q19)",
+          "Cousin Valentina crashes on her couch a weekend every ~2 months (Q11, Q13)"
+        ],
+        "evidence": "Q02, Q05, Q06, Q07, Q11, Q13, Q18, Q19, Q43, Q44, Q46, Q84, Q103"
+      },
+      "home_and_lifestyle": {
+        "summary": "Lives alone with a tortoiseshell cat named Pixel in a one-bedroom apartment in the Avenues neighborhood of Chico; keeps a separate art studio nearby; prioritizes solitude, tidy focus space, and a clear weekly cadence.",
+        "details": [
+          "Rents a one-bedroom apartment in the Avenues, north of downtown Chico, for $1,650/month on a 12-month lease (Q08, Q56, Q58)",
+          "Lives alone with her 7-year-old tortoiseshell cat, Pixel (Q11, Q51)",
+          "Rents a $300/month shared art studio on Park Avenue in a converted warehouse with four other artists (Q07, Q56)",
+          "Moved into current apartment about two years ago, right after finalizing the divorce (Q08)",
+          "Keeps a Coway air purifier running June-October for smoke season (Q10)",
+          "Friendly with retired neighbors Ray and Denise across the hall, who feed her plants when she travels (Q08)",
+          "Drives a 2017 Subaru Outback, purchased used with cash in 2020 (Q63)",
+          "Monthly spending typically ~$3,300, was ~$4,100 last month after buying an $800 Wacom Cintiq tablet; recurring line items include groceries/dining ~$550, car ~$280, studio rent $300, therapy+yoga ~$200, internet/phone/streaming ~$150; summer electric bill spikes to ~$220 during triple-digit heat (Q56, Q57, Q59)",
+          "Paid a $700 vet bill in March for Pixel's dental procedure; used credit card and paid off same cycle (Q59, Q60)",
+          "Considers buying in 2-3 years once down payment is larger (Q58)",
+          "Bike was stolen from outside Naked Lounge about a year ago (Q09)"
+        ],
+        "evidence": "Q07, Q08, Q09, Q10, Q11, Q51, Q56, Q57, Q58, Q59, Q60, Q63"
+      },
+      "entertainment": {
+        "summary": "Attends gallery openings, live music events, poetry slams, and strategy board game nights; reads speculative fiction; avoids sticky algorithmic platforms like TikTok and has left Twitter.",
+        "details": [
+          "Attends live music and poetry slam events in Chico (Q07, seed arts persona)",
+          "Participates in strategic board-game nights (seed hobbies)",
+          "Reads speculative fiction, including Ted Chiang (seed arts persona)",
+          "Met boyfriend Ben, a musician, at music-adjacent events (Q07)",
+          "Met friend Marcus at a gallery opening (Q07)",
+          "Uses Instagram (~30 min/day), left Twitter ~2 years ago, avoids TikTok deliberately (Q48)",
+          "Active on Discord servers for generative artists and Latinx en IA researchers (Q48)"
+        ],
+        "evidence": "Q07, Q48"
+      },
+      "hobbies_and_recreation": {
+        "summary": "Serious creative-technical hobbies — abstract painting, generative digital art, photography, Arduino/Raspberry Pi hackathons, board games — occupy most weekends and protected weeknight evenings.",
+        "details": [
+          "Abstract painter and generative digital artist; posts to Instagram art account with ~8,400 followers (Q48)",
+          "Keeps a shared art studio on Park Avenue; typically paints Saturdays and some weeknights 8-11pm (Q07, Q15)",
+          "Does photography — documents her cooking and everyday moments (seed culinary and hobbies)",
+          "Participates in hackathons roughly once a quarter with partner Jamal (Q15, Q16)",
+          "Tinkers with Arduino and Raspberry Pi projects (seed hobbies)",
+          "Strategic board-game nights (seed hobbies)",
+          "Bought an $800 Wacom Cintiq drawing tablet recently (Q56)"
+        ],
+        "evidence": "Q07, Q15, Q16, Q48, Q56"
+      },
+      "work_and_career": {
+        "summary": "Research scientist at a Chico State-affiliated AI lab for 5.5 years, working on machine learning, NLP, and generative models; earns ~$94k/year; has flexible hours, a supportive PI, and aspires to lead an interdisciplinary group or launch an AI-creative-tools startup.",
+        "details": [
+          "Computer and information research scientist at a lab affiliated with Chico State University; salary ~$94,000/year (Q16, Q65)",
+          "Works 45-55 hours/week, Monday-Friday, with weekend bursts near deadlines; flexible schedule with 2-3 work-from-home days (Q15, Q16, Q68, Q78)",
+          "Time split: roughly 40% coding, 25% writing, 20% meetings/mentoring, 15% reading/reviewing (Q65)",
+          "Co-advises two PhD students: one on diffusion models for text-to-visual-poem generation, one on multilingual NLP for Kichwa and Wayuunaiki (Q16, Q65)",
+          "Publishes 2-4 first/senior-author papers per year; last year published 4 (Q65)",
+          "PI on an NSF-funded multilingual NLP grant (Q65)",
+          "Reports to Dr. Linh Tran, whom she describes as intellectually generous and non-micromanaging (Q77)",
+          "Does occasional paid consulting on generative-art angles for data (1-2 contracts/year) (Q70)",
+          "Career goals: lead interdisciplinary AI-for-creativity team, launch AI creative-tools startup, mentor Latinx women in tech (Q108, Q28)",
+          "Paid twice monthly (15th and last business day); gross ~$7,830/month, net ~$5,500 (Q72, Q73)",
+          "Employer benefits: PPO with ~$180/month pre-tax premium and $1,500 deductible, dental/vision, 20 days PTO plus federal holidays, 10 sick days, 403(b) with 4% match, $2,000 annual conference travel budget, unused tuition reimbursement (Q40, Q76)",
+          "Took ~2 weeks off last year across vacation and wisdom-tooth recovery; worked ~50 weeks (Q67)",
+          "Not covered by a union; lab contract is non-faculty so not in the CFA union — wishes she were (Q66)",
+          "Retirement allocation: ~85% equities, 15% bonds in passive three-fund index style; 8% 403(b) contribution with 4% employer match; maxes Roth IRA in April; ~$12,000 'freedom fund' brokerage; front-loads FSA for therapy and glasses (Q40, Q61)",
+          "Filed 2024 taxes electronically via TurboTax; single filer; received ~$600 refund (Q75)",
+          "Carries ~$14,000 federal student loan debt on standard repayment plan at ~$180/month; no credit-card, car, or personal loans (Q63)",
+          "Has ~$18,000 in high-yield savings emergency fund covering 5-6 months of expenses (Q61)",
+          "On AI regulation, moved from a researcher-self-governance position two years ago to favoring third-party audits, liability regimes, and open-source as a hedge against four-company consolidation (Q25)",
+          "Has missed deadlines and shipped sloppy code during worst anxiety periods; manager was kind, HR was not looped in (Q34)"
+        ],
+        "evidence": "Q15, Q16, Q25, Q28, Q34, Q40, Q61, Q63, Q65, Q66, Q67, Q68, Q70, Q72, Q73, Q75, Q76, Q77, Q78, Q108"
+      },
+      "arts_and_culture": {
+        "summary": "Deeply invested in visual and literary arts; draws influence from James Turrell, Yayoi Kusama, Björk, and Ted Chiang; integrates art and science via generative installations and poetry slams; serves on the Butte County arts walk planning committee.",
+        "details": [
+          "Cited artistic influences: James Turrell's immersive installations, Yayoi Kusama's vibrant patterns, Björk's experimental soundscapes, Ted Chiang's speculative narratives (seed arts persona)",
+          "Creates generative digital art and interactive gallery exhibits (seed arts persona)",
+          "On the planning committee for the annual Butte County arts walk, meets monthly (Q17)",
+          "Attends gallery openings and poetry slams locally (Q07)",
+          "Sketching a book-length project about generative art and narrative (Q108)",
+          "Christmas Eve mass attendance with parents retained as cultural tradition despite no religious belief (Q47)",
+          "New research architecture using diffusion models for narrative structure (rather than images) makes her 'giddy' (Q43)"
+        ],
+        "evidence": "Q07, Q17, Q43, Q47, Q108"
+      },
+      "sports_and_fitness": {
+        "summary": "Active multi-sport athlete and fan: hikes weekly with the Chico Outdoor Club, plays summer amateur soccer, practices yoga twice weekly; fan of the Sacramento Kings (NBA) and San Francisco 49ers (NFL).",
+        "details": [
+          "Weekend hikes with the Chico Outdoor Club, organized by friend Sofia (Q07, Q15)",
+          "Plays in a local amateur soccer league during summer (seed sports persona)",
+          "Yoga at Roots Yoga Studio Tuesday/Thursday 6:30 am; practiced via YouTube for years before that, switched back to in-person ~6 weeks before interview (Q18)",
+          "Supports Sacramento Kings in basketball and San Francisco 49ers in football (seed sports persona)",
+          "Runs in Bidwell Park several mornings a week (Q08)",
+          "Pays monthly for yoga — sunk-cost helps adherence (Q18)"
+        ],
+        "evidence": "Q07, Q08, Q15, Q18"
+      },
+      "nature_and_outdoors": {
+        "summary": "Spends significant weekend time on Butte County trails and at Bidwell Park; lives in a tree-dense Chico neighborhood; considers nature experiences part of her spiritual practice.",
+        "details": [
+          "Weekend Chico Outdoor Club hikes on Butte County trails (Q07, Q15)",
+          "Considers long hikes genuinely spiritual practice (Q47)",
+          "Apartment is a 10-minute walk from Bidwell Park (Q08)",
+          "Takes visitors to Table Mountain (Q44)",
+          "Wildfire smoke season limits outdoor time and triggers asthma (Q10, Q32)",
+          "Chico has more trees than people — values the tree canopy explicitly (Q08)"
+        ],
+        "evidence": "Q07, Q08, Q10, Q15, Q44, Q47"
+      },
+      "technology": {
+        "summary": "Professionally fluent in ML/NLP/cloud tooling and high-performance computing; personally intentional about platform use — off Twitter, avoids TikTok, uses WhatsApp and Discord for community, runs her own photography/art Instagram accounts.",
+        "details": [
+          "Professional toolkit: Python, R, C++, MATLAB, GCP, AWS, HPC, statistical modeling, deep learning (Q16, Q65)",
+          "Main social platform: Instagram — art account ~8,400 followers, research account ~1,200, personal locked ~180 (Q48)",
+          "Left Twitter/X about 2 years ago due to algorithm changes and harassment (Q48)",
+          "Avoids TikTok deliberately; uses Facebook only twice a year (Q48)",
+          "Active on Discord servers for generative artists and the Latinx en IA network (Q48)",
+          "Communicates with family and close friends primarily via WhatsApp group chats (Q48)",
+          "Bought an $800 Wacom Cintiq drawing tablet recently (Q56)",
+          "Tinkers with Arduino and Raspberry Pi projects as a hobby (seed hobbies)",
+          "Uses LinkedIn weekly for professional purposes (Q48)"
+        ],
+        "evidence": "Q16, Q48, Q56, Q65"
+      },
+      "community_and_civic": {
+        "summary": "Highly civically engaged: votes in every election including down-ballot, volunteer tutors with Mujeres en STEM, mentors graduate students, donates monthly to a bail fund, organizes for local arts, and participated in 2020 BLM protests.",
+        "details": [
+          "Votes in every election including primaries and local school board races; uses mail-in ballot (Q23)",
+          "Researches candidates via League of Women Voters guide, Ballotpedia, a journalist friend in Sacramento, and reads actual judicial opinions for judges (Q23)",
+          "Volunteer tutors with Mujeres en STEM program twice a month on Saturday afternoons; meets with two high school Latina girls (Q17, Q28)",
+          "Monthly donations to a bail fund (Q29)",
+          "Participated in 2020 BLM protest in Sacramento and several smaller local protests since (Q21, Q26, Q29)",
+          "Serves on planning committee for Butte County arts walk (Q17)",
+          "Reviews junior researchers' papers in the Latinx en IA online network (Q17)",
+          "Year-end charitable donations as regular December expense (Q59)",
+          "Political views evolved from libertarian-adjacent in early college to strongly progressive after grad exposure to Piketty, critical race theorists, and the 2016 election (Q24)",
+          "Views housing as a first-order political issue after watching Camp Fire displacement price friends out of Chico (Q25)",
+          "Shaped by inherited experience of father being pulled over ~monthly in 1990s while driving a beige Chevy Astro van; taught 'siempre las manos en el volante' long before she could drive (Q20)",
+          "Pushed hard at work to include Spanish and indigenous-language speakers in any user study (Q28)",
+          "Was at the 2020 Sacramento BLM protest where she witnessed a young man get shoved hard by police in riot gear (Q21)"
+        ],
+        "evidence": "Q17, Q20, Q21, Q23, Q24, Q25, Q26, Q28, Q29, Q59"
+      },
+      "music": {
+        "summary": "Draws creative fuel from cumbia and vallenato (from her Colombian upbringing) and experimental artists like Björk; attends live music in Chico; currently dating a musician.",
+        "details": [
+          "Grew up with cumbia and vallenato playing at Sunday family gatherings (Q01, seed cultural background)",
+          "Cites Björk's experimental soundscapes as creative influence (seed arts persona)",
+          "Attends live music events in Chico (seed hobbies, Q07)",
+          "Currently dating Ben, a musician (Q07, Q18)",
+          "Hopes to build AI creative tools for musicians in future startup (Q108)"
+        ],
+        "evidence": "Q01, Q07, Q18, Q108"
+      },
+      "fashion_and_appearance": {
+        "summary": "Interview provides limited direct evidence of fashion preferences; style implied to be practical and casual suited to hiking, studio work, and lab life, with an artistic sensibility.",
+        "details": [
+          "Wears glasses (covered through FSA along with therapy copays) (Q40)",
+          "Practical outdoor gear required for frequent hiking and soccer (Q07, Q15)",
+          "Studio work implies casual/washable clothing (Q07)"
+        ],
+        "evidence": "Q07, Q15, Q40"
+      },
+      "cultural_and_linguistic": {
+        "summary": "Second-generation Colombian-American; fluent in Spanish and English; bridges Colombian collectivist traditions with Chico's tech ecosystem; active in Latinx cultural and professional networks; maintains Colombian culinary, musical, and ritual traditions.",
+        "details": [
+          "Born in Sacramento to Colombian immigrant parents from Medellin (Q01, Q86, Q87)",
+          "Fully bilingual: Spanish at home, English outside; calls abuela in Medellin exclusively in Spanish (Q01, Q05)",
+          "Raised with cumbia, vallenato, bandeja paisa, and Carnaval de Barranquilla stories (Q01, seed)",
+          "Active in Latinx en IA online research network; reviews junior papers (Q17, Q48)",
+          "Lights candles on Día de los Muertos for her deceased grandfather (Q47)",
+          "Has had explicit conversations with her family about anti-Blackness and colorism within Latinx communities (Q26)",
+          "Identifies as Latina with white and indigenous South American ancestry; on forms usually checks 'Hispanic/Latina' and 'White,' sometimes 'some other race' (Q88, Q89)",
+          "Hopes to raise any future child bilingually; considers it non-negotiable (Q108)",
+          "Father completed Colombian high school plus some U.S. community college coursework with no degree; mother earned an Associate's in nursing (RN) from Sacramento City College (Q100, Q101)",
+          "Would have preferred stronger network of Latina women in tech earlier in career; partly why she mentors now (Q04)",
+          "Raised Roman Catholic (baptized, first communion, confirmation); culturally Catholic in the Colombian way with Virgen de Guadalupe statues and Christmas Eve mass (Q47, Q94)"
+        ],
+        "evidence": "Q01, Q04, Q05, Q17, Q26, Q47, Q48, Q86, Q87, Q88, Q89, Q94, Q100, Q101, Q108"
+      },
+      "life_events_and_transitions": {
+        "summary": "Divorce at 27 (finalized 2024) was the defining recent life transition, reshaping housing, work, relationships, and self-concept; other meaningful transitions include early-career choice of research over quant trading, ex-husband's remarriage in late 2025, and grandmother's stroke in 2024-2025.",
+        "details": [
+          "Born August 14, 1996 in Sacramento, California (Q85, Q87)",
+          "Lived in the Arden-Arcade area of Sacramento at age 16 with both parents (brother Mateo was at college) (Q97-Q99)",
+          "Graduated UC Davis with BS in Computer Science, minor in studio art, 2018 (Q90, Q01)",
+          "Married at 23, separated at 27, divorced in 2024 (Q01, Q02, Q84)",
+          "Moved from shared marital home to current Chico apartment about two years ago (Q08)",
+          "Ex-husband Daniel remarried in October 2025; took about 3 weeks to stop feeling weird about it (Q43)",
+          "Around October 2025 reacted hard to remarriage news — spent a Saturday in bed; Priya flew up from Oakland, they cooked sancocho and drove to Table Mountain (Q43, Q44)",
+          "Grandmother Lucía had a minor stroke ~14 months ago; Alicia flew to Medellin for 10 days to help (Q35)",
+          "Father had a high blood pressure scare 2 years ago, now on medication (Q35)",
+          "Started dating Ben approximately two months ago (Q18)",
+          "Chose research career over Chicago quant trading offer senior year at Davis (Q02)",
+          "Started therapy and sertraline approximately 3 years ago during separation (Q31, Q45)",
+          "Added 'inbox zero Sunday' rule and morning paper-journal practice as recent behavioral changes (Q18, Q50)",
+          "Switched from YouTube yoga to in-person yoga at Roots Yoga Studio ~6 weeks before interview (Q18)",
+          "Got college-pulled-over speeding tickets ~3 times in her 20s (once in Davis, twice on I-5) (Q20)",
+          "Senior-year college friend arrested for DUI (Q22)"
+        ],
+        "evidence": "Q01, Q02, Q08, Q18, Q20, Q22, Q31, Q35, Q43, Q44, Q45, Q50, Q84, Q85, Q87, Q90, Q97"
+      },
+      "media_and_information_diet": {
+        "summary": "Omnivorous, curated information diet: peer-reviewed literature, CDC, League of Women Voters, Ballotpedia, Instagram art/research accounts, Discord research servers, and speculative fiction; actively skeptical of algorithmic social media and 'just asking questions' podcasters.",
+        "details": [
+          "Reads peer-reviewed ML/NLP literature regularly for work (Q16, Q65)",
+          "Researches candidates via League of Women Voters guide, Ballotpedia, and a journalist friend (Q23)",
+          "Trusted health information sources: CDC, her PCP, peer-reviewed literature, epidemiologists on professional networks (Q42)",
+          "Reading list deliberately expanded post-2020 to include Black authors: Baldwin, Hartman, Coates, Jesmyn Ward (Q26)",
+          "Reads speculative fiction, notably Ted Chiang (seed arts persona)",
+          "Influenced politically by reading Piketty and critical race theorists (Q24)",
+          "Morning paper journal practice — dreams, problems, idea sketches (Q50)",
+          "Instagram ~30 min/day; off Twitter; avoids TikTok (Q48)",
+          "Dropped doomscrolling as coping strategy in past year (Q50)",
+          "Specifically wary of 'just asking questions' podcast-adjacent health content (Q42)"
+        ],
+        "evidence": "Q16, Q23, Q24, Q26, Q42, Q48, Q50, Q65"
+      }
+    },
+    "summaries": {
+      "_note": "Carried over VERBATIM from the draft extracted profile. Not regenerated in this step.",
+      "demographer": "Alicia is a 29-year-old second-generation Colombian-American woman born in Sacramento, CA (Q01, Q85-Q89), currently residing alone in a rental apartment in the Avenues neighborhood of Chico, CA (Q08, Q11, Q58). She holds a bachelor's degree in computer science from UC Davis with a minor in studio art (Q90) and works as a computer and information research scientist earning approximately $94,000/year at a university-affiliated AI lab (Q16, Q65, Q72). Her household is a single-earner, no-children unit with one pet; she is divorced as of 2024 after a four-year marriage and is currently dating casually (Q05, Q11, Q84). Her parents — an RN mother and former truck driver / small-business owner father, both with less than a bachelor's — exemplify classic second-generation upward mobility (Q100-Q107).",
+      "behavioral_economist": "Alicia displays classic long-horizon, low-impulsivity financial behavior: funded emergency reserve (~$18,000, 5-6 months of expenses), maxed Roth IRA, 8% 403(b) with employer match, and a separate brokerage 'freedom fund' earmarked for a future startup or down payment (Q61, Q62). She exhibits mild loss aversion around housing and parental-aging risks but pays credit cards in full and avoids balances (Q60, Q63, Q82). Identity-driven preferences dominate her career and consumption choices: she explicitly turned down a lucrative Chicago quant trading offer for a research path she described as the 'me choice' (Q02), and she prioritized living alone post-divorce over maximal savings (Q11). She is relatively insensitive to status consumption but will invest substantially in tooling that expands creative optionality (an $800 Wacom tablet, $300/month shared studio, conference travel) (Q56, Q59). Peer influence is high in curated in-groups — Latinx en IA, the Chico arts community, her therapist — but she actively disengaged from algorithmic platforms (Twitter, TikTok) when she judged their effect on her cognition as net-negative (Q48).",
+      "political_scientist": "Alicia is a strong Democrat who self-identifies as a progressive within the party and votes in every election — general, midterm, primary, and local — using mail-in ballots and conducting extensive down-ballot research via the League of Women Voters and Ballotpedia (Q23, Q95, Q96). Her policy commitments cluster on the progressive-left of the Democratic coalition: Medicare for All, strong housing policy, tech antitrust, aggressive climate action, immigration reform, and police reform short of full abolition (Q24, Q25, Q27). Institutional trust is selective: high in scientific institutions (CDC, peer review, NSF), universities, and journalism, but low in the Catholic Church, big tech platforms, and police departments (Q42, Q47, Q25, Q20). Civic engagement is high and multi-modal — protest participation (BLM 2020 Sacramento), monthly bail-fund donations, volunteer STEM mentoring with Mujeres en STEM, arts walk committee work, and professional service through Latinx en IA paper reviews (Q17, Q21, Q26, Q29). Community attachment to Chico is strong, reinforced by chosen-family ties and post-divorce self-reinvention (Q08, Q10, Q43).",
+      "psychologist": "Alicia presents as high in openness to experience — evidenced by abstract painting, generative art, speculative fiction, interdisciplinary research, and cross-cultural engagement — and moderately high in conscientiousness, though self-described as 'laid-back yet competitive' with occasional deadline slippage (Q01, Q16, seed). Her diagnosed generalized anxiety disorder (age 26) is managed competently through a multi-pronged regimen — sertraline 50 mg, biweekly therapy with Dr. Patel, yoga, caffeine-timing rules, journaling, and hiking — reflecting mature emotional regulation (Q31, Q45, Q50). Her self-concept is explicitly narrative and iterative ('life in draft form'), integrating her Colombian-American heritage, artist and scientist dual identity, and post-divorce reconstruction into a coherent identity project (Q01, Q43). Attachment style reads as earned-secure: she maintains dense, reliable relationships (Tuesday dinners with Priya for four years, near-daily contact with cousin Valentina, biweekly calls to abuela) and processed her divorce and ex-husband's remarriage with vulnerability and social support rather than avoidance (Q07, Q44). Her motivational architecture is curiosity-dominant — she names curiosity as her single highest value and explicitly ties meaning to freedom to structure her own days around creative work (Q109, Q108)."
+    },
+    "hidden_facts": [
+      {"fact_id": "HF-001", "source_subcategory": "preferences.health_and_wellness", "claim": "Diagnosed with generalized anxiety disorder at age 26.", "ground_truth_label": "Generalized anxiety disorder (GAD) diagnosis", "behavioral_evidence_from_interview": ["Q31: 'I was diagnosed with generalized anxiety disorder at twenty-six'", "Q45: 'Generalized anxiety disorder, diagnosed about three years ago'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-002", "source_subcategory": "preferences.health_and_wellness", "claim": "Takes sertraline 50 mg daily for anxiety.", "ground_truth_label": "SSRI pharmacotherapy (sertraline 50 mg)", "behavioral_evidence_from_interview": ["Q31: 'low-dose SSRI, sertraline 50 mg daily'", "Q39: 'I take sertraline 50 mg daily, prescribed'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-003", "source_subcategory": "preferences.health_and_wellness", "claim": "Sees Dr. Patel biweekly via video therapy for approximately 18 months.", "ground_truth_label": "Biweekly teletherapy with Dr. Patel", "behavioral_evidence_from_interview": ["Q04: 'I see Dr. Patel every other Thursday over video. Been with her about eighteen months'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-004", "source_subcategory": "preferences.health_and_wellness", "claim": "Has mild asthma diagnosed at age 8, triggered by wildfire smoke.", "ground_truth_label": "Mild asthma (pediatric-onset)", "behavioral_evidence_from_interview": ["Q31: 'I have mild asthma, diagnosed at age eight, triggered mostly by wildfire smoke'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-005", "source_subcategory": "preferences.health_and_wellness", "claim": "Uses an albuterol rescue inhaler and a Flovent maintenance inhaler during smoke season.", "ground_truth_label": "Rescue and maintenance inhaler regimen for asthma", "behavioral_evidence_from_interview": ["Q31: 'I keep an albuterol inhaler'", "Q33: 'My doctor added a low-dose maintenance inhaler, Flovent'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-006", "source_subcategory": "preferences.health_and_wellness", "claim": "Had a bad asthma flare-up during the 2024 wildfire smoke season lasting about five days.", "ground_truth_label": "2024 asthma exacerbation", "behavioral_evidence_from_interview": ["Q33: 'a bad asthma flare-up during the 2024 smoke season — about five days where I was on the inhaler constantly'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-007", "source_subcategory": "preferences.health_and_wellness", "claim": "Sprained ankle hiking in spring 2025 and wore a brace for six weeks.", "ground_truth_label": "Spring 2025 ankle sprain", "behavioral_evidence_from_interview": ["Q33: 'I also sprained my ankle hiking in the spring of 2025 — not dramatic, six weeks in a brace'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-008", "source_subcategory": "preferences.health_and_wellness", "claim": "Had all four wisdom teeth extracted in summer 2024.", "ground_truth_label": "Wisdom tooth extraction (summer 2024)", "behavioral_evidence_from_interview": ["Q33: 'I had a preventive wisdom tooth extraction last summer, all four'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-009", "source_subcategory": "preferences.health_and_wellness", "claim": "Attends in-person yoga at Roots Yoga Studio Tuesday/Thursday 6:30 am.", "ground_truth_label": "Twice-weekly early-morning yoga practice at Roots Yoga Studio", "behavioral_evidence_from_interview": ["Q18: 'I started going back to in-person yoga at Roots Yoga Studio on Tuesday and Thursday mornings, 6:30 class'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-010", "source_subcategory": "preferences.health_and_wellness", "claim": "Uses Colombian home remedies including aguapanela with lime for colds and arnica gel for muscle soreness.", "ground_truth_label": "Cultural/home-remedy use (Colombian)", "behavioral_evidence_from_interview": ["Q37: 'Aguapanela with lime for colds, sobadas — informal massage — for muscle pain, my abuela's herbal infusions for everything. I still make aguapanela when I'm sick and I use arnica gel for bruises and sore muscles'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-011", "source_subcategory": "preferences.health_and_wellness", "claim": "Tried acupuncture for anxiety — four sessions, did not continue.", "ground_truth_label": "Acupuncture trial (discontinued)", "behavioral_evidence_from_interview": ["Q37: 'I've done acupuncture for the anxiety — four sessions a couple years ago, felt nice but I didn't continue'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-012", "source_subcategory": "preferences.health_and_wellness", "claim": "Pro-vaccine; up to date on flu, Covid boosters, HPV, and travel immunizations.", "ground_truth_label": "Pro-vaccination stance with full uptake", "behavioral_evidence_from_interview": ["Q41: 'Very pro-vaccine. Flu shot every October, up to date on Covid boosters, got the HPV vaccine in my twenties, did all my travel shots'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-013", "source_subcategory": "preferences.health_and_wellness", "claim": "Uses melatonin occasionally for insomnia and a marijuana cartridge roughly once every two months.", "ground_truth_label": "Occasional cannabis use; melatonin use for mild insomnia", "behavioral_evidence_from_interview": ["Q39: 'I use melatonin occasionally for insomnia. Marijuana — I have a half-used cartridge in my drawer that I use maybe once every two months, low dose'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-014", "source_subcategory": "preferences.health_and_wellness", "claim": "During the worst of the divorce drank ~2 glasses of wine nightly alone for a few months; therapist flagged, she cut back.", "ground_truth_label": "Past problematic drinking episode (resolved)", "behavioral_evidence_from_interview": ["Q38: 'During the worst of the divorce I drank more than was healthy for a few months — maybe two glasses of wine a night alone. My therapist flagged it and I cut back'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-015", "source_subcategory": "preferences.health_and_wellness", "claim": "Delayed starting therapy by approximately a year before finally beginning.", "ground_truth_label": "Mental-health care delay", "behavioral_evidence_from_interview": ["Q36: 'I delayed therapy for a year before starting, which I regret'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-016", "source_subcategory": "preferences.health_and_wellness", "claim": "Has a Coway air purifier and a P100 respirator mask for smoke season.", "ground_truth_label": "Wildfire smoke mitigation equipment", "behavioral_evidence_from_interview": ["Q10: 'I have a Coway air purifier running basically June through October, and I bought a good P100 mask'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-017", "source_subcategory": "preferences.health_and_wellness", "claim": "Experiences occasional panic chest-tightness that mimics asthma symptoms.", "ground_truth_label": "Panic-asthma differential (psychosomatic overlap)", "behavioral_evidence_from_interview": ["Q33: 'I get tension headaches and occasional panic chest-tightness, which always makes me think it's asthma first'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-018", "source_subcategory": "preferences.food_and_dining", "claim": "Cooks Colombian dishes including bandeja paisa, arepas with aji amarillo pork, quinoa empanadas, chimichurri plantains, sancocho.", "ground_truth_label": "Colombian home-cooking repertoire", "behavioral_evidence_from_interview": ["Q44: 'we made sancocho from scratch'", "seed culinary_persona details bandeja paisa, arepas, quinoa empanadas"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-019", "source_subcategory": "preferences.food_and_dining", "claim": "Is a regular at La Cocina de Chuy taqueria ~1x/week.", "ground_truth_label": "Weekly taqueria patronage (La Cocina de Chuy)", "behavioral_evidence_from_interview": ["Q08: 'a taqueria two blocks away called La Cocina de Chuy that I go to probably once a week'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-020", "source_subcategory": "preferences.food_and_dining", "claim": "Buys coffee beans from Naked Lounge (local Chico roaster) every two weeks and drinks 2-3 cups pour-over daily.", "ground_truth_label": "Serious specialty-coffee consumption habit", "behavioral_evidence_from_interview": ["Q39: 'I buy from a local roaster, Naked Lounge, every two weeks. Two cups of pour-over in the morning, sometimes a third in the afternoon'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-021", "source_subcategory": "preferences.food_and_dining", "claim": "Drinks ~3-5 alcoholic drinks/week, prefers natural red wines (tempranillo, old-vine garnacha) and mezcal old fashioneds.", "ground_truth_label": "Moderate drinker; specific drink preferences", "behavioral_evidence_from_interview": ["Q38: 'I drink socially, moderately — maybe three to five drinks a week'", "Q38 follow-up: 'Red wine, natural wines especially. Tempranillo, old-vine garnacha'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-022", "source_subcategory": "preferences.food_and_dining", "claim": "Sunday batch-cooks lentil stew, arroz con pollo, roasted vegetables when organized; defaults to toast and coffee when disorganized.", "ground_truth_label": "Inconsistent meal-prep behavior with Colombian staples", "behavioral_evidence_from_interview": ["Q32: 'Sunday batch cooking when I'm organized — lentil stew, arroz con pollo that lasts four days, roasted vegetables. When I'm not organized I live on toast and coffee'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-023", "source_subcategory": "preferences.travel", "claim": "Travels to Medellin every 2-3 years; most recent trip was 10 days to help after grandmother's stroke.", "ground_truth_label": "Diaspora travel pattern to Medellin", "behavioral_evidence_from_interview": ["Q35: 'Every two or three years usually. The stroke trip was the most recent'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-024", "source_subcategory": "preferences.travel", "claim": "Saving ~$3,500 for a summer Colombia trip to visit grandmother Lucía.", "ground_truth_label": "Earmarked savings for family trip", "behavioral_evidence_from_interview": ["Q62: 'saving for a big Colombia trip next summer to see my abuela, maybe $3,500 earmarked for that'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-025", "source_subcategory": "preferences.travel", "claim": "Conference travel twice a year; $400 out of pocket after reimbursement.", "ground_truth_label": "Two annual professional conference trips", "behavioral_evidence_from_interview": ["Q59: 'About $400 out of pocket after reimbursement, usually'", "Q76: '$2,000 annual conference travel budget'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-026", "source_subcategory": "preferences.travel", "claim": "Drives to Sacramento about once a month to see parents, via Highway 99, typically last Sunday.", "ground_truth_label": "Monthly family-of-origin visits", "behavioral_evidence_from_interview": ["Q05: 'usually drive down the last Sunday for a big lunch'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-027", "source_subcategory": "preferences.travel", "claim": "Enjoys rugged destinations like Patagonia's Torres del Paine and Granada's Alhambra; weekend getaways to Lake Tahoe and Portland.", "ground_truth_label": "Adventure-plus-culture travel preference", "behavioral_evidence_from_interview": ["seed travel_persona"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-028", "source_subcategory": "preferences.social_and_relationships", "claim": "Divorced from ex-husband Daniel; finalized 2024 after marriage at 23 and separation at 27.", "ground_truth_label": "Divorced (prior marriage 2019-2024)", "behavioral_evidence_from_interview": ["Q02: 'I got married pretty young — twenty-three… we split at twenty-seven'", "Q84: 'Divorced, finalized in 2024'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-029", "source_subcategory": "preferences.social_and_relationships", "claim": "Ex-husband Daniel remarried in October 2025.", "ground_truth_label": "Ex-spouse remarriage (fall 2025)", "behavioral_evidence_from_interview": ["Q43: 'Yeah, around October. His mom texted me a heads-up'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-030", "source_subcategory": "preferences.social_and_relationships", "claim": "Casually dating Ben, a musician, for about two months / 6 dates.", "ground_truth_label": "Current casual dating relationship", "behavioral_evidence_from_interview": ["Q07: 'I'm seeing a guy named Ben casually — we've been on maybe six dates'", "Q18: 'I've been dating Ben for about two months'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-031", "source_subcategory": "preferences.social_and_relationships", "claim": "Has weekly Tuesday-night video cooking dinners with best friend Priya Raman (data scientist in Oakland) for ~4 years.", "ground_truth_label": "Weekly remote ritual with Priya Raman", "behavioral_evidence_from_interview": ["Q07: 'We do a video call every Tuesday night while cooking dinner'", "Q07 follow-up: 'Almost four years'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-032", "source_subcategory": "preferences.social_and_relationships", "claim": "Talks almost daily with cousin Valentina (social worker at Oakland nonprofit) via voice memos.", "ground_truth_label": "Near-daily cousin contact (Valentina)", "behavioral_evidence_from_interview": ["Q05: 'we talk almost daily'", "Q05 follow-up: 'We send each other roughly forty voice memos a week'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-033", "source_subcategory": "preferences.social_and_relationships", "claim": "Calls grandmother Lucía (84, Medellin) every other Sunday entirely in Spanish.", "ground_truth_label": "Biweekly Spanish-language call with grandmother", "behavioral_evidence_from_interview": ["Q05: 'I try to call her every other Sunday'", "Q05 follow-up: 'Our calls are entirely in Spanish'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-034", "source_subcategory": "preferences.social_and_relationships", "claim": "Has a Saturday-morning FaceTime drawing ritual with niece Maya (6), who calls her 'Tia Ali'.", "ground_truth_label": "Saturday-morning niece FaceTime art ritual", "behavioral_evidence_from_interview": ["Q05: 'she calls me \"Tia Ali\" and we do these long FaceTime drawing sessions on Saturday mornings'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-035", "source_subcategory": "preferences.social_and_relationships", "claim": "Chico inner circle includes Jamal (lab coworker / hackathon partner), Sofia (Chico Outdoor Club organizer), Marcus (painter with studio nearby).", "ground_truth_label": "Chico chosen-family cohort", "behavioral_evidence_from_interview": ["Q07: 'Jamal, a fellow researcher at the lab… Sofia, who runs the Chico Outdoor Club hikes… Marcus, a painter'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-036", "source_subcategory": "preferences.social_and_relationships", "claim": "Parents Elena (retired pediatric RN) and Rafael live in Sacramento.", "ground_truth_label": "Parents in Sacramento; mother retired RN", "behavioral_evidence_from_interview": ["Q05: 'my mom Elena and dad Rafael are still in Sacramento'", "Q103: 'She retired about three years ago'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-037", "source_subcategory": "preferences.social_and_relationships", "claim": "Has one older brother Mateo (6 years older) in San Jose with wife Priya and kids Maya (6) and Luca (3); sees them every 6-8 weeks.", "ground_truth_label": "Nuclear-family-of-origin composition", "behavioral_evidence_from_interview": ["Q05: 'My brother Mateo lives in San Jose with his wife Priya and their two kids, Maya who's six and Luca who's three'", "Q05 follow-up: 'Every six to eight weeks'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-038", "source_subcategory": "preferences.social_and_relationships", "claim": "Has paternal uncle Tío Hernán in Fresno (warm but not close); still exchanges birthday texts with ex-husband's mother.", "ground_truth_label": "Peripheral kinship ties", "behavioral_evidence_from_interview": ["Q06: 'My dad's brother, Tío Hernán, lives in Fresno with his wife'", "Q06 follow-up: 'Daniel's mom and I still text on birthdays'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-039", "source_subcategory": "preferences.social_and_relationships", "claim": "Family mental-health history: brother Mateo has anxiety (therapy only, no meds); mother experienced postpartum depression after Mateo.", "ground_truth_label": "Familial anxiety/mood vulnerability", "behavioral_evidence_from_interview": ["Q46: 'Mateo has struggled with anxiety too — runs in the family. My mom had postpartum depression after him'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-040", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Lives alone with tortoiseshell cat Pixel (age 7) in a one-bedroom apartment in the Avenues, Chico.", "ground_truth_label": "Solo household with one pet", "behavioral_evidence_from_interview": ["Q11: 'Just me. And my cat, Pixel, who is a very demanding seven-year-old tortoiseshell'", "Q51: 'Just me and Pixel, my cat'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-041", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Rents apartment for $1,650/month on a 12-month lease.", "ground_truth_label": "Rental housing cost and term", "behavioral_evidence_from_interview": ["Q58: 'One-bedroom apartment, $1,650 a month, locked into a 12-month lease'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-042", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Rents a shared art studio on Park Avenue for $300/month with four other artists.", "ground_truth_label": "Shared art studio tenancy", "behavioral_evidence_from_interview": ["Q07: 'I rent a small space in a converted warehouse on Park Avenue — three hundred a month, shared with four other artists'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-043", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Drives a 2017 Subaru Outback purchased used with cash in 2020.", "ground_truth_label": "Vehicle ownership (2017 Subaru Outback, cash purchase)", "behavioral_evidence_from_interview": ["Q63: 'bought the Subaru used with cash in 2020'", "Q56: '2017 Subaru Outback'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-044", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Paid $700 vet bill in March for Pixel's dental procedure, put on credit card, paid off same cycle.", "ground_truth_label": "March veterinary expense (paid off immediately)", "behavioral_evidence_from_interview": ["Q59: 'I had a $700 vet bill in March when Pixel had a dental thing'", "Q60: 'Vet bill went on credit card and I paid it off the next cycle'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-045", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Bike was stolen outside Naked Lounge about a year ago.", "ground_truth_label": "Bike theft victimization (Chico)", "behavioral_evidence_from_interview": ["Q09: 'My bike got stolen from outside Naked Lounge about a year ago'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-046", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Is friendly with retired neighbors Ray and Denise (across the hall), who feed plants when she travels.", "ground_truth_label": "Neighbor reciprocity (Ray and Denise)", "behavioral_evidence_from_interview": ["Q08 follow-up: 'The couple across the hall, Ray and Denise — retirees, sweet, feed my plants when I'm traveling'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-047", "source_subcategory": "preferences.entertainment", "claim": "Attends gallery openings, live music, and poetry slams in Chico.", "ground_truth_label": "Local-arts event attendance pattern", "behavioral_evidence_from_interview": ["Q07: 'Marcus, a painter I met at a gallery opening'", "seed arts_persona mentions poetry slams"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-048", "source_subcategory": "preferences.entertainment", "claim": "Runs an art Instagram (~8,400 followers), a research Instagram (~1,200), and a locked personal (~180).", "ground_truth_label": "Three-account Instagram usage pattern", "behavioral_evidence_from_interview": ["Q48 follow-up: 'Art account, about 8,400. Research account, about 1,200. Personal, locked, maybe 180'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-049", "source_subcategory": "preferences.entertainment", "claim": "Left Twitter/X about 2 years ago and deliberately avoids TikTok.", "ground_truth_label": "Deliberate disengagement from algorithmic platforms", "behavioral_evidence_from_interview": ["Q48: 'I left Twitter/X about two years ago when it got unusable'", "Q48: 'TikTok I avoid because it's too sticky'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-050", "source_subcategory": "preferences.entertainment", "claim": "Active on Discord servers for generative artists and the Latinx en IA research network.", "ground_truth_label": "Discord community engagement", "behavioral_evidence_from_interview": ["Q48: 'I spend real time on a couple of Discord servers — one for generative artists, one for the Latinx en IA research network'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-051", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Practices abstract painting and generative digital art as serious hobbies, usually Saturdays and some weeknights 8-11pm.", "ground_truth_label": "Dual-track visual art practice with scheduled blocks", "behavioral_evidence_from_interview": ["Q15 follow-up: 'Sometimes Tuesday or Thursday evenings, 8 to 11'", "Q07: 'I rent a small space… I'm there most Saturdays'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-052", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Participates in hackathons roughly once a quarter with coworker Jamal.", "ground_truth_label": "Quarterly hackathon cadence with Jamal", "behavioral_evidence_from_interview": ["Q15 follow-up: 'hackathon weekends, roughly one a quarter'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-053", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Bought an $800 Wacom Cintiq drawing tablet recently, paid cash from savings.", "ground_truth_label": "Wacom Cintiq purchase (creative tooling investment)", "behavioral_evidence_from_interview": ["Q56 follow-up: 'I bought a new drawing tablet for $800. Wacom Cintiq'", "Q60: 'Tablet I paid cash from savings'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-054", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Tinkers with Arduino and Raspberry Pi projects.", "ground_truth_label": "DIY electronics hobby", "behavioral_evidence_from_interview": ["seed hobbies_and_interests_list: 'DIY Electronics (Arduino/Raspberry Pi)'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-055", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Hosts / attends strategy board game nights.", "ground_truth_label": "Strategy board gaming hobby", "behavioral_evidence_from_interview": ["seed hobbies_and_interests_list: 'Board Games (Strategy)'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-056", "source_subcategory": "preferences.work_and_career", "claim": "Computer and information research scientist at a Chico State-affiliated AI lab since 2020 (~5.5 years).", "ground_truth_label": "Current employer and tenure", "behavioral_evidence_from_interview": ["Q76: 'I've been at this lab about five and a half years, since 2020'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-057", "source_subcategory": "preferences.work_and_career", "claim": "Earns ~$94,000/year gross, paid twice monthly; net ~$5,500/month.", "ground_truth_label": "Salary and paycheck frequency", "behavioral_evidence_from_interview": ["Q16 follow-up: 'About ninety-four thousand a year'", "Q72: 'Gross around $7,830, net closer to $5,500'", "Q73: 'Twice a month, on the 15th and the last business day'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-058", "source_subcategory": "preferences.work_and_career", "claim": "Works 45-55 hours/week Monday-Friday with 2-3 WFH days; flexible schedule aside from Monday lab meeting and Wednesday student check-in.", "ground_truth_label": "Work-hours pattern and flexibility", "behavioral_evidence_from_interview": ["Q16: 'I work roughly 45 to 55 hours a week'", "Q78: 'The only fixed things are Monday morning lab meeting and Wednesday afternoon student check-ins'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-059", "source_subcategory": "preferences.work_and_career", "claim": "Co-advises two PhD students (one on diffusion models for text-to-visual-poem generation; one on multilingual NLP for Kichwa and Wayuunaiki).", "ground_truth_label": "Two graduate advisees with specific thesis topics", "behavioral_evidence_from_interview": ["Q16 follow-up: 'One is building a diffusion model for text-to-visual-poem generation. The other is working on multilingual NLP for low-resource languages — Kichwa and Wayuunaiki'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-060", "source_subcategory": "preferences.work_and_career", "claim": "Is PI on an NSF-funded multilingual NLP grant; publishes 2-4 first/senior-author papers/year (4 last year).", "ground_truth_label": "Research output and funding leadership", "behavioral_evidence_from_interview": ["Q65: 'I'm the PI on a small NSF-funded project on multilingual NLP'", "Q65 follow-up: 'Two to four first-author or senior-author, plus a handful of co-authored. Last year was four'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-061", "source_subcategory": "preferences.work_and_career", "claim": "Does 1-2 paid consulting contracts per year for companies wanting a generative-art angle; none active.", "ground_truth_label": "Side-income consulting pattern", "behavioral_evidence_from_interview": ["Q70: 'I occasionally do paid consulting on the side, one or two contracts a year. No right now'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-062", "source_subcategory": "preferences.work_and_career", "claim": "Reports to PI Dr. Linh Tran; closest coworker is Jamal.", "ground_truth_label": "Workplace relationships", "behavioral_evidence_from_interview": ["Q77: 'My PI, Dr. Linh Tran, is fantastic'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-063", "source_subcategory": "preferences.work_and_career", "claim": "Employer benefits: PPO ($180/mo premium, $1,500 deductible), dental/vision, 20 PTO + 10 sick, 403(b) 4% match, $2,000 conference travel budget, unused tuition reimbursement.", "ground_truth_label": "Employer benefits package", "behavioral_evidence_from_interview": ["Q40: 'premiums are about $180/month pre-tax, deductible is $1,500'", "Q76: '20 days PTO plus federal holidays, 10 days sick, 403(b) with 4% match, $2,000 annual conference travel budget'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-064", "source_subcategory": "preferences.work_and_career", "claim": "Not in a union; on research contract, not faculty (not in CFA); wishes she were.", "ground_truth_label": "Non-union employment status", "behavioral_evidence_from_interview": ["Q66: 'I'm on a research contract, not faculty, so I'm not in the CFA union. I wish I were, honestly'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-065", "source_subcategory": "preferences.work_and_career", "claim": "Carries ~$14,000 federal student loan debt at ~$180/month; has ~$18,000 emergency fund and ~$12,000 brokerage 'freedom fund'.", "ground_truth_label": "Debt and liquid assets profile", "behavioral_evidence_from_interview": ["Q63: 'Student loans, about $14,000 left, federal, around $180/month'", "Q61: 'about $18,000 as my emergency fund'", "Q61: 'freedom fund brokerage account… around $12,000'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-066", "source_subcategory": "preferences.work_and_career", "claim": "Retirement: 8% 403(b) + 4% employer match, maxed Roth IRA, ~85% equities / 15% bonds passive three-fund style.", "ground_truth_label": "Retirement savings behavior and asset allocation", "behavioral_evidence_from_interview": ["Q61: 'I contribute 8% to my 403(b), my employer matches 4%, and I have a Roth IRA I max out'", "Q61 follow-up: '85% stocks, 15% bonds, pretty vanilla three-fund style'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-067", "source_subcategory": "preferences.work_and_career", "claim": "Filed 2024 taxes via TurboTax electronically as single filer; received ~$600 refund.", "ground_truth_label": "Tax filing behavior and refund", "behavioral_evidence_from_interview": ["Q75: 'Filed electronically through TurboTax in March. Single, no dependents… Got a small refund — about $600'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-068", "source_subcategory": "preferences.work_and_career", "claim": "Took ~2 weeks off last year (vacation + wisdom tooth recovery); worked ~50 weeks.", "ground_truth_label": "Low vacation-use pattern", "behavioral_evidence_from_interview": ["Q67: 'Fifty, give or take. I took two weeks off total'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-069", "source_subcategory": "preferences.work_and_career", "claim": "AI regulation position: shifted from researcher-self-governance to favoring third-party audits, liability regimes, and open-source against four-company consolidation.", "ground_truth_label": "Updated AI policy stance", "behavioral_evidence_from_interview": ["Q25 follow-up: 'Now I think we need real third-party audits, liability regimes, and I think open-source has to be part of the answer so power doesn't consolidate in four companies'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-070", "source_subcategory": "preferences.work_and_career", "claim": "During worst anxiety period missed deadlines and shipped sloppy code; manager was kind, HR was not looped in.", "ground_truth_label": "Work-impact episode from untreated anxiety", "behavioral_evidence_from_interview": ["Q34: 'I missed deadlines, shipped sloppy code, had a hard time focusing'", "Q34 follow-up: 'My direct manager knew some of it — she was kind about it. HR didn't'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-071", "source_subcategory": "preferences.arts_and_culture", "claim": "Cites James Turrell, Yayoi Kusama, Björk, and Ted Chiang as primary creative influences.", "ground_truth_label": "Named creative influences", "behavioral_evidence_from_interview": ["seed arts_persona lists these influences explicitly"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-072", "source_subcategory": "preferences.arts_and_culture", "claim": "Serves on the planning committee for the annual Butte County arts walk (meets monthly).", "ground_truth_label": "Local arts governance role", "behavioral_evidence_from_interview": ["Q17: 'I'm also on the planning committee for our annual Butte County arts walk, which meets monthly'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-073", "source_subcategory": "preferences.arts_and_culture", "claim": "Sketching a book-length project about generative art and narrative.", "ground_truth_label": "In-progress book project", "behavioral_evidence_from_interview": ["Q108: 'I hope to have published the book-length project I've been sketching about generative art and narrative'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-074", "source_subcategory": "preferences.arts_and_culture", "claim": "Current research excitement: new architecture using diffusion models for narrative structure rather than images.", "ground_truth_label": "Novel research direction (narrative diffusion)", "behavioral_evidence_from_interview": ["Q43 follow-up: 'A new architecture I'm working on that uses diffusion models for narrative structure instead of image generation'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-075", "source_subcategory": "preferences.sports_and_fitness", "claim": "Hikes weekends with the Chico Outdoor Club (organized by friend Sofia).", "ground_truth_label": "Weekly group-hiking practice", "behavioral_evidence_from_interview": ["Q07: 'Sofia, who runs the Chico Outdoor Club hikes I do most weekends'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-076", "source_subcategory": "preferences.sports_and_fitness", "claim": "Plays in a local amateur soccer league during summer.", "ground_truth_label": "Summer amateur soccer participation", "behavioral_evidence_from_interview": ["seed sports_persona: 'plays in a local amateur soccer league during summer'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-077", "source_subcategory": "preferences.sports_and_fitness", "claim": "Supports Sacramento Kings (NBA) and San Francisco 49ers (NFL).", "ground_truth_label": "Professional sports fandom", "behavioral_evidence_from_interview": ["seed sports_persona: 'supports the Sacramento Kings in basketball, follows the San Francisco 49ers'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-078", "source_subcategory": "preferences.sports_and_fitness", "claim": "Runs in Bidwell Park several mornings a week.", "ground_truth_label": "Weekday running practice", "behavioral_evidence_from_interview": ["Q08: 'I run there a few mornings a week'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-079", "source_subcategory": "preferences.nature_and_outdoors", "claim": "Lives a 10-minute walk from Bidwell Park.", "ground_truth_label": "Proximity to Bidwell Park", "behavioral_evidence_from_interview": ["Q08: 'Bidwell Park, which is huge, is a ten-minute walk'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-080", "source_subcategory": "preferences.nature_and_outdoors", "claim": "Considers long hikes a form of genuine spiritual practice.", "ground_truth_label": "Nature-as-spirituality orientation", "behavioral_evidence_from_interview": ["Q47: 'I find yoga and long hikes genuinely spiritual'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-081", "source_subcategory": "preferences.technology", "claim": "Professional toolkit: Python, R, C++, MATLAB, GCP, AWS, high-performance computing.", "ground_truth_label": "Technical skill stack", "behavioral_evidence_from_interview": ["seed skills_and_expertise_list"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-082", "source_subcategory": "preferences.technology", "claim": "Uses WhatsApp constantly for family group chats (mom, cousin, Chico friends).", "ground_truth_label": "WhatsApp-primary family comms", "behavioral_evidence_from_interview": ["Q48: 'I use WhatsApp constantly for family and close friends, group chats with my mom, my cousin, my Chico friends'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-083", "source_subcategory": "preferences.technology", "claim": "Logs into Facebook only ~twice a year; uses LinkedIn weekly.", "ground_truth_label": "Low-frequency Facebook/weekly LinkedIn usage", "behavioral_evidence_from_interview": ["Q48: 'I'm on LinkedIn for professional stuff and I check it weekly. I have a Facebook account I log into maybe twice a year'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-084", "source_subcategory": "preferences.community_and_civic", "claim": "Votes in every election including primary/local/school-board races via mail-in ballot.", "ground_truth_label": "Comprehensive voter behavior", "behavioral_evidence_from_interview": ["Q23: 'I vote in every election… I do my mail-in ballot'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-085", "source_subcategory": "preferences.community_and_civic", "claim": "Volunteer tutors with Mujeres en STEM twice a month on Saturday afternoons (two Latina high schoolers).", "ground_truth_label": "Saturday-afternoon STEM mentoring", "behavioral_evidence_from_interview": ["Q17: 'Mujeres en STEM — twice a month on Saturday afternoons'", "Q28 follow-up: 'I mentor two Latina high schoolers'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-086", "source_subcategory": "preferences.community_and_civic", "claim": "Donates monthly to a bail fund.", "ground_truth_label": "Recurring bail-fund donation", "behavioral_evidence_from_interview": ["Q29: 'Donate monthly to a bail fund'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-087", "source_subcategory": "preferences.community_and_civic", "claim": "Participated in 2020 Sacramento BLM protest; attended several smaller Chico protests since.", "ground_truth_label": "BLM protest participation", "behavioral_evidence_from_interview": ["Q21: 'I was at a BLM protest in Sacramento in 2020 where things got tense with police in riot gear'", "Q21 follow-up: 'A few smaller local ones in Chico, yeah'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-088", "source_subcategory": "preferences.community_and_civic", "claim": "Self-identifies as strong progressive Democrat; views evolved from libertarian-adjacent in early college.", "ground_truth_label": "Partisan identity and political trajectory", "behavioral_evidence_from_interview": ["Q95: 'Democrat. Strong Democrat'", "Q24 follow-up: 'I was more libertarian-adjacent in early college'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-089", "source_subcategory": "preferences.community_and_civic", "claim": "Views housing as a first-order political issue after Camp Fire displacement in Chico.", "ground_truth_label": "Housing politics as post-Camp-Fire priority", "behavioral_evidence_from_interview": ["Q25: 'Chico's housing got absolutely crushed by the Camp Fire displacement… now I think it's maybe the issue'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-090", "source_subcategory": "preferences.community_and_civic", "claim": "Shaped by inherited policing experience: father pulled over ~monthly in 1990s driving a beige Chevy Astro van; taught 'siempre las manos en el volante'.", "ground_truth_label": "Generational racial-profiling narrative", "behavioral_evidence_from_interview": ["Q20 follow-up: 'An old beige Chevy Astro van… he got pulled over at least once a month for years'", "Q20 follow-up: 'siempre las manos en el volante'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-091", "source_subcategory": "preferences.community_and_civic", "claim": "Reviews junior researchers' papers through Latinx en IA online network.", "ground_truth_label": "Professional service through Latinx en IA", "behavioral_evidence_from_interview": ["Q17: 'I'm part of an online network, Latinx en IA, where I review junior researchers' papers'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-092", "source_subcategory": "preferences.music", "claim": "Grew up with cumbia and vallenato at family gatherings.", "ground_truth_label": "Childhood Colombian music exposure", "behavioral_evidence_from_interview": ["Q01: 'My childhood soundtrack was cumbia and vallenato'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-093", "source_subcategory": "preferences.music", "claim": "Currently dating Ben, a musician.", "ground_truth_label": "Partner occupation overlap with music interest", "behavioral_evidence_from_interview": ["Q07: 'He's a musician'"], "duplicate_of": "HF-030", "also_supported_by": ["preferences.social_and_relationships"]},
+      {"fact_id": "HF-094", "source_subcategory": "preferences.fashion_and_appearance", "claim": "Wears glasses (covered via FSA with therapy copays).", "ground_truth_label": "Corrective eyewear use", "behavioral_evidence_from_interview": ["Q40 follow-up: 'I have an FSA and I usually front-load it for therapy and glasses'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-095", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Second-generation Colombian-American; parents from Medellin; she was born in Sacramento.", "ground_truth_label": "Second-generation Colombian-American identity", "behavioral_evidence_from_interview": ["Q01: 'My parents came from Medellin, Colombia in the late eighties'", "Q88: 'Yes — Colombian-American, second generation'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-096", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Fully bilingual (Spanish/English); maintains Spanish via calls with abuela who speaks barely any English.", "ground_truth_label": "Full Spanish-English bilingualism", "behavioral_evidence_from_interview": ["Q01: 'I grew up completely bilingual'", "Q05 follow-up: 'Our calls are entirely in Spanish… she'd be merciless if I got rusty'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-097", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Lights candles on Día de los Muertos for deceased maternal grandfather (who died before she was born).", "ground_truth_label": "Día de los Muertos ritual for ancestor", "behavioral_evidence_from_interview": ["Q47: 'I light candles on Día de los Muertos for my grandfather who died before I was born'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-098", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Raised Roman Catholic (baptized, first communion, confirmation); now spiritual-but-not-religious.", "ground_truth_label": "Raised Catholic, currently SBNR", "behavioral_evidence_from_interview": ["Q47: 'I was raised Catholic — baptized, first communion, confirmation, the whole arc… I'd call myself spiritual but not religious now'", "Q94: 'I was raised Roman Catholic. I currently identify as spiritual but not religious'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-099", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Identifies as Latina with white and indigenous South American ancestry.", "ground_truth_label": "Racial/ethnic self-identification", "behavioral_evidence_from_interview": ["Q89: 'Latina, with white and indigenous South American ancestry'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-100", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Parents' education: father — Colombian high school + some U.S. community college, no degree; mother — Associate's in nursing (RN) from Sacramento City College.", "ground_truth_label": "Parental educational attainment", "behavioral_evidence_from_interview": ["Q100: 'High school in Colombia plus some community college coursework in the U.S. No degree'", "Q101: 'Associate's degree in nursing (RN) from Sacramento City College'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-101", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Father's occupational history: long-haul produce truck driver, later small tire-shop owner in South Sacramento.", "ground_truth_label": "Father's occupational biography", "behavioral_evidence_from_interview": ["Q106: 'long-haul produce truck driver… later, small business owner. He and his cousin ran a tire shop'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-102", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Has had explicit family conversations about anti-Blackness and colorism within Latinx communities (receptive with mother, contentious with Tío Hernán).", "ground_truth_label": "Intra-family anti-racism dialogue", "behavioral_evidence_from_interview": ["Q26 follow-up: 'With my mom, yes. She's been receptive. With my Tío Hernán, it's been harder'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-103", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Born August 14, 1996 in Sacramento, California.", "ground_truth_label": "DOB and birthplace", "behavioral_evidence_from_interview": ["Q85: 'August 14, 1996'", "Q86: 'I was born in the U.S. — Sacramento, California'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-104", "source_subcategory": "preferences.life_events_and_transitions", "claim": "At age 16 lived in the Arden-Arcade area of Sacramento with both parents.", "ground_truth_label": "Age-16 residence and household composition", "behavioral_evidence_from_interview": ["Q97: 'Sacramento, California — specifically the Arden-Arcade area'", "Q98: 'Yes, both'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-105", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Chose research career path over a Chicago quant-trading offer senior year at UC Davis.", "ground_truth_label": "Pivotal career crossroads decision", "behavioral_evidence_from_interview": ["Q02: 'I had an offer from a quant trading firm in Chicago… I picked the research path'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-106", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Grandmother Lucía had minor stroke ~14 months ago; Alicia flew to Medellin for 10 days to help aunt.", "ground_truth_label": "Grandmother's stroke + caregiving trip", "behavioral_evidence_from_interview": ["Q35: 'My abuela had a minor stroke about fourteen months ago… I flew to Medellin for ten days'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-107", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Father had high blood pressure scare 2 years ago, now on medication.", "ground_truth_label": "Father's cardiovascular event", "behavioral_evidence_from_interview": ["Q35: 'My dad had a scare with high blood pressure two years ago and they put him on medication'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-108", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Reacted hard to ex-husband's remarriage news around October 2025 — spent Saturday in bed; Priya flew up, they cooked sancocho and drove to Table Mountain.", "ground_truth_label": "Emotional-reset weekend with Priya", "behavioral_evidence_from_interview": ["Q44: 'The week after I heard about Daniel getting remarried. Objectively we'd been divorced two years… Priya called that night and I cried for like an hour. She flew up the next weekend'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-109", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Got three speeding tickets in her twenties (once in Davis, twice on I-5); never arrested.", "ground_truth_label": "Minor traffic infractions history", "behavioral_evidence_from_interview": ["Q20: 'I got pulled over maybe three times for speeding in my twenties — once in Davis, twice on I-5'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-110", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Added 'inbox zero Sunday' rule and began in-person yoga 6 weeks ago as recent behavioral changes.", "ground_truth_label": "Recent routine changes", "behavioral_evidence_from_interview": ["Q18: 'I added an \"inbox zero Sunday\" rule'", "Q18 follow-up: 'Six weeks in, yeah'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-111", "source_subcategory": "preferences.media_and_information_diet", "claim": "Researches candidates via League of Women Voters guide, Ballotpedia, journalist friend in Sacramento, and judicial opinions for judges.", "ground_truth_label": "Deep candidate research methodology", "behavioral_evidence_from_interview": ["Q23 follow-up: 'I read the local League of Women Voters guide, I check Ballotpedia… For judges I read actual opinions'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-112", "source_subcategory": "preferences.media_and_information_diet", "claim": "Trusted health sources: CDC, primary care physician, peer-reviewed literature, epidemiologists on professional networks; wary of 'just asking questions' podcasters.", "ground_truth_label": "Health information trust hierarchy", "behavioral_evidence_from_interview": ["Q42: 'CDC, my primary care doctor, peer-reviewed literature… specifically wary of the podcast-adjacent just asking questions crowd'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-113", "source_subcategory": "preferences.media_and_information_diet", "claim": "Post-2020 deliberately expanded reading list to Black authors (Baldwin, Hartman, Coates, Jesmyn Ward).", "ground_truth_label": "Post-2020 reading-list intervention", "behavioral_evidence_from_interview": ["Q26 follow-up: 'Reading Black authors I'd skipped — Baldwin, Hartman, Coates, Jesmyn Ward'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-114", "source_subcategory": "preferences.media_and_information_diet", "claim": "Politically influenced by reading Piketty and critical race theorists.", "ground_truth_label": "Political-intellectual influences", "behavioral_evidence_from_interview": ["Q24 follow-up: 'reading Piketty and some critical race theorists'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-115", "source_subcategory": "preferences.media_and_information_diet", "claim": "Keeps an unstructured morning paper journal about dreams, problems, and idea sketches; dropped doomscrolling.", "ground_truth_label": "Morning-journal coping practice", "behavioral_evidence_from_interview": ["Q50: 'a paper journal I write in most mornings'", "Q50 follow-up: 'Dreams, problems I'm stuck on, sketches of ideas. It's unstructured on purpose'"], "duplicate_of": null, "also_supported_by": []}
+    ]
+  }
+}

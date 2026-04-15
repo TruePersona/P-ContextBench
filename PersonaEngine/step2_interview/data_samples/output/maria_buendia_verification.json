@@ -1,0 +1,618 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "5237e90a0ca3460dbbcba20adb61922f",
+      "name": "Maria Buendia",
+      "verification_date": "2026-04-15"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed age=34, sex=Female, marital_status=married_present are confirmed by interview (DOB March 19 1991, married 13 years to Hector).", "verdict": "consistent", "gap": false, "source_a_ref": "seed.age/sex/marital_status", "source_b_ref": "Q84, Q85", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed city/state 'Lilburn, GA 30047' confirmed; interview enriches with subdivision (Hillside Oaks between Old Town and Five Forks).", "verdict": "consistent", "gap": true, "source_a_ref": "seed.city/state/zipcode", "source_b_ref": "Q08", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed education_level '9th_12th_no_diploma' confirmed: tenth grade completed, some 11th, no diploma. Interview adds GED enrollment.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.education_level", "source_b_ref": "Q90, Q01", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed occupation 'no_occupation' is technically consistent (classified as homemaker) but interview reveals she IS economically active as 1099 contractor. Reconcilable via 'formal vs. practical' distinction.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.occupation", "source_b_ref": "Q16, Q65", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed cultural_background describes Mexican-American Catholic, Spanish at home; interview confirms birth in Guanajuato (León), immigration age 5 in 1996, naturalization 2016.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q86, Q87, Q88", "action": "NO_CHANGE", "resolution": null},
+            {"id": 6, "text": "Seed 'bachelors_field=\"\"' consistent with no college (no diploma). No contradiction.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.bachelors_field", "source_b_ref": "Q90", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 6, "inconsistent": 0, "gaps": 3}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Profile header correctly captures age, gender, marital status (13 yrs to Hector), location, education status, and occupation compound.", "verdict": "consistent", "gap": false, "source_a_ref": "Q05, Q16, Q84, Q90", "source_b_ref": "extracted_profile header", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Household composition of 4 (Maria, Hector, Lupita, Mateo) plus pets (Paco, Ronaldo) faithfully captured in social_and_relationships and home_and_lifestyle.", "verdict": "consistent", "gap": false, "source_a_ref": "Q11, Q51", "source_b_ref": "preferences.social_and_relationships, preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Immigration timeline (Guanajuato -> Norcross -> Lilburn, age 5) is partially captured in cultural_and_linguistic but Norcross-first residency not noted.", "verdict": "consistent", "gap": true, "source_a_ref": "Q01, Q86", "source_b_ref": "preferences.cultural_and_linguistic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Parents' occupations (house cleaner / landscaper) from Q103-Q107 not captured in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q100-Q107", "source_b_ref": "preferences.life_events_and_transitions", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Marital status header '13 years' aligns with life_events_and_transitions 'married at 21 (13 years)'.", "verdict": "consistent", "gap": false, "field_a": "header.marital_status", "field_b": "preferences.life_events_and_transitions", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Education header (GED in progress, no diploma) consistent with work_and_career (left 11th grade) and life_events.", "verdict": "consistent", "gap": false, "field_a": "header.education", "field_b": "preferences.work_and_career", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Home_and_lifestyle locates home in Hillside Oaks between Old Town and Five Forks, matching cultural_and_linguistic multiethnic claim.", "verdict": "consistent", "gap": false, "field_a": "preferences.home_and_lifestyle", "field_b": "preferences.cultural_and_linguistic", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 3, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Parents' occupations (mother house cleaner at Servicio Limpio; father landscaper at Green Horizons, Tucker) absent from profile.", "gap": true, "interview_ref": "Q103-Q107", "should_be_in": "preferences.life_events_and_transitions", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add details: 'Mother Esperanza cleaned houses in Dunwoody/Sandy Springs via Servicio Limpio (owner Paty); father Ramon worked at Green Horizons landscaping in Tucker and became crew lead; father now 62 with damaged back.'"},
+            {"id": 2, "text": "Parents' education levels (father 6th grade Mexico; mother 8th grade Mexico) not in profile.", "gap": true, "interview_ref": "Q100, Q101", "should_be_in": "preferences.life_events_and_transitions", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Father completed 6th grade in Mexico; mother completed 8th grade in Mexico.'"},
+            {"id": 3, "text": "Abuela Consuelo's six-month tourist-visa stay when Maria was ~16 absent.", "gap": true, "interview_ref": "Q99", "should_be_in": "preferences.cultural_and_linguistic", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Paternal grandmother Consuelo stayed 6 months on a tourist visa during Maria's adolescence.'"},
+            {"id": 4, "text": "First U.S. residence was Norcross before move to Lilburn — not in profile.", "gap": true, "interview_ref": "Q01", "should_be_in": "preferences.life_events_and_transitions", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Family first settled in Norcross, GA before relocating to Lilburn.'"}
+          ],
+          "summary": {"present": 0, "missing": 4}
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed professional_persona framing (community-focused event planner, methodical budgeting, pursuing certification) is richly supported by interview (Q16, Q65, Q83, Q108).", "verdict": "consistent", "gap": false, "source_a_ref": "seed.professional_persona", "source_b_ref": "Q16, Q65, Q108", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed 'persona' mentions hoarding kitchen gadgets and forgetting to water garden — interview confirms busy pace and garden maintenance challenge (HOA citation, watering reminder implicit).", "verdict": "consistent", "gap": true, "source_a_ref": "seed.persona", "source_b_ref": "Q10, Q18", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed skills_and_expertise_list matches interview-reported skills (bilingual, cooking, event planning, budgeting, social media moderation, photography, childcare, mentoring).", "verdict": "consistent", "gap": false, "source_a_ref": "seed.skills_and_expertise_list", "source_b_ref": "Q16, Q17, Q48, Q65", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed career_goals_and_ambitions (GED/cert within 2 years, outreach coordinator, home catering, multicultural hub) consistent with Q108 vision.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.career_goals_and_ambitions", "source_b_ref": "Q108", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed culinary_persona (corn dumplings, paprika, themed dinners) consistent with interview themed dinners and cooking (Q17, Q43).", "verdict": "consistent", "gap": false, "source_a_ref": "seed.culinary_persona", "source_b_ref": "Q17, Q43", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 1}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Detailed financial behaviors (envelope system, tanda, spreadsheet, snowball debt strategy, EITC $2,100) correctly carried through in home_and_lifestyle and hobbies_and_recreation.", "verdict": "consistent", "gap": false, "source_a_ref": "Q59, Q61, Q63, Q75, Q83", "source_b_ref": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "EITC claim ($2,100), TurboTax Self-Employed usage, H&R Block one-time negative experience not explicitly in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q75", "source_b_ref": "preferences.technology or home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Retirement savings gap (Hector $3,200 IRA, Maria $0, worries her) absent from profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q61", "source_b_ref": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Life insurance details (Hector $50K term via church agent, Maria $15K) absent from profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q40", "source_b_ref": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Medicaid/Pathways denial twice due to 1099 paperwork issues not captured.", "verdict": "consistent", "gap": true, "source_a_ref": "Q36", "source_b_ref": "preferences.health_and_wellness or community_and_civic", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 5, "inconsistent": 0, "gaps": 4}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Work_and_career earnings ($1,214/month) aligns with home_and_lifestyle ($5,014 household) and finances narrative.", "verdict": "consistent", "gap": false, "field_a": "preferences.work_and_career", "field_b": "preferences.home_and_lifestyle", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Food_and_dining hosting and work_and_career freelance events are compatible (hospitality as both identity and income).", "verdict": "consistent", "gap": false, "field_a": "preferences.food_and_dining", "field_b": "preferences.work_and_career", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 2, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Chase credit card balance $2,800 at 24% with snowball plan $200/month over 15 months absent.", "gap": true, "interview_ref": "Q63", "should_be_in": "preferences.home_and_lifestyle", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Chase credit card carrying ~$2,800 balance at 24% APR on snowball plan at $200+/month; target payoff in 15 months.'"},
+            {"id": 2, "text": "Lowe's 0% APR $720 card for water heater and Hector truck loan $9,400 at 6.2% absent.", "gap": true, "interview_ref": "Q60, Q63", "should_be_in": "preferences.home_and_lifestyle", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Lowe's 0% APR card $720 (water heater, 9 months left); Hector truck loan $9,400 at 6.2% with ~2 years remaining.'"},
+            {"id": 3, "text": "Retirement savings concern (Hector's $3,200 IRA; Maria no formal retirement) is an important financial behavior absent.", "gap": true, "interview_ref": "Q61", "should_be_in": "preferences.home_and_lifestyle", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'No meaningful retirement savings; Hector holds tiny IRA (~$3,200); Maria has no formal retirement account (notes this worries her).'"},
+            {"id": 4, "text": "EITC ($2,100) and 1099 tax owe $340 federal/refund $190 state details absent.", "gap": true, "interview_ref": "Q75", "should_be_in": "preferences.work_and_career", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Files joint via TurboTax Self-Employed; claims EITC (~$2,100); owed $340 federal and received $190 state back last tax year.'"},
+            {"id": 5, "text": "$400 emergency self-sufficiency (yes but drains fund); $1,500 emergency would require credit card + borrowing from Javier — absent.", "gap": true, "interview_ref": "Q82", "should_be_in": "preferences.home_and_lifestyle", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Can absorb a $400 emergency (would drain fund); a $1,500 emergency would require credit card and borrowing from brother Javier.'"}
+          ],
+          "summary": {"present": 0, "missing": 5}
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed cultural_background ties Maria to local Mexican community and Georgia Mexican Consulate; interview confirms cross-community civic orientation.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q24, Q25", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed does not explicitly assign a party — interview reveals moderate Democrat (7/10) with nuanced positions, naturalized 2016.", "verdict": "consistent", "gap": true, "source_a_ref": "seed (no party field)", "source_b_ref": "Q23, Q24, Q95", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed Catholic identity matches interview Roman Catholic (Q47, Q94) and influences abortion ethic complexity.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background (Catholic)", "source_b_ref": "Q47, Q94, Q24", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Seed mentions collaboration with cultural organizations — consistent with interview reports of parish, arts center, voter drives.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.cultural_background", "source_b_ref": "Q25, Q65", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 0, "gaps": 1}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Community_and_civic captures voter drives, BLM march, Bail Project donation, Stacey Abrams admiration, 287(g) concerns.", "verdict": "consistent", "gap": false, "source_a_ref": "Q20, Q23-Q29", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Profile omits explicit party strength rating (Democrat, 7/10) and stance on voting Republican locally.", "verdict": "consistent", "gap": true, "source_a_ref": "Q95", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Detailed policy positions (guns, trans rights, border, taxes, economic progressive shift) not itemized in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q24, Q25", "source_b_ref": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Book club's role as political conversation space (BLM books, How to Be an Antiracist with Keisha) captured in hobbies and media.", "verdict": "consistent", "gap": false, "source_a_ref": "Q26, Q27", "source_b_ref": "preferences.hobbies_and_recreation, preferences.media_and_information_diet", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Community_and_civic (voter drives, BLM march) is internally consistent with media_and_information_diet (NPR, CDC, reading list).", "verdict": "consistent", "gap": false, "field_a": "preferences.community_and_civic", "field_b": "preferences.media_and_information_diet", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Cultural_and_linguistic claim 'rejects pan-Latino political monolith' consistent with community_and_civic Democratic lean with nuance.", "verdict": "consistent", "gap": false, "field_a": "preferences.cultural_and_linguistic", "field_b": "preferences.community_and_civic", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 2, "inconsistent": 0, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Explicit party ID (Democrat, 7/10 strength) and policy positions (pro-immigration reform, Medicaid expansion, living wage, legal-but-personally-opposed abortion, gun-skeptical, open to local Republicans) absent.", "gap": true, "interview_ref": "Q24, Q25, Q95", "should_be_in": "preferences.community_and_civic", "disposition": "NEEDS_ENRICHMENT", "resolution": "Add detail: 'Self-describes as moderate Democrat (7/10 strength); voted Biden 2020, Harris 2024; supports immigration reform, Medicaid expansion, living wage; personally would not have abortion but supports legal access; skeptical of handgun in nightstand; open to local Republican candidates for right race.'"},
+            {"id": 2, "text": "Voted in every general and midterm since 2016 naturalization; sometimes skips primaries (Georgia open-primary confusion) — present in profile but could be expanded.", "gap": false, "interview_ref": "Q23", "should_be_in": "preferences.community_and_civic", "disposition": "DROP", "resolution": null},
+            {"id": 3, "text": "Anti-Black comments from Tío Roberto confronted at family level; Mateo's bus racial incident (n-word in December).", "gap": true, "interview_ref": "Q27, Q28", "should_be_in": "preferences.community_and_civic", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Actively confronts anti-Black comments from relatives (Tío Roberto); son Mateo racially harassed on school bus (n-word incident, December), Maria escalated to principal.'"},
+            {"id": 4, "text": "Father Miguel Ramírez as confessor and moral counselor at Saint John Neumann — political/moral support resource.", "gap": true, "interview_ref": "Q44, Q47", "should_be_in": "preferences.community_and_civic", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Father Miguel Ramírez of Saint John Neumann parish is long-standing confessor/counselor (7 years at parish).'"}
+          ],
+          "summary": {"present": 1, "missing": 3}
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {"id": 1, "text": "Seed persona 'curiosity and methodical energy... weaving art, food, and community' aligns with interview demonstrations of planful, creative, hospitable behavior.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.persona", "source_b_ref": "Q01, Q43, Q65", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Seed arts_persona names Toni Morrison, Murakami, Adichie in book club; interview reports current/recent reads Pachinko, House of the Spirits, Antiracist, Caste — all compatible with declared taste.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.arts_persona", "source_b_ref": "Q07, Q26", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Seed sports_persona mentions co-ed recreational soccer league and Falcons/Hawks fandom — interview never mentions personal soccer league; interview mentions son Mateo's soccer only. Potential contradiction with the adult recreational soccer claim.", "verdict": "inconsistent", "gap": true, "source_a_ref": "seed.sports_persona", "source_b_ref": "Q05, Q15, Q19, Q32", "action": "PARTIAL_UPDATE", "resolution": "Treat personal co-ed soccer league claim as unsubstantiated by interview. In sports_and_fitness, demote to 'per persona narrative only; not confirmed in interview — primary current fitness anchors are yoga twice/week and folklórico; soccer engagement in interview is via son Mateo.' Keep Falcons/Hawks fandom tagged as persona-narrative-only."},
+            {"id": 4, "text": "Seed hobbies_and_interests (folklórico, cooking, galleries, photography, gardening, reading, volunteering) all confirmed in interview.", "verdict": "consistent", "gap": false, "source_a_ref": "seed.hobbies_and_interests", "source_b_ref": "Q07, Q17, Q18, Q48", "action": "NO_CHANGE", "resolution": null},
+            {"id": 5, "text": "Seed culinary_persona mentions herb-crusted chicken, cilantro-lime rice, avocado salsa — not explicitly named in interview but compatible with fusion style.", "verdict": "consistent", "gap": true, "source_a_ref": "seed.culinary_persona", "source_b_ref": "Q43", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 1, "gaps": 3}
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {"id": 1, "text": "Profile psychologist summary captures generalized anxiety, suspected postpartum depression, coping toolkit (yoga, prayer, journaling, Cristina, news app deletion) — matches Q43-Q45, Q50.", "verdict": "consistent", "gap": false, "source_a_ref": "Q43-Q46, Q50", "source_b_ref": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Lupita's cuticle-picking anxiety signal from Q46 not in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q46", "source_b_ref": "preferences.social_and_relationships or health_and_wellness", "action": "NO_CHANGE", "resolution": null},
+            {"id": 3, "text": "Coping via baking pan de muerto, pozole-making ritual after Nov 2024 election, crying in parking lot — captured in health and food sections.", "verdict": "consistent", "gap": false, "source_a_ref": "Q43, Q44", "source_b_ref": "preferences.health_and_wellness, preferences.food_and_dining", "action": "NO_CHANGE", "resolution": null},
+            {"id": 4, "text": "Maternal role guidance to Mateo (hands visible, speak respectfully) and Lupita (teaching about cost of choices) — not explicit in profile.", "verdict": "consistent", "gap": true, "source_a_ref": "Q03, Q26", "source_b_ref": "preferences.social_and_relationships", "action": "NO_CHANGE", "resolution": null}
+          ],
+          "summary": {"consistent": 4, "inconsistent": 0, "gaps": 2}
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {"id": 1, "text": "Health_and_wellness anxiety narrative consistent with summaries.psychologist coping description.", "verdict": "consistent", "gap": false, "field_a": "preferences.health_and_wellness", "field_b": "summaries.psychologist", "action": "NO_CHANGE", "resolution": null},
+            {"id": 2, "text": "Sports_and_fitness lists co-ed soccer league from persona narrative while daily schedule (Q15) shows no such activity. Internal tension — marked as narrative-source only.", "verdict": "inconsistent", "gap": false, "field_a": "preferences.sports_and_fitness", "field_b": "preferences.work_and_career (schedule context)", "action": "PARTIAL_UPDATE", "resolution": "Tag the co-ed soccer league fact as 'persona_narrative_only (not confirmed in interview)' to prevent downstream mis-inference."}
+          ],
+          "summary": {"consistent": 1, "inconsistent": 1, "gaps": 0}
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {"id": 1, "text": "Sister Annette (church mentor, told Maria she was smart, died COVID 2021) — emotionally significant mentor figure absent from profile.", "gap": true, "interview_ref": "Q02", "should_be_in": "preferences.social_and_relationships", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Sister Annette of church was early mentor who told Maria she was smart; died of COVID 2021, lingering grief.'"},
+            {"id": 2, "text": "Scholarship envelope retained in filing cabinet — emotionally loaded artifact; narrative identity anchor.", "gap": true, "interview_ref": "Q02", "should_be_in": "preferences.life_events_and_transitions", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Retains unsent 2017 Gwinnett Tech pastry arts scholarship application in filing cabinet as identity artifact.'"},
+            {"id": 3, "text": "Lupita showing teenage anxiety (cuticle-picking); Maria considering therapy push this summer — parenting mental-health thread absent.", "gap": true, "interview_ref": "Q46", "should_be_in": "preferences.social_and_relationships", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Daughter Lupita showing signs of teenage anxiety (cuticle-picking, Q46); Maria plans to push for therapy conversation this summer.'"},
+            {"id": 4, "text": "Maria journals as coping practice — not in profile.", "gap": true, "interview_ref": "Q45", "should_be_in": "preferences.health_and_wellness", "disposition": "CARRY_FORWARD", "resolution": "Add detail: 'Journals as self-therapy; has never seen a therapist due to cost and stigma.'"},
+            {"id": 5, "text": "Failed driver's test twice — identity / competence narrative; relies on mother for child logistics pickups — captured but could be explicit.", "gap": false, "interview_ref": "Q05", "should_be_in": "preferences.social_and_relationships", "disposition": "DROP", "resolution": null}
+          ],
+          "summary": {"present": 1, "missing": 4}
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "Several Direction 4 NEEDS_ENRICHMENT dispositions and one PARTIAL_UPDATE (sports_persona soccer league claim) require correction, but no FLAG_FOR_REVIEW. Corrections are additive or clarifying rather than load-bearing contradictions.",
+    "final_status": "Profile is internally sound, with 1 narrative-source inconsistency (co-ed soccer league never corroborated in interview) flagged for annotation, and ~15 enrichment gaps filled in the corrected profile. Ready for downstream use after corrections below."
+  },
+
+  "corrected_extracted_profile": {
+    "participant_id": "5237e90a0ca3460dbbcba20adb61922f",
+    "name": "Maria Buendia",
+    "age": 34,
+    "gender": "Female",
+    "marital_status": "Married (to Hector Buendia, thirteen years this October)",
+    "location": "Lilburn, GA 30047 (Hillside Oaks subdivision, between Old Town and Five Forks)",
+    "education": "9th-12th grade completed through 10th, began 11th and did not finish; no diploma. Currently self-enrolled in GED prep via Khan Academy and a free Gwinnett County Public Library program (started January 2026).",
+    "occupation": "Officially homemaker / 'no occupation'. In practice: 1099 contract community liaison at Lilburn School of the Arts (~12 hrs/week, $18/hr, since September 2023) + freelance event planner for baptisms, quinceañeras, bridal showers, first-birthdays ($50-$200/event, ~2/month) + unpaid bookkeeper for husband Hector's drywall subcontracting business.",
+
+    "preferences": {
+      "health_and_wellness": {
+        "summary": "Active engagement with health via yoga, walking, and diet management, but with substantial unmet needs due to cost. Borderline hypertension managed through lifestyle; undiagnosed suspected endometriosis and untreated generalized anxiety; heavy reliance on sliding-scale clinic and curandera alternative medicine.",
+        "details": [
+          {"fact": "Borderline hypertension (142/90 Feb 2025, reduced to 128/82 via lifestyle after declining lisinopril)", "evidence": "Q33"},
+          {"fact": "Had gestational diabetes with both pregnancies; high risk for Type 2", "evidence": "Q31"},
+          {"fact": "Suspected endometriosis, undiagnosed due to $400 specialist cost", "evidence": "Q34"},
+          {"fact": "Generalized anxiety, self-identified but never formally diagnosed; suspected untreated postpartum depression after Mateo", "evidence": "Q45"},
+          {"fact": "Does yoga Tuesdays and Thursdays at 9 AM at Twisted Noodle Yoga downtown Lilburn", "evidence": "Q15"},
+          {"fact": "Wears Fitbit (gift from Hector for Mother's Day); 8,000 step daily goal hit 4 days/week", "evidence": "Q32"},
+          {"fact": "Approximately 35 lbs above desired weight", "evidence": "Q31"},
+          {"fact": "Sprained right ankle badly at folklórico practice August 2024; six weeks in boot", "evidence": "Q33"},
+          {"fact": "Uses curandera Doña Lupe in Norcross for limpias twice/year at $40 cash", "evidence": "Q37"},
+          {"fact": "Attended a temazcal sweat lodge in 2022", "evidence": "Q37"},
+          {"fact": "Primary care: Dr. Chen at Gwinnett Community Clinic (sliding scale, 6 years)", "evidence": "Q31"},
+          {"fact": "Pro-vaccine; three COVID doses including fall 2024 update, annual flu shot at CVS every October", "evidence": "Q41"},
+          {"fact": "Trusted vaccine info sources: CDC en español, NPR, Dr. Chen, cousin Valeria (RN at Gwinnett Medical)", "evidence": "Q42"},
+          {"fact": "Has not been to a dentist in four years due to cost", "evidence": "Q31"},
+          {"fact": "No prescription medications; takes multivitamin and ibuprofen PRN for cramps", "evidence": "Q31"},
+          {"fact": "Coping strategies: yoga, prayer, walks with dog Paco, baking (made pan de muerto 3x in October)", "evidence": "Q43"},
+          {"fact": "Deleted news app from phone December 2024 to reduce anxiety; sleeps better since", "evidence": "Q50"},
+          {"fact": "Mother has Type 2 diabetes with neuropathy; Maria manages her glucose log and cooks diabetic-friendly meals; mother had diabetic foot ulcer that took 4 months to heal", "evidence": "Q35"},
+          {"fact": "Lower back pain attributed to years of carrying small children", "evidence": "Q33"},
+          {"fact": "Journals as self-therapy; has never seen a therapist due to cost and family stigma", "evidence": "Q45"},
+          {"fact": "Denied twice for Georgia Pathways Medicaid due to Hector's 1099 paperwork hurdles; on ACA bronze plan $412/month with $7,500 deductible", "evidence": "Q36, Q40"},
+          {"fact": "Tried a THC gummy once at Jessamyn's 2022 bachelorette, did not enjoy; no cannabis use", "evidence": "Q39"}
+        ],
+        "evidence": "Q31-Q46, Q50"
+      },
+      "food_and_dining": {
+        "summary": "Central identity domain. Traditional Mexican cook with fusion instincts; hosts themed dinner nights regularly; shops at Mexican market El Bodegón and Korean grocery H-Mart; grocery spend ~$900/month tracked. Hospitality and feeding others are core expressions of love and community.",
+        "details": [
+          {"fact": "Cooks traditional Mexican (corn-based dumplings, smoky paprika sauces, pozole, tamales, pan de muerto) blended with contemporary twists", "evidence": "Q01, Q43"},
+          {"fact": "Hosts themed dinner nights featuring herb-crusted chicken with citrus glaze, cilantro-lime rice, avocado salsa", "evidence": "Q17, culinary_persona"},
+          {"fact": "Primary grocery stores: El Bodegón (Mexican market) and Aldi; H-Mart Korean grocery nearby", "evidence": "Q08, Q15"},
+          {"fact": "Grocery budget ~$900/month, tracked", "evidence": "Q56"},
+          {"fact": "Cooks Sunday big lunch at parents' house weekly (diabetic-friendly for her mother)", "evidence": "Q15, Q35"},
+          {"fact": "Took over parish Christmas tamale sale in 2017; raised nearly $4,000 for youth group", "evidence": "Q02"},
+          {"fact": "Made pozole for 12 people after Nov 2024 election as coping ritual", "evidence": "Q44"},
+          {"fact": "Makes pan de muerto in October (3 batches)", "evidence": "Q43"},
+          {"fact": "Once received a scholarship offer to Gwinnett Tech pastry arts program (turned down at 26)", "evidence": "Q02"},
+          {"fact": "Aspires to launch home catering business 'Doña Maria's Kitchen' doing ~10 events/year", "evidence": "Q108"},
+          {"fact": "Drinks socially — Modelo beer, margaritas, wine at book club; never uses alcohol to cope", "evidence": "Q38"},
+          {"fact": "Eating out ~$120/month", "evidence": "Q56"},
+          {"fact": "Uses envelope budgeting system for food categories", "evidence": "Q59"},
+          {"fact": "Bean-and-rice stretch strategy during February 2025 slow income month", "evidence": "Q81"},
+          {"fact": "Mentors teens interested in culinary arts through parish youth programs", "evidence": "hobbies_and_interests"}
+        ],
+        "evidence": "Q01, Q02, Q08, Q15, Q17, Q35, Q38, Q43, Q44, Q56, Q59, Q81, Q108"
+      },
+      "travel": {
+        "summary": "Travel is budget-constrained but deeply aspirational. Short regional road trips (Savannah, Pigeon Forge, Appalachian foothills) serve as current scope; a long-saved trip to Mexico to see ailing grandmother is the emotionally urgent goal. European travel (Barcelona, Lisbon) mentioned in persona narrative but not reported as realized.",
+        "details": [
+          {"fact": "Saving for Mexico trip in 2027 to see abuela Consuelo (89, in Guanajuato); $480 set aside", "evidence": "Q62"},
+          {"fact": "Has not been to Mexico in almost 9 years", "evidence": "Q06"},
+          {"fact": "Typical domestic trips: Savannah, Pigeon Forge; weekend road trips to Appalachian foothills", "evidence": "Q08, Q83"},
+          {"fact": "Sends $150-200/month remittance to abuela in Mexico via Ria", "evidence": "Q06"},
+          {"fact": "European travel to Barcelona and Lisbon mentioned in persona narrative as aspirational (not confirmed realized)", "evidence": "travel_persona (narrative only)"},
+          {"fact": "Annual cultural escapes to Savannah's historic district (persona narrative)", "evidence": "travel_persona"}
+        ],
+        "evidence": "Q06, Q08, Q62, Q83, travel_persona"
+      },
+      "social_and_relationships": {
+        "summary": "Densely networked and deeply relational. Marriage of 13 years is solid; two children; thick kin network of parents, three younger siblings, extended cousins. Close friendship circle anchored by Cristina (daily contact), a six-person multicultural book club, compadres network, and yoga and folklórico communities. Hospitality and hosting are central modes of relating.",
+        "details": [
+          {"fact": "Married to Hector Buendia for 13 years (October anniversary); met at a quinceañera at 18; married at 21 at Arcado church", "evidence": "Q01, Q05, Q84"},
+          {"fact": "Two children: Lupita (14, 9th grade, Berkmar High, marching band clarinet, anime art, sold commission for $20) and Mateo (11, Camp Creek Middle, soccer)", "evidence": "Q05, Q19"},
+          {"fact": "Parents Ramon (62) and Esperanza live 12 minutes away off Killian Hill Road", "evidence": "Q05, Q106"},
+          {"fact": "Three younger siblings: sister Adriana (Duluth, 3 kids), brother Javier (diesel mechanic, Buford), brother Tomás (associate's at GSU Perimeter, still with parents)", "evidence": "Q05"},
+          {"fact": "Mother-in-law Flor lives in Monterrey, Mexico; Sunday after-mass video calls", "evidence": "Q05"},
+          {"fact": "Closest friend: Cristina, Doña Rosa's daughter; daily contact", "evidence": "Q05"},
+          {"fact": "Compadres/godparents to Lupita: Rogelio and Maricela", "evidence": "Q05"},
+          {"fact": "Monthly book club (4+ years) with Cristina, Patricia (librarian Lilburn branch), Keisha (5th-grade teacher Camp Creek), Fatima (Egyptian, 2 yrs in US), Dolores (Puerto Rican retired), Jessamyn (photographer)", "evidence": "Q07"},
+          {"fact": "Mentor: Ms. Deborah, director at Lilburn School of the Arts", "evidence": "Q07"},
+          {"fact": "Yoga regulars group at Twisted Noodle Yoga", "evidence": "Q07, Q15"},
+          {"fact": "Next-door neighbors the Parks (Korean family, run a dry cleaner; watch each other's packages)", "evidence": "Q08"},
+          {"fact": "Paternal grandmother Consuelo alive at 89 in Guanajuato; visited Maria's family in Lilburn for 6 months on tourist visa when Maria was ~16", "evidence": "Q06, Q99"},
+          {"fact": "Does not drive confidently; failed driving test twice; relies on mother for child pickups", "evidence": "Q05"},
+          {"fact": "Hosts book club once every ~6 weeks (rotating)", "evidence": "Q17"},
+          {"fact": "Sister Annette was early church mentor (told Maria she was smart); died of COVID 2021; ongoing grief", "evidence": "Q02"},
+          {"fact": "Cousin Valeria (RN, Gwinnett Medical) is Maria's oldest Facebook friendship from ~2009", "evidence": "Q42, Q48"},
+          {"fact": "Teaches Lupita about the cost of choices (references the scholarship she turned down)", "evidence": "Q03"},
+          {"fact": "Teaches Mateo police de-escalation: hands visible, speak respectfully, don't argue", "evidence": "Q26"},
+          {"fact": "Daughter Lupita showing signs of teenage anxiety (cuticle-picking); Maria plans to push for therapy conversation this summer", "evidence": "Q46"},
+          {"fact": "Brother Javier paid Maria's electric bill one month unasked during Hector's 2023 back-injury layoff", "evidence": "Q35"},
+          {"fact": "Niece Gaby slept over recently; Maria planned Gaby's October 2024 quinceañera (140 people)", "evidence": "Q13, Q65"},
+          {"fact": "Father Miguel Ramírez at Saint John Neumann is long-standing confessor/counselor (7 years at parish)", "evidence": "Q44, Q47"}
+        ],
+        "evidence": "Q01-Q07, Q13, Q19, Q26, Q42, Q44, Q46, Q47, Q48, Q84, Q99"
+      },
+      "home_and_lifestyle": {
+        "summary": "Homeowner in Hillside Oaks townhome subdivision, Lilburn (bought 2017 via FHA, refinanced 2020). Urban-suburban, multiethnic neighborhood. Methodical home manager: envelope budgeting, spreadsheet-driven, detailed record-keeper. Keeps a small backyard vegetable/herb garden (moved from front after HOA citation). Dog Paco (rescue chihuahua mix) and betta fish Ronaldo.",
+        "details": [
+          {"fact": "Owns townhome in Hillside Oaks subdivision, Lilburn, between Old Town and Five Forks; bought 2017 for $178,000 with FHA loan (3.5% down from savings + mother-in-law gift); refinanced 2020 saving ~$180/mo; current est. value ~$265,000; ~18 years left", "evidence": "Q08, Q58"},
+          {"fact": "Mortgage $1,485/mo with escrow; ~$158,000 balance", "evidence": "Q56, Q63"},
+          {"fact": "Household monthly spend ~$4,200-$4,500; last month $4,500 (higher due to taxes owed and Mateo's cleats)", "evidence": "Q57"},
+          {"fact": "Monthly expenses: health insurance $412, utilities ~$280, groceries $900, gas $260, kids $180, car insurance $185, phones $140, internet $75, church $100, remittance $150, streaming ~$30, eating out ~$120", "evidence": "Q56"},
+          {"fact": "Uses envelope budgeting system across categories; maintains a budget spreadsheet", "evidence": "Q59, Q83"},
+          {"fact": "Dog: Paco (chihuahua mix, rescued from Humane Society 2 years ago); fish: Ronaldo (betta, Mateo's)", "evidence": "Q11"},
+          {"fact": "Maintains small backyard vegetable and herb garden; moved from front after HOA citation", "evidence": "Q10, hobbies narrative"},
+          {"fact": "Ring doorbell (Christmas gift from brother Javier); Hector checks it most", "evidence": "Q09"},
+          {"fact": "Hoards seldom-used kitchen gadgets; sometimes forgets to water garden during busy weeks (per persona narrative, behaviorally consistent with pace)", "evidence": "persona narrative"},
+          {"fact": "Savings: Gwinnett Credit Union emergency fund ~$2,400; Christmas club ~$600; cash envelope ~$300; tanda rotating club", "evidence": "Q61"},
+          {"fact": "Debts: Chase credit card ~$2,800 at 24% APR (snowball plan at $200+/month, target payoff 15 months); Lowe's 0% APR card $720 (water heater, 9 months left); Hector truck loan $9,400 at 6.2% with ~2 years remaining; mortgage $158,000", "evidence": "Q60, Q63"},
+          {"fact": "Retirement savings: Hector holds tiny IRA ~$3,200; Maria has no formal retirement account; explicitly worries her", "evidence": "Q61"},
+          {"fact": "Life insurance: Hector $50K term policy via church agent; Maria $15K term (she considers insufficient)", "evidence": "Q40"},
+          {"fact": "Can absorb a $400 emergency (would drain fund dangerously); a $1,500 emergency would require credit card and borrowing from brother Javier", "evidence": "Q82"},
+          {"fact": "November 2024: borrowed $300 from brother Javier for Thanksgiving, repaid December 15", "evidence": "Q64"},
+          {"fact": "January 2026: arts center paid late (3 weeks); Maria delayed internet bill 10 days and skipped dental cleaning", "evidence": "Q64"},
+          {"fact": "Seasonal bill spikes: July AC ~$340, December Christmas/Posadas, August back-to-school ~$450, May folklórico dress costumes, April 1099 taxes; water heater replacement $850 in October 2025", "evidence": "Q59"},
+          {"fact": "Christmas is the heaviest spending month", "evidence": "Q57, Q59"},
+          {"fact": "Previously used SNAP 2013-2016; no longer qualifies; kids on Peach Care Georgia", "evidence": "Q80"},
+          {"fact": "HOA cited the household for front-yard vegetable garden (Maria moved it to back but remains 'salty' about it)", "evidence": "Q10"}
+        ],
+        "evidence": "Q08-Q11, Q40, Q56-Q64, Q80, Q82, Q83"
+      },
+      "entertainment": {
+        "summary": "Light, consistent entertainment diet centered on telenovelas, reading, and short social-media video consumption. Avoids heavy streaming; screen-time discipline with kids.",
+        "details": [
+          {"fact": "Watches telenovela Vencer el Pasado reruns for wind-down around 10 PM", "evidence": "Q15"},
+          {"fact": "TikTok scroll ~30 min/night before bed, mostly recipe and dance videos", "evidence": "Q48"},
+          {"fact": "Streaming spend ~$30/month", "evidence": "Q56"},
+          {"fact": "YouTube used for tutorials (pottery glazing, Excel for GED prep)", "evidence": "Q48"},
+          {"fact": "Screens off at 8:30 PM school nights for kids", "evidence": "Q19"}
+        ],
+        "evidence": "Q15, Q19, Q48, Q56"
+      },
+      "hobbies_and_recreation": {
+        "summary": "Rich and varied hobby life centered on artistic and cultural practice: folk dance, watercolor/pottery, gardening, reading, photography, and volunteering. Hobbies are heavily communal and often become community service.",
+        "details": [
+          {"fact": "Performs in Ballet Folklórico Fuerza Latina; practice increased from weekly to twice-weekly due to Atlanta Latin American Festival performance July 2026", "evidence": "Q18"},
+          {"fact": "Watercolor painting and pottery workshops at Lilburn School of the Arts; pottery teacher is Javier (described as moody but liked)", "evidence": "Q77, hobbies_narrative"},
+          {"fact": "Gardens a small backyard vegetable and herb bed", "evidence": "Q10"},
+          {"fact": "Leads multicultural book club (monthly, 6 members, 4+ years); recent reads: Pachinko (Min Jin Lee), The House of the Spirits (Allende, 3x), How to Be an Antiracist, Caste (in progress), White Rage, The Warmth of Other Suns", "evidence": "Q07, Q26"},
+          {"fact": "Basic photography skills; posts Instagram reels for arts center", "evidence": "Q48"},
+          {"fact": "Moderates two Spanish-language Facebook groups: Lilburn Moms en Español (~800 members) and Ballet Folklórico de Gwinnett (~150 members)", "evidence": "Q17, Q48"},
+          {"fact": "Volunteers organizing neighborhood potlucks, parish youth program, mentors teens interested in culinary arts", "evidence": "Q17"},
+          {"fact": "Bakes (pan de muerto repeatedly in October)", "evidence": "Q43"},
+          {"fact": "Tanda (rotating savings club) participant — 7 women from church, $100/month, $700 payout every 7 months; last payout went to back-to-school + a pottery class", "evidence": "Q61"}
+        ],
+        "evidence": "Q07, Q10, Q17, Q18, Q26, Q43, Q48, Q61, Q77"
+      },
+      "work_and_career": {
+        "summary": "Under-credentialed but highly skilled in practice. Currently 1099 community liaison plus freelance event planner plus unpaid bookkeeper for spouse. Ambition is explicit: GED + community development certificate, then W-2 outreach coordinator role (~$45K/year with benefits). Secondary ambition: home-based Mexican catering business.",
+        "details": [
+          {"fact": "1099 contract community liaison at Lilburn School of the Arts since September 2023 (~12 hrs/wk, $18/hr)", "evidence": "Q16, Q65, Q76"},
+          {"fact": "Duties include recruitment, English-Spanish translation, two monthly bilingual gatherings, advisory to director, annual Día de los Muertos festival coordinator (800 attendees 2025)", "evidence": "Q65"},
+          {"fact": "Freelance event planning: baptisms, quinceañeras, bridal showers, birthday parties ($50-$200/event, ~2 events/month)", "evidence": "Q16, Q65, Q71"},
+          {"fact": "Unpaid bookkeeper/invoicer for husband Hector's drywall subcontracting work (Beto out of Tucker is main GC; current job in Suwanee runs through summer)", "evidence": "Q01, Q16, Q65"},
+          {"fact": "Monthly personal earnings ~$1,214 last month ($864 arts center + $350 events)", "evidence": "Q72"},
+          {"fact": "Household monthly take-home ~$5,014 last month; typical $4,600-$5,000; slow months as low as $3,800", "evidence": "Q74"},
+          {"fact": "No benefits: no health, no PTO, no sick, no union (1099)", "evidence": "Q66, Q76"},
+          {"fact": "Worked ~48 of 52 weeks last year; ~18 hrs/week paid on average", "evidence": "Q67, Q68"},
+          {"fact": "Career target: W-2 community outreach coordinator at arts center or Gwinnett County Parks and Recreation within 2-3 years; target salary $45,000", "evidence": "Q04, Q108"},
+          {"fact": "Long-term vision: multicultural community hub combining art, dance, food festivals", "evidence": "Q108"},
+          {"fact": "Left school in 11th grade to care for family when mother had youngest child and illness", "evidence": "Q01, Q90"},
+          {"fact": "Declined Gwinnett Tech pastry arts scholarship at 26 due to family obligations (after Mateo's birth)", "evidence": "Q02"},
+          {"fact": "Skills: bilingual Spanish-English, traditional Mexican cooking, community event planning, household budgeting, social media moderation, basic photography, childcare support, home organization, informal mentoring, Excel (self-taught from library book 2019)", "evidence": "Q17, Q48, Q65"},
+          {"fact": "Files joint taxes via TurboTax Self-Employed; claims EITC (~$2,100); last year owed $340 federal, refund $190 state; used H&R Block once 2021, too expensive", "evidence": "Q75"},
+          {"fact": "Arts center pays monthly direct deposit (~15th); event clients pay day-of via cash or Zelle", "evidence": "Q73"},
+          {"fact": "Would trade flexibility for a right W-2 job with benefits", "evidence": "Q78"},
+          {"fact": "Parents provide essential childcare backup (explicitly enables freelance work)", "evidence": "Q79"}
+        ],
+        "evidence": "Q01, Q02, Q04, Q16, Q17, Q48, Q65-Q79, Q90, Q108"
+      },
+      "arts_and_culture": {
+        "summary": "Arts and culture is the soul of Maria's life. Monthly attendance at arts center exhibitions; practitioner of watercolor, pottery, folklórico, and photography; leads multicultural book club; preserves and transmits Mexican cultural traditions (Día de los Muertos, Posadas, Día de Guadalupe).",
+        "details": [
+          {"fact": "Attends monthly exhibitions at Lilburn School of the Arts", "evidence": "Q16, Q65"},
+          {"fact": "Practices watercolor and pottery; pottery teacher at arts center is Javier", "evidence": "Q77"},
+          {"fact": "Performs with Ballet Folklórico Fuerza Latina; upcoming Atlanta Latin American Festival July 2026", "evidence": "Q18"},
+          {"fact": "Coordinates annual Día de los Muertos festival (800 attendees last year) at arts center", "evidence": "Q65"},
+          {"fact": "Runs parish events for Our Lady of Guadalupe feast day (Dec 12), Posadas, Mexican Independence Day, Noche Buena 2022", "evidence": "Q02, Q21, cultural_background"},
+          {"fact": "Inspired by Georgia O'Keeffe, Claude Monet, Jackson Pollock (persona narrative)", "evidence": "arts_persona"},
+          {"fact": "Book club reading list includes Toni Morrison, Haruki Murakami, Chimamanda Ngozi Adichie, Isabel Allende, Min Jin Lee", "evidence": "Q07"},
+          {"fact": "Values beauty — art, music, good food, sunsets — explicitly named as life value", "evidence": "Q109"}
+        ],
+        "evidence": "Q02, Q07, Q16, Q18, Q65, Q77, Q109"
+      },
+      "sports_and_fitness": {
+        "summary": "Active fitness practice via yoga (twice-weekly anchor) and Ballet Folklórico (twice-weekly). Avid fan of Atlanta Falcons and Atlanta Hawks per persona narrative but sports fandom is peripheral to her weekly life. Persona narrative also claims a co-ed recreational soccer league in spring, which is NOT confirmed by the interview. Son's youth soccer is an important family activity.",
+        "details": [
+          {"fact": "Yoga Tuesdays and Thursdays 9 AM at Twisted Noodle Yoga downtown Lilburn", "evidence": "Q15"},
+          {"fact": "Fitbit step goal 8,000/day; hits 4 days/week", "evidence": "Q32"},
+          {"fact": "Ballet Folklórico practice twice weekly (increased for performance)", "evidence": "Q18"},
+          {"fact": "Fan of Atlanta Falcons and Atlanta Hawks (persona narrative only; not confirmed in interview)", "evidence": "sports_persona (narrative only)"},
+          {"fact": "Participates in co-ed recreational soccer league each spring (persona narrative only; NOT corroborated in interview schedule)", "evidence": "sports_persona (narrative only — flagged in verification)"},
+          {"fact": "Son Mateo plays soccer at Lilburn City Park rec league; Tuesday/Thursday practice, Saturday games", "evidence": "Q05, Q19"},
+          {"fact": "Walks dog Paco regularly as stress coping", "evidence": "Q32, Q43"}
+        ],
+        "evidence": "Q05, Q15, Q18, Q19, Q32, Q43, sports_persona"
+      },
+      "nature_and_outdoors": {
+        "summary": "Moderate outdoor engagement. Backyard garden for vegetables and herbs; occasional Stone Mountain hikes; weekend road trips to the Appalachian foothills. Outdoor activity is casual and family-oriented rather than vigorous.",
+        "details": [
+          {"fact": "Maintains small backyard vegetable and herb garden", "evidence": "Q10"},
+          {"fact": "Stone Mountain is 20 minutes away; goes for hikes", "evidence": "Q08"},
+          {"fact": "Weekend road trips to the Appalachian foothills", "evidence": "travel_persona, Q08"},
+          {"fact": "Walks dog Paco as part of stress coping", "evidence": "Q43"},
+          {"fact": "Notices and values sunsets over Stone Mountain explicitly", "evidence": "Q109"}
+        ],
+        "evidence": "Q08, Q10, Q43, Q109"
+      },
+      "technology": {
+        "summary": "Practical intermediate user; heavy platform-specific proficiency in Facebook moderation and Instagram for events. Owns refurbished laptop from library, Fitbit, Ring doorbell. Self-taught Excel from a library book. Mindful-use disciplines (deleted news app, bedtime screen limit).",
+        "details": [
+          {"fact": "Uses refurbished laptop from library for GED prep", "evidence": "Q01"},
+          {"fact": "Moderates two Facebook groups (~2 hours/day)", "evidence": "Q17, Q48"},
+          {"fact": "Uses Instagram for arts center event flyers and reels; posted Easter egg reel to Selena soundtrack (340 views)", "evidence": "Q48"},
+          {"fact": "TikTok (~30 min nightly); WhatsApp (3 group chats, ~200 messages/day); Nextdoor (passive); YouTube (tutorials)", "evidence": "Q48"},
+          {"fact": "Not on Twitter/X; deleted Snapchat years ago", "evidence": "Q48"},
+          {"fact": "Deleted news app December 2024 to reduce anxiety", "evidence": "Q50"},
+          {"fact": "Self-taught Excel from a Gwinnett library book in 2019", "evidence": "Q65"},
+          {"fact": "Uses Khan Academy for GED prep; free library GED program", "evidence": "Q17, Q91, Q92"},
+          {"fact": "Files taxes via TurboTax Self-Employed", "evidence": "Q75"},
+          {"fact": "Gets paid via direct deposit (arts center), Zelle and cash (events)", "evidence": "Q73"},
+          {"fact": "Ring doorbell at home", "evidence": "Q09"},
+          {"fact": "Fitbit fitness tracker", "evidence": "Q32"}
+        ],
+        "evidence": "Q01, Q09, Q17, Q32, Q48, Q50, Q65, Q73, Q75, Q91, Q92"
+      },
+      "community_and_civic": {
+        "summary": "Exceptionally high civic engagement for her demographic profile. Registered 140 voters through two parish drives for 2024; votes in every general and midterm since 2016 naturalization; attended a 2020 BLM march; moderates community Facebook groups; organizes parish events and fundraisers; active in cross-cultural bridge-building between Latino community and mainstream arts institutions.",
+        "details": [
+          {"fact": "Naturalized U.S. citizen 2016; votes every general and midterm since; sometimes skips primaries due to Georgia open-primary rules confusion", "evidence": "Q23, Q86"},
+          {"fact": "Votes at Lilburn Activity Building on first Saturday of early voting; brings Lupita to model civic behavior", "evidence": "Q23"},
+          {"fact": "Registered 140 voters through two parish drives in 2024", "evidence": "Q25"},
+          {"fact": "Attended one BLM march in Decatur June 2020 with Cristina and Keisha", "evidence": "Q26, Q29"},
+          {"fact": "Donated to The Bail Project once", "evidence": "Q29"},
+          {"fact": "Admires Stacey Abrams and county commissioner Marlene Fosque (showed up at Día de los Muertos 2022)", "evidence": "Q24"},
+          {"fact": "Self-describes as moderate Democrat (7/10 strength); voted Biden 2020, Harris 2024; supports immigration reform, Medicaid expansion, living wage; personally would not have abortion but supports legal access; skeptical of handgun in nightstand; more economically progressive than 5 years ago; open to local Republican candidates for right race", "evidence": "Q24, Q25, Q95, Q96"},
+          {"fact": "Organizes parish festival (Our Lady of Guadalupe December feast), Noche Buena, Christmas tamale sale for youth group (~$4,000)", "evidence": "Q02, Q21"},
+          {"fact": "Collaborates with Georgia Mexican Consulate and cultural organizations", "evidence": "cultural_background"},
+          {"fact": "Tithes ~$100/month to parish", "evidence": "Q56"},
+          {"fact": "Helps parents navigate Medicare and utility paperwork in English", "evidence": "Q17"},
+          {"fact": "Cousin Beto (different from Hector's boss) arrested for DUI 2018, 30 days jail; Maria and mother supported his wife with groceries", "evidence": "Q22"},
+          {"fact": "Mixed view of Gwinnett County police; grateful the 287(g) program under Sheriff Conway ended", "evidence": "Q20"},
+          {"fact": "Actively confronts anti-Black comments from relatives (Tío Roberto); son Mateo was racially harassed on school bus (n-word incident, December), Maria escalated to principal", "evidence": "Q27, Q28"},
+          {"fact": "Coordinated bilingual police officer (Officer Ramirez) at 2022 parish Noche Buena event for traffic; Cristina's cousin is on Norcross police force", "evidence": "Q21"},
+          {"fact": "Moderated a 'miracle diet tea' scammer out of Lilburn Moms en Español Facebook group (researched, posted notice, banned; received harassment afterward)", "evidence": "Q17"}
+        ],
+        "evidence": "Q02, Q17, Q20-Q30, Q56, Q86, Q95, Q96"
+      },
+      "music": {
+        "summary": "Music is embedded via folklórico dance, Selena soundtracks on social posts, mariachi coordination for events, and weekly Mass music. Daughter Lupita plays clarinet in Berkmar marching band. No standalone listening practice reported.",
+        "details": [
+          {"fact": "Selena soundtrack used on Instagram Easter reel", "evidence": "Q48"},
+          {"fact": "Coordinates mariachi for freelance events (quinceañeras etc.)", "evidence": "Q65"},
+          {"fact": "Folklórico dance has traditional Mexican music central to practice", "evidence": "Q18, arts_persona"},
+          {"fact": "Daughter Lupita plays clarinet in Berkmar High marching band; practice Mon/Wed/Fri until 5:30 PM in fall", "evidence": "Q05, Q19"},
+          {"fact": "Catholic Mass attendance implies weekly exposure to liturgical music at Saint John Neumann (English 10 AM, sometimes Spanish 12:30)", "evidence": "Q47"}
+        ],
+        "evidence": "Q05, Q18, Q19, Q47, Q48, Q65"
+      },
+      "fashion_and_appearance": {
+        "summary": "Minimal direct evidence. Folk-dance performance wardrobe (folklórico dresses) is a notable recurring expense in May. Otherwise no explicit fashion or appearance signal in the transcript beyond self-description of weight.",
+        "details": [
+          {"fact": "Folklórico dresses are a May expense spike for dance recital costumes", "evidence": "Q59"},
+          {"fact": "Self-reports being in the biggest jeans she's ever worn; ~35 lbs over desired weight", "evidence": "Q31"}
+        ],
+        "evidence": "Q31, Q59"
+      },
+      "cultural_and_linguistic": {
+        "summary": "Bilingual Spanish-English; mestiza Mexican-American identity explicitly named; born in León, Guanajuato, Mexico (1991); immigrated 1996 at age 5; naturalized 2016. Deeply rooted in Mexican Catholic cultural practices (Día de los Muertos, Posadas, Dia de Guadalupe, quinceañeras, compadrazgo, curanderismo). Cultural bridge-builder across Latino, Korean, Black, Egyptian, and white communities in Gwinnett.",
+        "details": [
+          {"fact": "Born León, Guanajuato, Mexico, March 19, 1991", "evidence": "Q85, Q87"},
+          {"fact": "Immigrated to U.S. 1996 at age 5; family first settled in Norcross, GA before moving to Lilburn; naturalized 2016", "evidence": "Q01, Q86"},
+          {"fact": "Hispanic/Latinx origin, Mexican-American; racial identity: mestiza (checks White + Hispanic on forms)", "evidence": "Q88, Q89"},
+          {"fact": "Bilingual Spanish-English; translates for parents and community", "evidence": "Q01, Q17, Q65"},
+          {"fact": "Celebrates Día de los Muertos, Mexican Independence Day, Las Posadas, Our Lady of Guadalupe feast day (Dec 12)", "evidence": "cultural_background, Q02, Q65"},
+          {"fact": "Uses Spanish at home with Hector and kids; Spanish was first language", "evidence": "Q01"},
+          {"fact": "Maintains altar (Our Lady of Guadalupe, photo of deceased grandfather, votive candle)", "evidence": "Q47"},
+          {"fact": "Participates in compadrazgo system (compadres Rogelio and Maricela for Lupita)", "evidence": "Q05"},
+          {"fact": "Uses curanderismo (limpias with Doña Lupe, herbal remedies like sábila and manzanilla tea)", "evidence": "Q37"},
+          {"fact": "Remits $150-200/month to grandmother in Mexico via Ria", "evidence": "Q06"},
+          {"fact": "Moderates Lilburn Moms en Español Facebook group (~800 members)", "evidence": "Q17, Q48"},
+          {"fact": "Explicitly rejects pan-Latino political monolith framing", "evidence": "Q25"},
+          {"fact": "Identifies Mexican in-community colorism and addresses anti-Black comments from relatives (Tío Roberto)", "evidence": "Q27, Q30"},
+          {"fact": "Celebrates that children hear Spanish, Korean, Vietnamese, and English on the same block", "evidence": "Q08"},
+          {"fact": "Paternal grandmother Consuelo stayed with family for 6 months on tourist visa during Maria's adolescence", "evidence": "Q99"},
+          {"fact": "Roman Catholic; attends Saint John Neumann 10 AM English Mass most Sundays, sometimes 12:30 Spanish Mass; prays rosary ~3x/week; disagrees with Church hierarchy on women priests and abortion framing", "evidence": "Q47, Q94"}
+        ],
+        "evidence": "Q01, Q02, Q05-Q08, Q17, Q25, Q27, Q30, Q37, Q47, Q48, Q65, Q85-Q89, Q94, Q99"
+      },
+      "life_events_and_transitions": {
+        "summary": "Major transitions: immigration at 5, early caregiving role, leaving school in 11th grade, marriage at 21, two childbirths (gestational diabetes both), declining pastry scholarship at 26, U.S. naturalization 2016, home purchase 2017, mother's diabetes diagnosis, husband's 2023 back injury, 2024 ankle sprain, starting GED prep January 2026, daughter's quinceañera in ~1.5 years.",
+        "details": [
+          {"fact": "Immigrated from Mexico to U.S. age 5 (1996); family first settled in Norcross, GA, then moved to Lilburn when father joined landscaping crew", "evidence": "Q01, Q86"},
+          {"fact": "Oldest of four siblings; took on early caregiver role by age 10 (heating tortillas, changing diapers, signing permission slips parents couldn't read)", "evidence": "Q01"},
+          {"fact": "Left school in 11th grade when mother was ill after youngest sibling's birth", "evidence": "Q01, Q90"},
+          {"fact": "Met Hector at a quinceañera at age 18; married at 21 at church on Arcado (13 years)", "evidence": "Q01, Q05"},
+          {"fact": "Daughter Lupita born ~1 year into marriage (age 14 now)", "evidence": "Q05"},
+          {"fact": "Son Mateo born 3 years after Lupita (age 11 now)", "evidence": "Q05"},
+          {"fact": "Had gestational diabetes with both pregnancies", "evidence": "Q31"},
+          {"fact": "Parish festival food tent assignment in December 2013 (Our Lady of Guadalupe feast day) identified as organizational turning point (Doña Rosa mentorship)", "evidence": "Q01"},
+          {"fact": "Declined Gwinnett Tech pastry arts scholarship at age 26 after Mateo's birth; retains unsent application in filing cabinet as identity artifact", "evidence": "Q02"},
+          {"fact": "Naturalized U.S. citizen 2016 — one of proudest days of her life", "evidence": "Q23, Q86"},
+          {"fact": "Bought townhome 2017 via FHA ($178,000, 3.5% down, mother-in-law gift); refinanced 2020", "evidence": "Q58"},
+          {"fact": "Sister Annette (church mentor) died of COVID 2021", "evidence": "Q02"},
+          {"fact": "Hector back injury 2023 (5 weeks out of work; GoFundMe by Cristina raised $1,800; brother Javier paid an electric bill)", "evidence": "Q35"},
+          {"fact": "Started arts center contract September 2023", "evidence": "Q65, Q76"},
+          {"fact": "Folklórico ankle sprain August 2024 (6 weeks in boot; cost her 2 events)", "evidence": "Q33, Q34"},
+          {"fact": "Niece Gaby's quinceañera October 2024 — Maria planned it (140 people, three food stations)", "evidence": "Q65"},
+          {"fact": "November 2024 election as significant emotional event (voter registration effort, subsequent grief, pozole for 12)", "evidence": "Q25, Q44"},
+          {"fact": "Hypertension diagnosis February 2025", "evidence": "Q33"},
+          {"fact": "Started GED prep January 2026", "evidence": "Q18, Q92"},
+          {"fact": "Planning Lupita's quinceañera (~1.5 years out, $4,000 modest budget)", "evidence": "Q62"},
+          {"fact": "Father Ramon (now 62) worked as landscaper at Green Horizons out of Tucker, became crew lead; back is now shot", "evidence": "Q106, Q107"},
+          {"fact": "Mother Esperanza worked as house cleaner at Servicio Limpio (owner Paty, ~15 cleaners Mexican/Salvadoran) cleaning homes in Dunwoody and Sandy Springs", "evidence": "Q103, Q104"},
+          {"fact": "Father completed 6th grade in Mexico; mother completed 8th grade in Mexico", "evidence": "Q100, Q101"}
+        ],
+        "evidence": "Q01-Q02, Q05, Q18, Q23, Q25, Q31-Q35, Q44, Q58, Q62, Q65, Q76, Q86, Q90, Q92, Q100-Q107"
+      },
+      "media_and_information_diet": {
+        "summary": "Intentional, high-trust media diet. Primary news: NPR; trusts CDC (reads Spanish versions), Dr. Chen, and nurse cousin Valeria for medical info. Deleted news app December 2024 for mental health. Heavy Facebook consumer for community moderation; light TikTok and Instagram; not on X/Twitter. Reads literary fiction and nonfiction on race and immigration.",
+        "details": [
+          {"fact": "NPR is a trusted news source", "evidence": "Q42"},
+          {"fact": "CDC website (reads Spanish sometimes) trusted for health info", "evidence": "Q42"},
+          {"fact": "Not on X/Twitter; deleted Snapchat", "evidence": "Q48"},
+          {"fact": "Heavy Facebook user (~2 hrs/day moderating)", "evidence": "Q48"},
+          {"fact": "Instagram for arts center content; TikTok ~30 min nightly for recipe/dance content", "evidence": "Q48"},
+          {"fact": "Deleted news app December 2024 to lower anxiety; keeps daily headlines only", "evidence": "Q50"},
+          {"fact": "Actively corrects WhatsApp misinformation from aunties using CDC en español links", "evidence": "Q42"},
+          {"fact": "Reading list: Pachinko, The House of the Spirits (3x), How to Be an Antiracist (2021), White Rage, The Warmth of Other Suns, Caste (in progress)", "evidence": "Q07, Q26"},
+          {"fact": "Skeptical of WhatsApp forwards from relatives", "evidence": "Q42"},
+          {"fact": "Distrusts 'miracle diet' promoters (banned one from her Facebook group)", "evidence": "Q17"}
+        ],
+        "evidence": "Q07, Q17, Q26, Q42, Q48, Q50"
+      }
+    },
+
+    "summaries": {
+      "demographer": "Maria Buendia is a 34-year-old Mexican-born, U.S.-naturalized Latina woman living in Lilburn, GA (30047) with her husband Hector and their two children Lupita (14) and Mateo (11) (Q01, Q05, Q86-Q88). She completed tenth grade with no high school diploma and is currently enrolled in self-paced GED prep (Q01, Q90-Q92). Formally classified 'no occupation' but in practice a contract community liaison and freelance event planner earning ~$1,200/month against a household total of ~$5,000/month (Q65, Q72, Q74). The household owns their townhome in a multiethnic Lilburn subdivision (purchased 2017, FHA), participates in the ACA bronze market, and uses Peach Care for the children — a classic working-class immigrant-origin homeowner profile stretched across the Medicaid gap (Q36, Q40, Q58). Kin-dense network: parents and three siblings within the metro, Mother-in-law in Monterrey, grandmother in Guanajuato (Q05, Q06).",
+      "behavioral_economist": "Maria exhibits strong pro-social, long-horizon orientation tempered by tight liquidity constraints. She uses a spreadsheet and envelope budgeting, participates in a $700-per-turn rotating tanda, and maintains a ~$2,400 emergency fund against ~$4,500 monthly spend (Q57, Q59, Q61, Q83). She is loss-averse around credit card debt (carrying ~$2,800 at 24% on a snowball plan) but willing to take strategic 0% APR on appliances (Q60, Q63). She turned down a fully funded Gwinnett Tech pastry scholarship at 26 after explicit napkin-math on family-hour losses — a vivid revealed-preference datum of family-over-individual utility (Q02, Q03). Strong peer-referral and word-of-mouth sensitivity — actively moderates information flow in her 800-member Facebook group and researched-and-banned a supplement scam, indicating above-average skepticism (Q17, Q42). Time preference skews patient (2-3 year GED/certification plan, 2027 Mexico trip savings, Lupita's quinceañera 18 months out) (Q62, Q108).",
+      "political_scientist": "Maria is a highly engaged, reliably voting moderate Democrat (7/10 strength) with a self-described center-left, culturally Catholic political identity (Q23, Q24, Q95). She has voted in every general and midterm since her 2016 naturalization, organized two parish voter-registration drives that registered 140 voters in 2024, attended one BLM march (2020), and donated to The Bail Project (Q23, Q25, Q26, Q29). Her views are nuanced and cross-pressured: progressive on economic policy, immigration reform, Medicaid expansion, police reform, and a living wage; conservative-leaning on her personal abortion ethic while supporting legal access; pragmatic-skeptical about 'open borders' framing; open to local Republican candidates (Q24, Q95). She distrusts monolithic pan-Latino political framing and has had direct family-network political disagreements after 2024 (Q25). Institutional trust is mixed: trusts Dr. Chen, CDC, NPR, the Church, and her county commissioner Marlene Fosque; distrusts 287(g)-era law enforcement, WhatsApp forwards, and party-line oversimplifications (Q20, Q24, Q42).",
+      "psychologist": "Maria presents as a conscientious, agreeable, moderately neurotic high-openness personality with strong collectivist-prosocial motivational architecture. Her self-concept is deeply identity-integrated around three pillars she names explicitly — family, faith, and service — and her narrative identity foregrounds sacrificial-caregiver arcs (leaving school, declining the scholarship) without expressed resentment, consistent with high agreeableness and religiously mediated meaning-making (Q01, Q02, Q109). She reports self-identified generalized anxiety and suspected untreated postpartum depression, managed through a coherent toolkit of yoga, prayer, journaling, social support (Cristina, Father Miguel, book club), and behavioral boundary-setting (news app deletion) — signaling good emotional granularity and adaptive coping, constrained by stigma and cost from accessing formal mental-health care (Q43-Q45, Q50). Cognitive style is methodical and planful (spreadsheets, envelope budgeting, GED structured prep) with a creative-synthesizing bent (fusion cooking, event choreography) (Q59, Q65). Relational style is warm, boundaried, and bridge-building across ethnic and political lines, with clear differentiation between intimate confidants (Cristina, mother) and community-role relationships (Q05, Q07, Q30)."
+    },
+
+    "hidden_facts": [
+      {"fact_id": "HF-001", "source_subcategory": "preferences.health_and_wellness", "claim": "Has borderline hypertension; measured 142/90 Feb 2025, reduced to 128/82 via lifestyle after declining lisinopril", "ground_truth_label": "Borderline hypertension, lifestyle-managed", "behavioral_evidence_from_interview": ["Q33: 'blood pressure was 142 over 90. Doctor wanted to put me on lisinopril, I asked for three months to try lifestyle first, and I brought it down to 128 over 82'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-002", "source_subcategory": "preferences.health_and_wellness", "claim": "Had gestational diabetes with both pregnancies; high risk for Type 2", "ground_truth_label": "Gestational diabetes history (both pregnancies)", "behavioral_evidence_from_interview": ["Q31: 'I had gestational diabetes with both pregnancies, so I'm at high risk for Type 2 like my mom'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-003", "source_subcategory": "preferences.health_and_wellness", "claim": "Suspected endometriosis, undiagnosed due to $400 specialist cost", "ground_truth_label": "Suspected endometriosis (undiagnosed, cost-barrier)", "behavioral_evidence_from_interview": ["Q34: 'doctor says possible endometriosis, we haven't pursued a diagnosis'", "Q34: 'The specialist visit was $400 up front plus imaging. I couldn't swing it.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-004", "source_subcategory": "preferences.health_and_wellness", "claim": "Has self-identified generalized anxiety and suspected untreated postpartum depression after Mateo", "ground_truth_label": "Generalized anxiety (self-identified); retrospective PPD", "behavioral_evidence_from_interview": ["Q45: 'I have generalized anxiety. Diagnosed? No, never formally'", "Q45: 'I think I had postpartum depression after Mateo that nobody caught'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-005", "source_subcategory": "preferences.health_and_wellness", "claim": "Does yoga Tuesdays and Thursdays at 9 AM at Twisted Noodle Yoga downtown Lilburn", "ground_truth_label": "Twice-weekly yoga at Twisted Noodle Yoga", "behavioral_evidence_from_interview": ["Q15: 'Tuesdays and Thursdays I hit the 9 AM yoga class at Twisted Noodle'"], "duplicate_of": null, "also_supported_by": ["preferences.sports_and_fitness"]},
+      {"fact_id": "HF-006", "source_subcategory": "preferences.health_and_wellness", "claim": "Wears Fitbit with 8,000 daily step goal, hits 4 days/week", "ground_truth_label": "Fitbit user, 8000 steps/day goal", "behavioral_evidence_from_interview": ["Q32: 'I have a Fitbit Hector got me for Mother's Day that I actually use'", "Q32: '8,000. I hit it about four days a week.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-007", "source_subcategory": "preferences.health_and_wellness", "claim": "Approximately 35 lbs above desired weight", "ground_truth_label": "Mild overweight, self-reported", "behavioral_evidence_from_interview": ["Q31: 'I'm maybe 35 pounds heavier than I'd like to be'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-008", "source_subcategory": "preferences.health_and_wellness", "claim": "Sprained right ankle badly at folklórico practice August 2024; six weeks in walking boot", "ground_truth_label": "August 2024 ankle sprain at folklórico", "behavioral_evidence_from_interview": ["Q33: 'I sprained my right ankle badly at folklórico practice in August 2024 and was in a boot for six weeks'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-009", "source_subcategory": "preferences.health_and_wellness", "claim": "Sees curandera Doña Lupe in Norcross for limpias twice/year at $40 cash", "ground_truth_label": "Uses curanderismo (limpias)", "behavioral_evidence_from_interview": ["Q37: 'I go to a curandera named Doña Lupe in Norcross for limpias — cleansings — maybe twice a year'", "Q37: '$40 cash. Eggs, herbs, prayers.'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic"]},
+      {"fact_id": "HF-010", "source_subcategory": "preferences.health_and_wellness", "claim": "Primary care physician is Dr. Chen at Gwinnett Community Clinic (sliding scale, 6 years)", "ground_truth_label": "Dr. Chen @ Gwinnett Community Clinic (sliding scale)", "behavioral_evidence_from_interview": ["Q31: 'Dr. Chen at Gwinnett Community Clinic. She's on a sliding scale. I've been seeing her for six years.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-011", "source_subcategory": "preferences.health_and_wellness", "claim": "Pro-vaccine: 3 COVID doses including fall 2024 update, annual flu shot at CVS every October", "ground_truth_label": "Vaccine-confident", "behavioral_evidence_from_interview": ["Q41: 'I got COVID vaccines three times including the updated one in fall 2024, and my flu shot every October at CVS'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-012", "source_subcategory": "preferences.health_and_wellness", "claim": "Has not been to a dentist in four years due to cost", "ground_truth_label": "Dental care gap (4 years, cost-driven)", "behavioral_evidence_from_interview": ["Q31: 'My teeth need work — I haven't been to a dentist in four years because of cost'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-013", "source_subcategory": "preferences.health_and_wellness", "claim": "Denied twice for Georgia Pathways Medicaid due to 1099 paperwork hurdles", "ground_truth_label": "Medicaid gap — Pathways denied", "behavioral_evidence_from_interview": ["Q36: 'Pathways requires 80 hours of verified work and the paperwork was impossible for Hector's 1099 income. We got denied twice.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-014", "source_subcategory": "preferences.health_and_wellness", "claim": "On ACA bronze plan $412/month with $7,500 deductible", "ground_truth_label": "ACA bronze plan (high-deductible)", "behavioral_evidence_from_interview": ["Q40: 'ACA bronze plan for Hector and me, $412 a month with subsidy'", "Q36: 'cheap ACA bronze plan with a $7,500 deductible'"], "duplicate_of": null, "also_supported_by": ["preferences.home_and_lifestyle"]},
+      {"fact_id": "HF-015", "source_subcategory": "preferences.health_and_wellness", "claim": "Tried a THC gummy once at Jessamyn's 2022 bachelorette; did not enjoy it; no regular cannabis use", "ground_truth_label": "One-time cannabis trial (disliked)", "behavioral_evidence_from_interview": ["Q39: 'I tried a THC gummy once at my friend Jessamyn's bachelorette in 2022 and I didn't love it — felt disconnected'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-016", "source_subcategory": "preferences.health_and_wellness", "claim": "Journals as self-therapy; has never seen a therapist due to cost and stigma", "ground_truth_label": "Mental-health care gap — journaling substitute", "behavioral_evidence_from_interview": ["Q45: 'Cost and stigma. I journal instead. And I talk to Cristina, which is basically therapy.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-017", "source_subcategory": "preferences.health_and_wellness", "claim": "Deleted news app December 2024 to reduce anxiety; sleeps better since", "ground_truth_label": "Media diet boundary for mental health", "behavioral_evidence_from_interview": ["Q50: 'I deleted the news app from my phone in December'", "Q50: 'Shockingly well. I'm sleeping better.'"], "duplicate_of": null, "also_supported_by": ["preferences.media_and_information_diet"]},
+      {"fact_id": "HF-018", "source_subcategory": "preferences.food_and_dining", "claim": "Cooks traditional Mexican (corn-based dumplings, smoky paprika sauces, pozole, tamales, pan de muerto) blended with contemporary twists", "ground_truth_label": "Traditional Mexican fusion cook", "behavioral_evidence_from_interview": ["Q01: 'running the kitchen for every baptism and birthday on our block'", "Q43: 'baking — I made pan de muerto three times in October'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-019", "source_subcategory": "preferences.food_and_dining", "claim": "Hosts themed dinner nights featuring herb-crusted chicken with citrus glaze, cilantro-lime rice, avocado salsa", "ground_truth_label": "Themed dinner host", "behavioral_evidence_from_interview": ["Q17 and culinary_persona: 'regularly hosts themed dinner nights'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-020", "source_subcategory": "preferences.food_and_dining", "claim": "Primary grocery stores: El Bodegón (Mexican market) and Aldi; H-Mart Korean grocery nearby", "ground_truth_label": "El Bodegón + Aldi weekly; H-Mart local", "behavioral_evidence_from_interview": ["Q15: 'grocery run to El Bodegón and Aldi'", "Q08: 'The Korean grocery H-Mart and the Mexican market El Bodegón are both less than ten minutes'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-021", "source_subcategory": "preferences.food_and_dining", "claim": "Grocery budget ~$900/month, tracked", "ground_truth_label": "Grocery spend ~$900/mo, tracked", "behavioral_evidence_from_interview": ["Q56: 'Groceries $900 — I track it'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-022", "source_subcategory": "preferences.food_and_dining", "claim": "Took over parish Christmas tamale sale in 2017 and raised nearly $4,000 for youth group", "ground_truth_label": "Parish tamale sale fundraiser (~$4K)", "behavioral_evidence_from_interview": ["Q02: 'I doubled down on the church events and took over the Christmas tamale sale, which that year raised almost four thousand dollars for the youth group'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-023", "source_subcategory": "preferences.food_and_dining", "claim": "Made pozole for 12 people at her house after Nov 2024 election as coping ritual", "ground_truth_label": "Pozole-for-12 as post-election coping", "behavioral_evidence_from_interview": ["Q44: 'drove to El Bodegón, bought ingredients for pozole, and fed twelve people at my house that Sunday. That's how I process.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-024", "source_subcategory": "preferences.food_and_dining", "claim": "Drinks socially (Modelo beer, margaritas, wine at book club); never uses alcohol to cope", "ground_truth_label": "Social drinker, non-problematic", "behavioral_evidence_from_interview": ["Q38: 'I drink socially — a Modelo or a margarita at a party, maybe a glass of wine at book club. I've never used it to cope.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-025", "source_subcategory": "preferences.food_and_dining", "claim": "Aspires to launch home catering business 'Doña Maria's Kitchen' doing ~10 events/year", "ground_truth_label": "Catering-business aspiration", "behavioral_evidence_from_interview": ["Q108: 'I want to have launched a small home catering business on the side — Doña Maria's Kitchen, maybe, doing ten events a year'"], "duplicate_of": null, "also_supported_by": ["preferences.work_and_career"]},
+      {"fact_id": "HF-026", "source_subcategory": "preferences.travel", "claim": "Saving for Mexico trip in 2027 to see abuela Consuelo; $480 set aside so far", "ground_truth_label": "Mexico 2027 savings goal", "behavioral_evidence_from_interview": ["Q62: 'a small bucket for a trip to Mexico in 2027 to see abuela — I've got $480 earmarked so far'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-027", "source_subcategory": "preferences.travel", "claim": "Has not been to Mexico in almost 9 years", "ground_truth_label": "9-year gap from homeland visits", "behavioral_evidence_from_interview": ["Q06: 'I haven't seen her in person in almost nine years, which eats at me'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-028", "source_subcategory": "preferences.travel", "claim": "Sends $150-200/month remittance to grandmother in Mexico via Ria", "ground_truth_label": "Monthly Ria remittance $150-200", "behavioral_evidence_from_interview": ["Q06: 'A hundred fifty through Ria. Sometimes two hundred if there's a doctor visit.'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic", "preferences.home_and_lifestyle"]},
+      {"fact_id": "HF-029", "source_subcategory": "preferences.travel", "claim": "Typical domestic trips: Savannah, Pigeon Forge, Appalachian foothills weekend trips", "ground_truth_label": "Regional road-trip vacation pattern", "behavioral_evidence_from_interview": ["Q83: 'We don't take vacations beyond Savannah or Pigeon Forge'", "Q08: 'Stone Mountain is twenty minutes if we want a hike'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-030", "source_subcategory": "preferences.social_and_relationships", "claim": "Married to Hector Buendia for 13 years this October (met at 18, married at 21 at Arcado church)", "ground_truth_label": "13-year marriage, HS-to-adult partnership", "behavioral_evidence_from_interview": ["Q05: 'we've been married thirteen years in October'", "Q01: 'we got married at twenty-one in the church on Arcado'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-031", "source_subcategory": "preferences.social_and_relationships", "claim": "Two children: Lupita 14 (Berkmar High 9th grade, clarinet marching band, anime art, sold commission for $20) and Mateo 11 (Camp Creek Middle, rec soccer at Lilburn City Park)", "ground_truth_label": "Two children, 14 & 11, artsy/athletic split", "behavioral_evidence_from_interview": ["Q05: 'Lupita who just turned fourteen, and Mateo who's eleven'", "Q05: 'she draws these anime portraits... She sold a commission for twenty bucks'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-032", "source_subcategory": "preferences.social_and_relationships", "claim": "Parents Ramon and Esperanza live 12 minutes away off Killian Hill Road", "ground_truth_label": "Parents nearby, daily support network", "behavioral_evidence_from_interview": ["Q05: 'My parents Ramon and Esperanza live about twelve minutes away off Killian Hill Road'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-033", "source_subcategory": "preferences.social_and_relationships", "claim": "Three younger siblings: Adriana (Duluth, 3 kids), Javier (diesel mechanic, Buford), Tomás (associate's at GSU Perimeter, lives with parents)", "ground_truth_label": "Three siblings in metro Atlanta", "behavioral_evidence_from_interview": ["Q05: 'my sister Adriana is in Duluth with her three kids, my brother Javier is a diesel mechanic out near Buford, and my youngest brother Tomás is finishing up his associate's at Georgia State Perimeter'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-034", "source_subcategory": "preferences.social_and_relationships", "claim": "Mother-in-law Flor lives in Monterrey, Mexico; Sunday after-Mass video calls", "ground_truth_label": "Monterrey mother-in-law weekly call", "behavioral_evidence_from_interview": ["Q05: 'My mother-in-law Flor is in Monterrey and we video-call her every Sunday after mass'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-035", "source_subcategory": "preferences.social_and_relationships", "claim": "Closest friend: Cristina (daughter of Doña Rosa), daily contact; book-club member", "ground_truth_label": "Cristina = primary confidant", "behavioral_evidence_from_interview": ["Q05: 'Cristina, she's my closest friend, we talk every day'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-036", "source_subcategory": "preferences.social_and_relationships", "claim": "Compadres/godparents to Lupita: Rogelio and Maricela (compadrazgo system)", "ground_truth_label": "Compadrazgo: Rogelio & Maricela", "behavioral_evidence_from_interview": ["Q05: 'My compadres Rogelio and Maricela are basically family too, they're Lupita's godparents'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic"]},
+      {"fact_id": "HF-037", "source_subcategory": "preferences.social_and_relationships", "claim": "Monthly book club (4+ years) of 6 women: Cristina, Patricia (Lilburn librarian), Keisha (teacher), Fatima (Egyptian), Dolores (Puerto Rican retired), Jessamyn (photographer)", "ground_truth_label": "Multicultural 6-person book club", "behavioral_evidence_from_interview": ["Q07: 'Cristina, Patricia who's a librarian at the Lilburn branch, Keisha who teaches fifth grade at Camp Creek, Fatima who just moved from Egypt two years ago, Dolores who's Puerto Rican and retired, and Jessamyn who runs her own photography business'"], "duplicate_of": null, "also_supported_by": ["preferences.hobbies_and_recreation"]},
+      {"fact_id": "HF-038", "source_subcategory": "preferences.social_and_relationships", "claim": "Next-door neighbors the Parks (Korean family, run a dry cleaner)", "ground_truth_label": "Korean neighbor-friends: the Parks", "behavioral_evidence_from_interview": ["Q08: 'Our next-door neighbors the Parks run a dry cleaner and we watch each other's packages'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-039", "source_subcategory": "preferences.social_and_relationships", "claim": "Paternal grandmother Consuelo alive at 89 in Guanajuato; stayed with family 6 months on tourist visa during Maria's adolescence", "ground_truth_label": "Grandmother Consuelo, 89, Guanajuato", "behavioral_evidence_from_interview": ["Q06: 'My abuela Consuelo — my dad's mom — is still alive in Guanajuato, she's 89'", "Q99: 'my abuela Consuelo visited for six months on a tourist visa'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-040", "source_subcategory": "preferences.social_and_relationships", "claim": "Failed driving test twice; doesn't drive confidently; mother picks up kids when sick", "ground_truth_label": "Non-confident driver; relies on mother", "behavioral_evidence_from_interview": ["Q05: 'I don't drive yet — I mean, I drive, but I failed the test twice and haven't gone back'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-041", "source_subcategory": "preferences.social_and_relationships", "claim": "Sister Annette was early church mentor (told Maria she was smart); died of COVID 2021", "ground_truth_label": "Deceased mentor: Sister Annette (COVID 2021)", "behavioral_evidence_from_interview": ["Q02: 'She passed in 2021, COVID. That was hard. She was the first person outside my family who told me I was smart.'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-042", "source_subcategory": "preferences.social_and_relationships", "claim": "Daughter Lupita shows teenage anxiety signs (cuticle-picking); Maria plans to push therapy conversation this summer", "ground_truth_label": "Daughter anxiety concern (pending intervention)", "behavioral_evidence_from_interview": ["Q46: 'Lupita has some teenage anxiety — she started picking at her cuticles last year, which worries me'", "Q46: 'I floated it. She said maybe. I'm going to push on it this summer.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-043", "source_subcategory": "preferences.social_and_relationships", "claim": "Teaches Mateo police de-escalation (hands visible, speak respectfully, don't argue)", "ground_truth_label": "Police-interaction parenting script", "behavioral_evidence_from_interview": ["Q26: 'I tell Mateo to always keep his hands visible, speak respectfully, don't argue — same as my dad told me'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-044", "source_subcategory": "preferences.social_and_relationships", "claim": "Father Miguel Ramírez of Saint John Neumann parish is long-standing confessor/counselor (7 years at parish)", "ground_truth_label": "Priest: Father Miguel Ramírez", "behavioral_evidence_from_interview": ["Q47: 'Father Miguel Ramírez. He's been there seven years'", "Q44: 'And Father Miguel at confession the next week. He was kind.'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic"]},
+      {"fact_id": "HF-045", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Owns townhome in Hillside Oaks subdivision, Lilburn; bought 2017 for $178,000 with FHA (3.5% down + mother-in-law gift); refinanced 2020 saving ~$180/mo; current est. value ~$265,000", "ground_truth_label": "Lilburn townhome owner since 2017", "behavioral_evidence_from_interview": ["Q58: 'Bought in 2017 for $178,000 with an FHA loan, 3.5% down from savings plus a gift from my mother-in-law'", "Q58: 'We refinanced in 2020 when rates dropped. Saved us like $180 a month.'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-046", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Mortgage $1,485/mo with escrow; ~$158,000 balance; ~18 years remaining", "ground_truth_label": "Mortgage $1,485/mo, $158K balance", "behavioral_evidence_from_interview": ["Q56: 'Mortgage is $1,485 with escrow'", "Q63: 'Mortgage $158,000 balance'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-047", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Monthly expenses breakdown: insurance $412, utilities $280, groceries $900, gas $260, kids $180, car insurance $185, phones $140, internet $75, church $100, remittance $150, streaming $30, eating out $120", "ground_truth_label": "Itemized household monthly budget", "behavioral_evidence_from_interview": ["Q56: full list"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-048", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Uses envelope budgeting system and maintains a budget spreadsheet; adds $25-50/month to category envelopes for seasonal spikes", "ground_truth_label": "Envelope + spreadsheet budgeter", "behavioral_evidence_from_interview": ["Q59: 'Envelope system. I keep an envelope per category and add $25-50 a month'", "Q83: 'I look at my budget spreadsheet — yes I have a spreadsheet'"], "duplicate_of": null, "also_supported_by": ["preferences.work_and_career"]},
+      {"fact_id": "HF-049", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Pets: Paco (chihuahua mix, Humane Society rescue 2 years ago) and Ronaldo (Mateo's betta fish)", "ground_truth_label": "Dog Paco + fish Ronaldo", "behavioral_evidence_from_interview": ["Q11: 'our dog Paco, a chihuahua mix we rescued from the Humane Society two years ago'", "Q11: 'A betta fish Mateo named Ronaldo'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-050", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Maintains small backyard vegetable and herb garden; was HOA-cited for front-yard garden and moved it", "ground_truth_label": "Backyard garden (post-HOA citation)", "behavioral_evidence_from_interview": ["Q10: 'They cited us for the vegetable garden in the front bed. I moved it to the back but I'm still salty.'"], "duplicate_of": null, "also_supported_by": ["preferences.nature_and_outdoors"]},
+      {"fact_id": "HF-051", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Has Ring doorbell (Christmas gift from brother Javier); Hector checks it most", "ground_truth_label": "Ring doorbell installed", "behavioral_evidence_from_interview": ["Q09: 'We got a Ring doorbell for Christmas from my brother Javier. Hector grumbled but he checks it more than anyone.'"], "duplicate_of": null, "also_supported_by": ["preferences.technology"]},
+      {"fact_id": "HF-052", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Savings: Gwinnett Credit Union emergency fund ~$2,400; Christmas club ~$600; cash envelope ~$300; tanda rotating club $100/mo", "ground_truth_label": "Emergency fund $2,400 at GCU", "behavioral_evidence_from_interview": ["Q61: 'A savings account at Gwinnett Credit Union with about $2,400'", "Q61: 'A Christmas club account with about $600'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-053", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Debts: Chase credit card ~$2,800 at 24% APR (snowball plan $200+/mo, target payoff 15 months); Lowe's 0% APR card $720 (water heater, 9 months left); Hector truck loan $9,400 at 6.2% with ~2 years remaining", "ground_truth_label": "Active debts inventory", "behavioral_evidence_from_interview": ["Q63: 'Credit card, Chase, about $2,800 balance at 24%'", "Q63: 'Lowe's card $720 at 0% for another nine months'", "Q63: 'Car loan on Hector's truck, $9,400 at 6.2%'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-054", "source_subcategory": "preferences.home_and_lifestyle", "claim": "No meaningful retirement savings — Hector has tiny IRA ~$3,200; Maria has no formal retirement account (explicitly worries her)", "ground_truth_label": "Retirement gap", "behavioral_evidence_from_interview": ["Q61: 'Hector has a tiny IRA, maybe $3,200. I don't have anything formal. This worries me.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-055", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Life insurance: Hector $50K term via church agent; Maria $15K term (feels insufficient)", "ground_truth_label": "Term life policies (inadequate)", "behavioral_evidence_from_interview": ["Q40: 'Hector has a $50K term policy through an agent at church. I have $15K. Not enough but it's something.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-056", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Can absorb $400 emergency (would drain fund); $1,500 emergency would require credit card + borrowing from brother Javier", "ground_truth_label": "Financial fragility: $400 yes, $1500 no", "behavioral_evidence_from_interview": ["Q82: 'I'd have it. It'd drain the emergency fund dangerously but I'd have it. If it were $1,500, I'd struggle — probably credit card plus borrow from Javier.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-057", "source_subcategory": "preferences.home_and_lifestyle", "claim": "Previously used SNAP 2013-2016; no longer qualifies; kids currently on Peach Care Georgia", "ground_truth_label": "SNAP history 2013-2016; kids on Peach Care", "behavioral_evidence_from_interview": ["Q80: 'We got SNAP in 2013-2016 when the kids were little. Not now. Kids are on Peach Care.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-058", "source_subcategory": "preferences.entertainment", "claim": "Watches telenovela Vencer el Pasado reruns for 10 PM wind-down", "ground_truth_label": "Nightly telenovela wind-down", "behavioral_evidence_from_interview": ["Q15: 'I'm on Vencer el Pasado reruns. Don't judge me.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-059", "source_subcategory": "preferences.entertainment", "claim": "Enforces 8:30 PM screen cutoff for kids on school nights", "ground_truth_label": "Kids' screen-time cutoff", "behavioral_evidence_from_interview": ["Q19: 'Screens go off at 8:30 on school nights'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-060", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Performs in Ballet Folklórico Fuerza Latina; practice twice-weekly for Atlanta Latin American Festival July 2026", "ground_truth_label": "Ballet Folklórico Fuerza Latina member", "behavioral_evidence_from_interview": ["Q18: 'my folk-dance troupe, Ballet Folklórico Fuerza Latina, started practicing twice a week'"], "duplicate_of": null, "also_supported_by": ["preferences.arts_and_culture", "preferences.sports_and_fitness"]},
+      {"fact_id": "HF-061", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Does watercolor and pottery workshops at Lilburn School of the Arts (pottery teacher Javier, 'moody but liked')", "ground_truth_label": "Watercolor + pottery practitioner", "behavioral_evidence_from_interview": ["Q77: 'The pottery teacher Javier can be moody but I like him.'"], "duplicate_of": null, "also_supported_by": ["preferences.arts_and_culture"]},
+      {"fact_id": "HF-062", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Leads multicultural book club; recent reads include Pachinko, House of the Spirits (3x), How to Be an Antiracist, Caste, White Rage, The Warmth of Other Suns", "ground_truth_label": "Book club leader — race + diaspora reading list", "behavioral_evidence_from_interview": ["Q07: 'We just finished Pachinko by Min Jin Lee. Before that was The House of the Spirits for the third time'", "Q26: 'White Rage, The Warmth of Other Suns, I'm in the middle of Caste now'"], "duplicate_of": null, "also_supported_by": ["preferences.media_and_information_diet", "preferences.arts_and_culture"]},
+      {"fact_id": "HF-063", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Moderates two Spanish-language Facebook groups: Lilburn Moms en Español (~800 members) and Ballet Folklórico de Gwinnett (~150 members); ~2 hrs/day", "ground_truth_label": "FB moderator 2 groups", "behavioral_evidence_from_interview": ["Q17: 'Lilburn Moms en Español, about 800 members, and Ballet Folklórico de Gwinnett, smaller, about 150'"], "duplicate_of": null, "also_supported_by": ["preferences.technology", "preferences.cultural_and_linguistic"]},
+      {"fact_id": "HF-064", "source_subcategory": "preferences.hobbies_and_recreation", "claim": "Tanda rotating savings club with 7 church women, $100/mo, $700 payout every 7 months", "ground_truth_label": "Tanda participant (church-based)", "behavioral_evidence_from_interview": ["Q61: 'I do a tanda — a rotating savings club — with seven women from church'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic", "preferences.home_and_lifestyle"]},
+      {"fact_id": "HF-065", "source_subcategory": "preferences.work_and_career", "claim": "1099 contract community liaison at Lilburn School of the Arts since September 2023 (~12 hrs/week, $18/hr, no benefits)", "ground_truth_label": "LSoA 1099 liaison since Sept 2023", "behavioral_evidence_from_interview": ["Q16: 'Lilburn School of the Arts as a Latino community liaison, about ten to fifteen hours a week at $18 an hour'", "Q76: 'Arts center, since September 2023. Benefits: zero.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-066", "source_subcategory": "preferences.work_and_career", "claim": "Coordinates annual Día de los Muertos festival at arts center (800 attendees in 2024)", "ground_truth_label": "Día de los Muertos festival coordinator (800 attendees)", "behavioral_evidence_from_interview": ["Q65: 'coordinate our annual Día de los Muertos festival which drew 800 people last year'"], "duplicate_of": null, "also_supported_by": ["preferences.arts_and_culture"]},
+      {"fact_id": "HF-067", "source_subcategory": "preferences.work_and_career", "claim": "Freelance event planning: baptisms, quinceañeras, bridal showers, birthday parties ($50-$200/event, ~2/month)", "ground_truth_label": "Freelance event planner", "behavioral_evidence_from_interview": ["Q16: 'I also get paid $50 to $200 to plan baptisms and quinceañeras for families in the parish — maybe two a month'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-068", "source_subcategory": "preferences.work_and_career", "claim": "Unpaid bookkeeper for Hector's drywall business (primary GC Beto out of Tucker; current Suwanee job through summer)", "ground_truth_label": "Unpaid spouse bookkeeper", "behavioral_evidence_from_interview": ["Q01: 'mostly subcontracting for a guy named Beto out of Tucker'", "Q16: 'I also help Hector with his invoicing and receipts'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-069", "source_subcategory": "preferences.work_and_career", "claim": "Files joint taxes via TurboTax Self-Employed; claims EITC ~$2,100; last year owed $340 federal, $190 state refund; tried H&R Block 2021 (too expensive)", "ground_truth_label": "Self-prepared taxes; EITC claimant", "behavioral_evidence_from_interview": ["Q75: 'We used TurboTax Self-Employed'", "Q75: 'Earned Income Tax Credit. It's meaningful for us, about $2,100'"], "duplicate_of": null, "also_supported_by": ["preferences.technology"]},
+      {"fact_id": "HF-070", "source_subcategory": "preferences.work_and_career", "claim": "Career target: W-2 community outreach coordinator at arts center or Gwinnett County Parks & Rec within 2-3 years; target salary $45,000", "ground_truth_label": "Target: $45K outreach coordinator role", "behavioral_evidence_from_interview": ["Q108: 'a real job — W-2, benefits, $45,000 a year — as an outreach coordinator somewhere'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-071", "source_subcategory": "preferences.work_and_career", "claim": "Declined Gwinnett Tech pastry arts scholarship at age 26 after Mateo's birth; retains unsent application in filing cabinet as identity artifact", "ground_truth_label": "Declined pastry scholarship (26)", "behavioral_evidence_from_interview": ["Q02: 'I had the application filled out, I had the letters... I ended up not mailing it'", "Q02: 'It's in a folder in my filing cabinet with the kids' birth certificates'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-072", "source_subcategory": "preferences.work_and_career", "claim": "Self-taught Excel from a Gwinnett library book in 2019 — 'changed my life'", "ground_truth_label": "Self-taught Excel (2019)", "behavioral_evidence_from_interview": ["Q65: 'I read a library book on Excel in 2019 and it changed my life'"], "duplicate_of": null, "also_supported_by": ["preferences.technology"]},
+      {"fact_id": "HF-073", "source_subcategory": "preferences.arts_and_culture", "claim": "Coordinates and runs Mexican-Catholic cultural/holiday events: Our Lady of Guadalupe Dec 12 feast, Posadas, Mexican Independence Day, Noche Buena 2022", "ground_truth_label": "Cultural-holiday event organizer", "behavioral_evidence_from_interview": ["Q21: 'I helped organize the parish Noche Buena event in 2022'", "cultural_background"], "duplicate_of": null, "also_supported_by": ["preferences.community_and_civic"]},
+      {"fact_id": "HF-074", "source_subcategory": "preferences.sports_and_fitness", "claim": "Fan of Atlanta Falcons and Atlanta Hawks; participates in co-ed recreational soccer league each spring (persona narrative only; NOT corroborated in interview schedule)", "ground_truth_label": "Atlanta sports fandom + rec soccer (narrative-only)", "behavioral_evidence_from_interview": ["sports_persona narrative (not confirmed via Q15 schedule or any transcript Q)"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-075", "source_subcategory": "preferences.sports_and_fitness", "claim": "Son Mateo plays rec soccer at Lilburn City Park (Tues/Thurs practice, Saturday games)", "ground_truth_label": "Mateo's rec soccer", "behavioral_evidence_from_interview": ["Q19: 'soccer practice Tuesdays and Thursdays at the park, games Saturdays'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-076", "source_subcategory": "preferences.technology", "claim": "Heavy Facebook user (~2 hrs/day moderating); uses Instagram for arts center reels (Easter reel with Selena soundtrack, 340 views); TikTok ~30 min nightly; WhatsApp for family (3 groups, ~200 msgs/day); not on X; deleted Snapchat", "ground_truth_label": "Platform-specific digital profile", "behavioral_evidence_from_interview": ["Q48: long description of platform usage"], "duplicate_of": null, "also_supported_by": ["preferences.media_and_information_diet"]},
+      {"fact_id": "HF-077", "source_subcategory": "preferences.technology", "claim": "Uses refurbished laptop from the library for GED prep via Khan Academy + free Gwinnett County library GED program (started January 2026)", "ground_truth_label": "GED prep: Khan Academy + library program", "behavioral_evidence_from_interview": ["Q01: 'I'm finally studying for my GED on a laptop we got refurbished from the library'", "Q91: 'Self-enrolled in GED prep through Khan Academy and a free Gwinnett County Public Library program'"], "duplicate_of": null, "also_supported_by": ["preferences.work_and_career", "preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-078", "source_subcategory": "preferences.community_and_civic", "claim": "Naturalized U.S. citizen 2016; votes every general and midterm since; occasionally skips primaries (Georgia rules)", "ground_truth_label": "Consistent voter since 2016", "behavioral_evidence_from_interview": ["Q23: 'I became a citizen in 2016'", "Q23: 'I vote in every general and every midterm'"], "duplicate_of": null, "also_supported_by": ["preferences.cultural_and_linguistic"]},
+      {"fact_id": "HF-079", "source_subcategory": "preferences.community_and_civic", "claim": "Registered 140 voters through two parish voter-registration drives in 2024", "ground_truth_label": "Voter-registration organizer (140 registered)", "behavioral_evidence_from_interview": ["Q25: 'I worked two voter registration drives at the church and we registered 140 people'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-080", "source_subcategory": "preferences.community_and_civic", "claim": "Attended BLM march in Decatur June 2020 with Cristina and Keisha; donated to The Bail Project once", "ground_truth_label": "BLM 2020 participation + Bail Project donor", "behavioral_evidence_from_interview": ["Q26: 'I went to one march in Decatur in June 2020, with Cristina and Keisha'", "Q29: 'I donated to the Bail Project once'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-081", "source_subcategory": "preferences.community_and_civic", "claim": "Self-describes as moderate Democrat (7/10); voted Biden 2020 and Harris 2024; economically more progressive than 5 years ago; open to local Republican candidates", "ground_truth_label": "Moderate Democrat (7/10), cross-pressured", "behavioral_evidence_from_interview": ["Q95: 'Moderate-to-strong association... Call it a 7 out of 10.'", "Q24: 'I voted for Biden in 2020 and Harris in 2024'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-082", "source_subcategory": "preferences.community_and_civic", "claim": "Mixed view of Gwinnett County police; grateful 287(g) program under Sheriff Conway ended", "ground_truth_label": "Complicated police-trust stance; anti-287(g)", "behavioral_evidence_from_interview": ["Q20: 'the 287(g) stuff during the Sheriff Conway years really scared our community. I'm glad that ended.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-083", "source_subcategory": "preferences.community_and_civic", "claim": "Son Mateo was racially harassed on school bus (n-word incident December); Maria escalated to principal. Also confronts anti-Black comments from Tío Roberto at family level.", "ground_truth_label": "Anti-racist family + institutional advocacy", "behavioral_evidence_from_interview": ["Q28: 'A kid called him the n-word on the bus in December. I met with the principal.'", "Q27: 'My Tio Roberto says things I have to correct.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-084", "source_subcategory": "preferences.community_and_civic", "claim": "Moderated a 'miracle diet tea' scammer out of Lilburn Moms en Español FB group (researched, posted notice, banned; received harassment after)", "ground_truth_label": "Anti-misinformation moderator", "behavioral_evidence_from_interview": ["Q17: 'a woman was selling a miracle diet tea in Lilburn Moms en Español... I had to research it, post a notice, and ban her. She emailed me nasty stuff for a week.'"], "duplicate_of": null, "also_supported_by": ["preferences.media_and_information_diet"]},
+      {"fact_id": "HF-085", "source_subcategory": "preferences.community_and_civic", "claim": "Tithes ~$100/month to parish", "ground_truth_label": "Parish tithe $100/mo", "behavioral_evidence_from_interview": ["Q56: 'Church donation $100'"], "duplicate_of": null, "also_supported_by": ["preferences.home_and_lifestyle"]},
+      {"fact_id": "HF-086", "source_subcategory": "preferences.community_and_civic", "claim": "Cousin Beto (different from Hector's boss) arrested for DUI 2018, 30 days jail; Maria and mother supported his wife with weekly groceries", "ground_truth_label": "Family arrest experience (DUI, 2018)", "behavioral_evidence_from_interview": ["Q22: 'My cousin Beto — different Beto than Hector's boss — got picked up on a DUI in 2018 and did thirty days'", "Q22: 'My mom and I made sure she had groceries every week until he got out'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-087", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Born León, Guanajuato, Mexico, March 19, 1991; immigrated 1996 (age 5); family first settled in Norcross GA before Lilburn; naturalized 2016", "ground_truth_label": "Immigrant biography", "behavioral_evidence_from_interview": ["Q85: 'March 19, 1991.'", "Q87: 'León, Guanajuato, Mexico.'", "Q86: 'Came to the U.S. in 1996'", "Q01: 'We settled in Norcross first'"], "duplicate_of": null, "also_supported_by": ["preferences.life_events_and_transitions"]},
+      {"fact_id": "HF-088", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Bilingual Spanish-English; Spanish first language; speaks Spanish at home; translates for parents and community", "ground_truth_label": "Bilingual (Spanish first)", "behavioral_evidence_from_interview": ["Q01: 'Spanish at home, English at school'", "Q17: 'help my parents with their mail and any English paperwork'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-089", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Mestiza Mexican-American identity; checks White + Hispanic on forms", "ground_truth_label": "Mestiza self-identification", "behavioral_evidence_from_interview": ["Q88: 'Mexican-American'", "Q89: 'I identify as mestiza — mixed indigenous and Spanish'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-090", "source_subcategory": "preferences.cultural_and_linguistic", "claim": "Roman Catholic; attends Saint John Neumann Mass most Sundays (English 10 AM, sometimes Spanish 12:30); prays rosary ~3x/week; maintains altar with Our Lady of Guadalupe, photo of deceased grandfather, and votive candle; disagrees with Church on women priests and abortion framing", "ground_truth_label": "Practicing progressive Catholic", "behavioral_evidence_from_interview": ["Q47: 'Roman Catholic, raised in it, still in it'", "Q47: 'I pray the rosary probably three times a week'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-091", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Father Ramon (now 62) worked as landscaper at Green Horizons out of Tucker, became crew lead; completed 6th grade in Mexico. Mother Esperanza worked as house cleaner at Servicio Limpio (owner Paty) cleaning Dunwoody/Sandy Springs homes; completed 8th grade in Mexico.", "ground_truth_label": "Working-class immigrant parental origin", "behavioral_evidence_from_interview": ["Q103, Q104, Q106, Q107, Q100, Q101"], "duplicate_of": null, "also_supported_by": ["preferences.social_and_relationships"]},
+      {"fact_id": "HF-092", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Oldest of four siblings; took on early caregiver role by age 10 (heating tortillas, changing diapers, signing English permission slips)", "ground_truth_label": "Eldest-child parentification", "behavioral_evidence_from_interview": ["Q01: 'I'm the oldest of four, so from maybe ten years old I was heating up tortillas, changing diapers, signing permission slips my parents couldn't read'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-093", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Left school in 11th grade when mother got ill after youngest brother's birth; currently studying for GED", "ground_truth_label": "Educational interruption (11th grade)", "behavioral_evidence_from_interview": ["Q01: 'I left in eleventh grade when my mom had my youngest brother and got really sick after'", "Q90: 'Tenth grade completed, started eleventh grade, did not finish'"], "duplicate_of": null, "also_supported_by": ["preferences.work_and_career"]},
+      {"fact_id": "HF-094", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Hector's back injury 2023 led to 5 weeks out of work; GoFundMe (Cristina) raised $1,800; brother Javier paid their electric bill unasked", "ground_truth_label": "Spouse injury 2023 + community relief", "behavioral_evidence_from_interview": ["Q35: 'Hector threw out his back in 2023 doing drywall — he was out of work five weeks'", "Q35: 'GoFundMe Cristina set up that raised $1,800'"], "duplicate_of": null, "also_supported_by": ["preferences.social_and_relationships"]},
+      {"fact_id": "HF-095", "source_subcategory": "preferences.life_events_and_transitions", "claim": "November 2024 election as significant emotional event: voter-drive effort, sob in parking lot, pozole for 12 as coping ritual", "ground_truth_label": "Nov 2024 election trauma + coping", "behavioral_evidence_from_interview": ["Q44: 'I sat in the parish parking lot one Wednesday after a meeting and just sobbed for twenty minutes'"], "duplicate_of": null, "also_supported_by": ["preferences.community_and_civic", "preferences.food_and_dining"]},
+      {"fact_id": "HF-096", "source_subcategory": "preferences.life_events_and_transitions", "claim": "Planning Lupita's quinceañera ~18 months out with $4,000 modest budget; currently has $700 saved", "ground_truth_label": "Upcoming quinceañera budget $4K", "behavioral_evidence_from_interview": ["Q62: 'Lupita's quinceañera which is coming up in a year and a half, that's gonna be $4,000 minimum, and I've got maybe $700 toward it'"], "duplicate_of": null, "also_supported_by": ["preferences.home_and_lifestyle"]},
+      {"fact_id": "HF-097", "source_subcategory": "preferences.media_and_information_diet", "claim": "Trusted news/info sources: NPR, CDC website (reads Spanish sometimes), Dr. Chen, cousin Valeria (RN); distrusts WhatsApp forwards from tías", "ground_truth_label": "Curated high-trust media diet", "behavioral_evidence_from_interview": ["Q42: 'Dr. Chen first. Then the CDC website, which I actually read in Spanish sometimes. NPR.'", "Q42: 'I don't trust random Facebook posts or WhatsApp forwards from my tías'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-098", "source_subcategory": "preferences.media_and_information_diet", "claim": "Actively corrects WhatsApp misinformation from relatives with CDC en español links", "ground_truth_label": "Misinformation-correction behavior", "behavioral_evidence_from_interview": ["Q42: 'Gently, and with a link from the CDC en español. Sometimes I lose the argument.'"], "duplicate_of": null, "also_supported_by": []},
+      {"fact_id": "HF-099", "source_subcategory": "preferences.music", "claim": "Daughter Lupita plays clarinet in Berkmar High marching band (Mon/Wed/Fri practice until 5:30 PM in fall)", "ground_truth_label": "Daughter in school marching band (clarinet)", "behavioral_evidence_from_interview": ["Q05: 'plays clarinet in marching band'", "Q19: 'marching band practice Mondays, Wednesdays, and Fridays till 5:30 in the fall'"], "duplicate_of": null, "also_supported_by": ["preferences.social_and_relationships"]},
+      {"fact_id": "HF-100", "source_subcategory": "preferences.fashion_and_appearance", "claim": "Folklórico dresses are a May expense spike for dance recital costumes", "ground_truth_label": "Folklórico wardrobe expense (May)", "behavioral_evidence_from_interview": ["Q59: 'May is dance recital costumes, folklórico dresses aren't cheap'"], "duplicate_of": null, "also_supported_by": ["preferences.home_and_lifestyle"]}
+    ]
+  }
+}
