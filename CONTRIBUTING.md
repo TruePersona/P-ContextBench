@@ -80,7 +80,7 @@ By signing off on a commit, you certify that:
 - The contribution is based upon previous work that, to the best of your knowledge, is covered under an appropriate open-source license and you have the right to submit that work with modifications; **or**
 - The contribution was provided directly to you by some other person who certified (a) or (b), and you have not modified it.
 
-See the full [DCO text](DCO) for details.
+See the full [DCO text](DCO.txt) for details.
 
 ## License
 
