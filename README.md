@@ -17,7 +17,7 @@ The end goal (Steps 4-6) is to:
 4. Ask an AI: "Based on these logs, what can you figure out about this person?"
 5. Score how well the AI does
 
-**Steps 1-3 (this repo)** build the fake people. Steps 4-6 test the AI.
+**Steps 1-3 (this repo)** build the fake people. Steps 4-6 will test the AI.
 
 ## The Pipeline: What Each Step Does
 
@@ -56,24 +56,18 @@ The end goal (Steps 4-6) is to:
 | **Demographics** | Name, age, gender, location, education, job | Basic identity header |
 | **Preferences** (18 subcategories) | Health, food, travel, social life, home, entertainment, hobbies, work, arts, sports, nature, tech, community, music, fashion, cultural/linguistic, life events, media diet | Everything the person likes, does, and chooses — organized by life domain. Each has a summary, specific behavioral details, and Q## citations back to the interview. |
 | **Summaries** (4 experts) | Demographer, Behavioral Economist, Political Scientist, Psychologist | Four different expert lenses analyzing the same person. The demographer looks at life stage and social status. The economist looks at how they make decisions. The political scientist looks at civic engagement. The psychologist looks at personality and coping patterns. |
+| **Hidden Facts** | Unified registry of atomic facts (60-100+ per persona) | The canonical answer key for all downstream steps. Built from verified preferences + reprojected summary claims, then deduplicated. |
 
-**Verification (within the same step folder):** Four AI experts review the interview and check for mistakes, then fix them.
-
-The 4 checks (directions):
+**Verification (built into this step):** Four AI experts review the interview output across four directions:
 
 1. **Seed vs Interview** — Did the interview contradict the original NVIDIA data? (e.g., seed says age 28, interview says 30)
 2. **Interview vs Profile** — Did the extracted profile accurately capture what was said? (e.g., person talked about gardening in Q17 but it's missing from hobbies)
 3. **Profile vs Itself** — Does the profile contradict itself? (e.g., summaries say she's frugal but preferences say she shops at expensive stores)
 4. **Completeness** — Is anything from the interview missing from the ENTIRE profile? (e.g., person mentioned a brother in Q05 but he appears nowhere)
 
-After verification, the **hidden_facts registry** is generated: every atomic, testable fact about the persona is enumerated from the verified preferences and expert summaries, deduplicated, and stored as the canonical answer key for all downstream steps.
+After verification, the corrected profile and hidden_facts registry are produced. **This is the canonical output that all downstream steps use.**
 
-**What you get:** Two files:
-
-1. **Interview** — The full transcript + draft extracted profile.
-2. **Verification** — The accountability trail, corrected profile, and hidden_facts registry. **This is the canonical output that downstream steps use.**
-
-**Files:** `step2_interview/data_samples/output/{name}_interview.json` and `{name}_verification.json`
+**File:** `step2_interview/data_samples/output/mary_alberti_interview.json`
 
 ---
 
@@ -91,25 +85,11 @@ After verification, the **hidden_facts registry** is generated: every atomic, te
 - What they've been texting about recently
 - Q## evidence from the interview proving this relationship makes sense
 
-The 5 people are whichever contacts the interview evidence most strongly supports. No rigid quota — some personas may have mostly family, others mostly friends. People who would only communicate on a company-owned messenger are excluded.
+The 5 people are whichever contacts the interview evidence most strongly supports — no rigid quota on relationship type. People who would only communicate on a company-owned messenger are excluded.
 
-**Verification (within the same step folder):** Two checks confirm the social circle is consistent with the interview and the extracted profile, then produce a corrected social circle.
+**Verification (built into this step):** Two checks confirm the social circle is consistent with the interview and the extracted profile, then produce a corrected social circle.
 
-**Files:** `step3_social_circle/data_samples/output/{name}_social_circle.json` and `{name}_social_circle_verification.json`
-
----
-
-### Step 4: App Log Synthesizer *(Anmol)*
-
-Generate messenger snippets and calendar events that implicitly embed the persona's hidden facts through behavioral evidence. The benchmark evaluator sees only these app logs.
-
-### Step 5: Test Case Synthesis *(Anmol)*
-
-Generate benchmark test cases that require recovering hidden facts from app logs alone. Test cases are verified for human-solvability following SWE-bench Verified methodology.
-
-### Step 6: Benchmark Runner *(Anmol)*
-
-Execute the verified test cases against the model under evaluation and score performance against the canonical hidden_facts registry.
+**File:** `step3_social_circle/data_samples/output/mary_alberti_social_circle.json`
 
 ---
 
@@ -123,49 +103,11 @@ Execute the verified test cases against the model under evaluation and score per
 | 4 | Maria Buendia | 34 | Lilburn, GA | 9th-12th no diploma | No occupation |
 | 5 | Julio Simmons | 49 | Rochester, NY | Graduate | Not in workforce |
 
-## Repository Structure
-
-```
-/
-├── README.md
-├── Contributor.md
-├── LICENSE                      # Apache 2.0
-├── Top_level_generator.py       # Orchestrates the full pipeline
-├── step1_seed/
-│   ├── README.md
-│   ├── prompt.txt
-│   ├── generator.py
-│   └── data_samples/
-│       └── output/          # 5 seed JSONs
-├── step2_interview/
-│   ├── README.md
-│   ├── prompt.txt           # 109-question interview prompt
-│   ├── verification_prompt.txt
-│   ├── generator.py         # Iterative refinement loop
-│   └── data_samples/
-│       └── output/          # Interview + verification JSONs
-├── step3_social_circle/
-│   ├── README.md
-│   ├── prompt.txt
-│   ├── verification_prompt.txt
-│   ├── generator.py
-│   └── data_samples/
-│       └── output/          # Social circle + verification JSONs
-├── step4_app_log_synthesizer/
-├── step5_testcases_synthesis/
-└── step6_benchmark_runner/
-```
-
-Each step is self-contained: prompt, verification prompt, generator script, and sample data. The generator script runs the prompt, verifies, and regenerates if needed.
-
 ## How to Reproduce
 
-For each persona, run the generator scripts in order (Step 1 → 2 → 3). All prompts are model-agnostic and self-contained — fill in the `{{placeholders}}` with actual data. Each step's `README.md` has detailed instructions.
+For each persona, run the prompts in order (Step 1 → 2 → 3), pasting in the previous step's output. All prompts are model-agnostic and self-contained — just fill in the `{{placeholders}}` with actual data.
 
-Short version:
-```bash
-python Top_level_generator.py --seed step1_seed/data_samples/output/{name}_seed.json
-```
+Each step folder contains a `generator.py` that automates the process: it fills the prompt template, calls the LLM, verifies, and regenerates if needed.
 
 ## References
 
