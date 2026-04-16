@@ -6,7 +6,7 @@ Thank you for your interest in contributing to PERSONA-Bench! This document prov
 
 ### Reporting Issues
 
-- Use [GitHub Issues](https://github.com/TruePersona/PersonaBench/issues) to report bugs or request features.
+- Use [GitHub Issues](https://github.com/zhadyz/PERSONA-Bench/issues) to report bugs or request features.
 - Check existing issues before opening a new one to avoid duplicates.
 - Use the provided issue templates (bug report, feature request).
 
