@@ -41,11 +41,28 @@ health_and_wellness, food_and_dining, travel, social_and_relationships, home_and
 
 ## The hidden_facts registry
 
-`hidden_facts` is the canonical answer key used by all downstream steps. Each entry contains:
+`hidden_facts` is the canonical answer key used by all downstream steps. It is
+generated in the verification step by a three-pass process:
 
-- `fact_id`, `source_subcategory`, `claim`, `ground_truth_label`
+1. **Direct enumeration** of atomic facts from each of the 18 preference
+   subcategories (`source: direct`).
+2. **Reprojection** of claims asserted in the four expert summaries into the
+   subcategory taxonomy. Claims already covered by a Pass 1 fact are skipped;
+   novel claims become new facts (`source: reprojected`).
+3. **Deduplication** — facts expressing the same underlying claim are merged;
+   `duplicate_of` and `also_supported_by` record the trace.
+
+Each entry contains:
+
+- `fact_id`, `source` (`direct` | `reprojected`), `source_subcategory`
+- `reprojected_from` (which expert summary the claim came from, if reprojected)
+- `claim`, `ground_truth_label`
 - `behavioral_evidence_from_interview` (Q## quotes)
-- `duplicate_of`, `also_supported_by` (for deduplication traceability)
+- `duplicate_of`, `also_supported_by`
+
+This design ensures downstream steps (app log synthesis, test case generation,
+benchmarking) can operate on `hidden_facts` alone without consulting the
+preferences or summaries.
 
 ## Running
 

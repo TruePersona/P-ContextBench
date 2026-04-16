@@ -153,21 +153,50 @@ Produce a corrected_extracted_profile that:
 HIDDEN FACTS REGISTRY
 ===============================================================================
 
-After the corrected_extracted_profile is finalized, build the hidden_facts registry
-and place it INSIDE corrected_extracted_profile as a top-level field alongside
-preferences and summaries:
+The hidden_facts registry is the canonical answer key used by all downstream
+steps. It must capture every testable assertion from BOTH the preferences
+subcategories AND the expert summaries, so that downstream consumers do not
+need to read preferences or summaries directly. Build it in three passes:
 
-1. For each subcategory in corrected_extracted_profile.preferences, enumerate every
-   atomic fact from the `details` array as a separate hidden_fact entry.
-2. Deduplicate: if two details in different subcategories express the same underlying
-   fact, keep the more specific version and note the alternative location.
-3. Target count: 60-100 hidden_facts per persona.
+PASS 1 — DIRECT ENUMERATION
+  For each subcategory in corrected_extracted_profile.preferences, enumerate
+  every atomic fact from the `details` array as a separate hidden_fact entry.
+  Tag each such entry with `source: "direct"`.
+
+PASS 2 — REPROJECTION FROM EXPERT SUMMARIES
+  For each claim asserted in the four expert summaries (demographer,
+  behavioral_economist, political_scientist, psychologist), check whether the
+  claim is already covered by an existing Pass 1 hidden_fact.
+
+  - If already covered, skip it (the existing fact stands, and the expert
+    summary is simply recording the same ground-truth information in free text).
+  - If not covered, add it as a new hidden_fact, placing it under the most
+    appropriate preference subcategory. Tag it with
+    `source: "reprojected"` and record which expert summary the claim came from
+    in the `reprojected_from` field.
+
+  This pass guarantees that every testable assertion from the summaries is
+  represented in the registry, so downstream steps can work from hidden_facts
+  alone.
+
+PASS 3 — DEDUPLICATION
+  Merge hidden_facts that express the same underlying claim with different
+  wording. Keep the more specific version. When two candidate facts collapse,
+  the collapsed fact's id goes in `duplicate_of` of the kept fact, and both
+  source locations appear in `also_supported_by`. Facts from Pass 2
+  (reprojected) may be absorbed into Pass 1 (direct) facts if the direct fact
+  already expresses the same claim more specifically.
+
+Target count: 60-100 hidden_facts per persona after deduplication. More is
+acceptable for narratively rich personas.
 
 Each hidden_fact has the schema:
 
 {
   "fact_id": "HF-001",
+  "source": "direct | reprojected",
   "source_subcategory": "preferences.health_and_wellness",
+  "reprojected_from": null | "summaries.demographer" | "summaries.behavioral_economist" | "summaries.political_scientist" | "summaries.psychologist",
   "claim": "Concrete statement of the fact (e.g., 'Shops Saturday mornings at the Rochester Public Market')",
   "ground_truth_label": "The canonical label for this fact (may equal claim, or may be a clinical/categorical label when applicable)",
   "behavioral_evidence_from_interview": ["Q## quote 1", "Q## quote 2"],
@@ -175,8 +204,8 @@ Each hidden_fact has the schema:
   "also_supported_by": []
 }
 
-When deduplication collapses two candidate facts, the collapsed fact's id goes in
-`duplicate_of` of the kept fact, and both source locations appear in `also_supported_by`.
+The `reprojected_from` field is `null` for direct facts and set to the expert
+summary key for reprojected facts.
 
 ===============================================================================
 OVERALL VERDICT
@@ -325,7 +354,9 @@ Return a single JSON object with two top-level sections.
     "hidden_facts": [
       {
         "fact_id": "HF-001",
+        "source": "direct",
         "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
         "claim": "Concrete statement of the fact.",
         "ground_truth_label": "Canonical label for this fact.",
         "behavioral_evidence_from_interview": ["Q## quote"],
