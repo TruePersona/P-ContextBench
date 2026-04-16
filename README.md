@@ -31,7 +31,7 @@ The end goal (Steps 4-6) is to:
 
 **That's it.** This is just a starting point. The person is flat — a sketch, not a character.
 
-**File:** `PersonaEngine/step1_seed/data_samples/output/mary_alberti_seed.json`
+**File:** `step1_seed/data_samples/output/mary_alberti_seed.json`
 
 ---
 
@@ -73,7 +73,7 @@ After verification, the **hidden_facts registry** is generated: every atomic, te
 1. **Interview** — The full transcript + draft extracted profile.
 2. **Verification** — The accountability trail, corrected profile, and hidden_facts registry. **This is the canonical output that downstream steps use.**
 
-**Files:** `PersonaEngine/step2_interview/data_samples/output/{name}_interview.json` and `{name}_verification.json`
+**Files:** `step2_interview/data_samples/output/{name}_interview.json` and `{name}_verification.json`
 
 ---
 
@@ -95,7 +95,7 @@ The 5 people are whichever contacts the interview evidence most strongly support
 
 **Verification (within the same step folder):** Two checks confirm the social circle is consistent with the interview and the extracted profile, then produce a corrected social circle.
 
-**Files:** `PersonaEngine/step3_social_circle/data_samples/output/{name}_social_circle.json` and `{name}_social_circle_verification.json`
+**Files:** `step3_social_circle/data_samples/output/{name}_social_circle.json` and `{name}_social_circle_verification.json`
 
 ---
 
@@ -131,30 +131,29 @@ Execute the verified test cases against the model under evaluation and score per
 ├── Contributor.md
 ├── LICENSE                      # Apache 2.0
 ├── Top_level_generator.py       # Orchestrates the full pipeline
-└── PersonaEngine/
-    ├── step1_seed/
-    │   ├── README.md
-    │   ├── prompt.txt
-    │   ├── generator.py
-    │   └── data_samples/
-    │       └── output/          # 5 seed JSONs
-    ├── step2_interview/
-    │   ├── README.md
-    │   ├── prompt.txt           # 109-question interview prompt
-    │   ├── verification_prompt.txt
-    │   ├── generator.py         # Iterative refinement loop
-    │   └── data_samples/
-    │       └── output/          # Interview + verification JSONs
-    ├── step3_social_circle/
-    │   ├── README.md
-    │   ├── prompt.txt
-    │   ├── verification_prompt.txt
-    │   ├── generator.py
-    │   └── data_samples/
-    │       └── output/          # Social circle + verification JSONs
-    ├── step4_app_log_synthesizer/
-    ├── step5_testcases_synthesis/
-    └── step6_benchmark_runner/
+├── step1_seed/
+│   ├── README.md
+│   ├── prompt.txt
+│   ├── generator.py
+│   └── data_samples/
+│       └── output/          # 5 seed JSONs
+├── step2_interview/
+│   ├── README.md
+│   ├── prompt.txt           # 109-question interview prompt
+│   ├── verification_prompt.txt
+│   ├── generator.py         # Iterative refinement loop
+│   └── data_samples/
+│       └── output/          # Interview + verification JSONs
+├── step3_social_circle/
+│   ├── README.md
+│   ├── prompt.txt
+│   ├── verification_prompt.txt
+│   ├── generator.py
+│   └── data_samples/
+│       └── output/          # Social circle + verification JSONs
+├── step4_app_log_synthesizer/
+├── step5_testcases_synthesis/
+└── step6_benchmark_runner/
 ```
 
 Each step is self-contained: prompt, verification prompt, generator script, and sample data. The generator script runs the prompt, verifies, and regenerates if needed.
@@ -165,7 +164,7 @@ For each persona, run the generator scripts in order (Step 1 → 2 → 3). All p
 
 Short version:
 ```bash
-python Top_level_generator.py --seed PersonaEngine/step1_seed/data_samples/output/{name}_seed.json
+python Top_level_generator.py --seed step1_seed/data_samples/output/{name}_seed.json
 ```
 
 ## References

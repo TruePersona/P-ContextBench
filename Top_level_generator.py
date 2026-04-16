@@ -14,9 +14,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent
-STEP1_DIR = REPO_ROOT / "PersonaEngine" / "step1_seed"
-STEP2_DIR = REPO_ROOT / "PersonaEngine" / "step2_interview"
-STEP3_DIR = REPO_ROOT / "PersonaEngine" / "step3_social_circle"
+STEP1_DIR = REPO_ROOT / "step1_seed"
+STEP2_DIR = REPO_ROOT / "step2_interview"
+STEP3_DIR = REPO_ROOT / "step3_social_circle"
 
 
 def run_subprocess(cmd: list[str]) -> int:
