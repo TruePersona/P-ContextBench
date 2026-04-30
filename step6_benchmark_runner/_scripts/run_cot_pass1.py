@@ -64,10 +64,21 @@ def run_pass_1_cot(persona: str, model: str, type5_only: bool = False) -> dict:
     print(
         f"[cot/{persona}] pass1 model={model} "
         f"raw_log_tokens~{approx_token_count(raw_logs)} "
-        f"cases={len(stripped['test_cases'])}"
+        f"cases={len(stripped['test_cases'])}",
+        flush=True,
     )
-    raw = call_claude_cli(prompt, model=model)
-    answers = extract_json(raw)
+    last_err = None
+    answers = None
+    for attempt in range(1, 4):
+        try:
+            raw = call_claude_cli(prompt, model=model, timeout_sec=1800, max_retries=1)
+            answers = extract_json(raw)
+            break
+        except (ValueError, RuntimeError) as e:
+            last_err = e
+            print(f"  [cot/{persona}] pass1 attempt {attempt}/3 failed: {e}", flush=True)
+    if answers is None:
+        raise RuntimeError(f"Pass 1 failed after 3 attempts: {last_err}")
     answers.setdefault("metadata", {})
     answers["metadata"]["pass_1_date"] = date.today().isoformat()
     answers["metadata"]["model_used"] = model
