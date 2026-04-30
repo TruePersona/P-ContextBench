@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from _cli_helpers import (
     approx_token_count,
+    call_and_parse_json,
     call_claude_cli,
     extract_json,
     fill,
@@ -67,7 +68,7 @@ def run_one_budget(
     p1 = fill(p1, "{{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}", stripped)
 
     print(f"[ablation/{persona}/{label}] pass1 tokens~{actual_tokens}")
-    answers = extract_json(call_claude_cli(p1, model=pass1_model))
+    answers = call_and_parse_json(p1, model=pass1_model, max_retries=3)
     answers.setdefault("metadata", {})
     answers["metadata"]["pass_1_date"] = date.today().isoformat()
     answers["metadata"]["model_used"] = pass1_model
@@ -101,7 +102,7 @@ def run_one_budget(
             f"{len(batch)} entries."
         )
         print(f"[ablation/{persona}/{label}] pass2 batch {bi}/{len(batches)}", flush=True)
-        parsed = extract_json(call_claude_cli(bp, model=pass2_model, timeout_sec=1500, max_retries=2))
+        parsed = call_and_parse_json(bp, model=pass2_model, timeout_sec=1500, max_retries=3)
         evals = parsed.get("evaluations", [])
         case_meta = {c["id"]: c for c in batch}
         for ev in evals:
@@ -124,15 +125,20 @@ def run_one_budget(
     return result
 
 
-def run(persona: str, budgets: list[int | None], pass1_model: str, pass2_model: str) -> None:
+def run(persona: str, budgets: list[int | None], pass1_model: str, pass2_model: str, skip_existing: bool = True) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     app_logs = json.loads((STEP4_OUT / f"{persona}_app_logs.json").read_text(encoding="utf-8"))
     test_cases = json.loads((STEP5_OUT / f"{persona}_test_cases.json").read_text(encoding="utf-8"))
     raw_full = strip_to_raw_logs(app_logs)
-    print(f"[ablation/{persona}] full raw_log tokens~{approx_token_count(raw_full)}")
+    print(f"[ablation/{persona}] full raw_log tokens~{approx_token_count(raw_full)}", flush=True)
 
     summary = []
     for b in budgets:
+        label = "full" if b is None else f"{b}"
+        target = OUT_DIR / f"{persona}_benchmark_results_{label}.json"
+        if skip_existing and target.exists():
+            print(f"[skip] {persona}/{label} already done -> {target}", flush=True)
+            continue
         result = run_one_budget(persona, raw_full, test_cases, b, pass1_model, pass2_model)
         summary.append(
             {
