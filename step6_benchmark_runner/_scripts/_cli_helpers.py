@@ -99,6 +99,29 @@ def extract_json(text: str) -> dict[str, Any]:
     return json.loads(payload[start:])
 
 
+def call_and_parse_json(
+    prompt: str,
+    model: str | None = None,
+    timeout_sec: int = 1800,
+    max_retries: int = 3,
+) -> dict[str, Any]:
+    """Call the CLI and parse JSON, with retries on either CLI-level or
+    JSON-parse-level failure. Used for Pass 2 batches and similar where
+    the CLI sometimes returns text that doesn't contain a JSON object."""
+    last_err: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            raw = call_claude_cli(prompt, model=model, timeout_sec=timeout_sec, max_retries=1)
+            return extract_json(raw)
+        except (ValueError, RuntimeError, json.JSONDecodeError) as e:
+            last_err = e
+            print(
+                f"  [call_and_parse] attempt {attempt}/{max_retries} failed: {e}",
+                flush=True,
+            )
+    raise RuntimeError(f"call_and_parse failed after {max_retries} attempts: {last_err}")
+
+
 def fill(template: str, placeholder: str, payload: Any) -> str:
     if isinstance(payload, str):
         return template.replace(placeholder, payload)
