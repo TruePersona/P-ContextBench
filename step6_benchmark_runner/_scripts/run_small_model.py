@@ -34,12 +34,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from _cli_helpers import (
     approx_token_count,
+    call_and_parse_json,
     call_claude_cli,
     extract_json,
     fill,
     load_prompt_sections,
     strip_ground_truth,
     strip_to_raw_logs,
+    strip_to_raw_logs_filler_pruned,
     truncate_to_tokens,
 )
 from run_pass2_batched import aggregate as aggregate_pass2, chunk as chunk_cases
@@ -52,14 +54,23 @@ PROMPT = STEP6 / "prompt.txt"
 OUT_DIR = STEP6 / "data_samples" / "output_small_models"
 
 # Small models cannot fit the full ~220K-token Julio log. Truncate to fit
-# their 128K context windows. Budget breakdown for gpt-4o-mini:
-#   128K total - 16K output - 10K prompt template - 5K test batch - margin
-#   = ~80K for raw logs (with safety margin since char/token ratio drifts).
-SMALL_MODEL_LOG_BUDGET_TOKENS = 80_000
+# their 128K context windows.
+#
+# With filler-pruned mode (default): all meaningful sessions + all calendar
+# events are retained, filler is sampled to hit the budget. The prior
+# MODEL_TIER_COMPARISON run used 110K input tokens (sampling 434 of 2,445
+# filler sessions, ~18%) for the same purpose. We match that.
+#
+# Budget breakdown for gpt-4o-mini at 110K log target:
+#   128K total - 8K output - 8K prompt template - 2K test batch - margin
+#   = ~110K available for raw logs.
+SMALL_MODEL_LOG_BUDGET_TOKENS = 110_000
 
-# Per-provider hard ceilings on output tokens.
+# Per-provider hard ceilings on output tokens. Ollama models with reasoning
+# (qwen3.5 thinking mode) can emit 20K+ tokens of scratchpad before the answer.
+# Bumped to 32K so reasoning + answer + JSON wrapper fit even on a 5-case batch.
 OPENAI_MAX_OUTPUT = 8_000
-OLLAMA_MAX_OUTPUT = 8_000
+OLLAMA_MAX_OUTPUT = 32_000
 
 # OpenAI gpt-4o-mini: 200K TPM cap. Each batch ~95K tokens. Sleep between
 # batches to stay under the cap with safety margin.
@@ -83,14 +94,18 @@ def _load_openai_key() -> str:
 
 def call_openai(prompt: str, model: str, max_tokens: int, max_retries: int = 4) -> str:
     api_key = _load_openai_key()
-    body = json.dumps(
-        {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens,
-            "temperature": 0,
-        }
-    ).encode("utf-8")
+    # gpt-5* and reasoning models require max_completion_tokens; legacy gpt-4*
+    # uses max_tokens. Send the right parameter for the model family.
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3") or model.startswith("o4"):
+        payload["max_completion_tokens"] = max_tokens
+    else:
+        payload["max_tokens"] = max_tokens
+        payload["temperature"] = 0
+    body = json.dumps(payload).encode("utf-8")
     last_err = ""
     for attempt in range(max_retries):
         req = urllib.request.Request(
@@ -128,24 +143,29 @@ def call_openai(prompt: str, model: str, max_tokens: int, max_retries: int = 4) 
 
 
 def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
-    # 32K context fits qwen3:8b on a 16GB GPU. num_gpu=99 forces all model
-    # layers onto GPU; without it Ollama may keep the model on CPU even when
-    # VRAM is available, dropping inference speed to ~1 token/sec.
+    # qwen3.5:4b at Q4_K_M fits in ~11GB VRAM on a 16GB GPU with the full 131K
+    # context. num_gpu=99 forces all model layers onto GPU.
+    #
+    # Qwen3.5 has a thinking mode that can emit 20K+ tokens of scratchpad
+    # before the JSON answer. /api/chat with think:false reliably suppresses
+    # the scratchpad; /api/generate ignores think:false in some Ollama
+    # versions. Use /api/chat as the primary path.
     body = json.dumps(
         {
             "model": model,
-            "prompt": prompt,
+            "messages": [{"role": "user", "content": prompt}],
             "stream": False,
+            "think": False,
             "options": {
                 "num_predict": max_tokens,
-                "num_ctx": 32768,
+                "num_ctx": 131072,
                 "num_gpu": 99,
                 "temperature": 0,
             },
         }
     ).encode("utf-8")
     req = urllib.request.Request(
-        "http://localhost:11434/api/generate",
+        "http://127.0.0.1:11434/api/chat",
         data=body,
         headers={"Content-Type": "application/json"},
     )
@@ -154,10 +174,10 @@ def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.URLError as e:
         raise RuntimeError(
-            "Ollama not reachable at http://localhost:11434. "
+            "Ollama not reachable at http://127.0.0.1:11434. "
             "Ensure `ollama serve` is running and the model is pulled."
         ) from e
-    return data.get("response", "")
+    return data.get("message", {}).get("content", "")
 
 
 def call_provider(provider: str, prompt: str, model: str, max_tokens: int) -> str:
@@ -165,6 +185,8 @@ def call_provider(provider: str, prompt: str, model: str, max_tokens: int) -> st
         return call_openai(prompt, model, max_tokens)
     if provider == "ollama":
         return call_ollama(prompt, model, max_tokens)
+    if provider == "claude_cli":
+        return call_claude_cli(prompt, model=model, timeout_sec=1500, max_retries=2)
     raise ValueError(f"unknown provider: {provider}")
 
 
@@ -178,12 +200,19 @@ def run_pass1_batched(
     model: str,
     batch_size: int,
     log_budget: int | None = None,
+    truncation: str = "filler_pruned",
+    seed: int = 42,
 ) -> dict[str, Any]:
     app_logs = json.loads((STEP4_OUT / f"{persona}_app_logs.json").read_text(encoding="utf-8"))
     test_cases = json.loads((STEP5_OUT / f"{persona}_test_cases.json").read_text(encoding="utf-8"))
-    raw_full = strip_to_raw_logs(app_logs)
     budget = log_budget if log_budget is not None else SMALL_MODEL_LOG_BUDGET_TOKENS
-    raw_logs = truncate_to_tokens(raw_full, budget)
+    if truncation == "filler_pruned":
+        raw_logs = strip_to_raw_logs_filler_pruned(app_logs, target_tokens=budget, seed=seed)
+    elif truncation == "chronological":
+        raw_full = strip_to_raw_logs(app_logs)
+        raw_logs = truncate_to_tokens(raw_full, budget)
+    else:
+        raise ValueError(f"unknown truncation mode: {truncation}")
     actual_tokens = approx_token_count(raw_logs)
 
     stripped = strip_ground_truth(test_cases)
@@ -235,10 +264,12 @@ def run_pass1_batched(
                 )
         all_answers.extend(answers)
 
+    truncation_meta = truncation
     pass1 = {
         "metadata": {
             "persona": test_cases.get("metadata", {}).get("persona", persona),
             "participant_id": test_cases.get("metadata", {}).get("participant_id", ""),
+            "truncation": truncation_meta,
             "pass_1_date": date.today().isoformat(),
             "model_used": f"{provider}:{model}",
             "raw_log_token_count": actual_tokens,
@@ -281,7 +312,7 @@ def run_pass2_via_claude(persona: str, pass1: dict, judge_model: str) -> dict[st
             f"array containing exactly {len(batch)} entries."
         )
         print(f"[pass2/{persona}] batch {bi}/{len(batches)} judge={judge_model}", flush=True)
-        parsed = extract_json(call_claude_cli(prompt, model=judge_model, timeout_sec=1500, max_retries=2))
+        parsed = call_and_parse_json(prompt, model=judge_model, timeout_sec=1500, max_retries=3)
         evals = parsed.get("evaluations", [])
         case_meta = {c["id"]: c for c in batch}
         for ev in evals:
@@ -303,10 +334,16 @@ def run(
     batch_size: int,
     judge_model: str,
     log_budget: int | None = None,
+    truncation: str = "filler_pruned",
+    seed: int = 42,
 ) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    pass1 = run_pass1_batched(persona, provider, model, batch_size, log_budget)
-    suffix = provider if provider == "ollama" else model.replace("-", "")
+    pass1 = run_pass1_batched(
+        persona, provider, model, batch_size, log_budget,
+        truncation=truncation, seed=seed,
+    )
+    base_suffix = provider if provider == "ollama" else model.replace("-", "")
+    suffix = f"{base_suffix}_pruned" if truncation == "filler_pruned" else base_suffix
     pass1_path = OUT_DIR / f"{persona}_pass1_{suffix}.json"
     pass1_path.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
     print(
@@ -323,14 +360,18 @@ def run(
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--persona", required=True)
-    ap.add_argument("--provider", required=True, choices=["openai", "ollama"])
+    ap.add_argument("--provider", required=True, choices=["openai", "ollama", "claude_cli"])
     ap.add_argument("--model", required=True)
     ap.add_argument("--batch-size", type=int, default=5)
     ap.add_argument("--judge-model", default="sonnet")
     ap.add_argument("--log-budget", type=int, default=None,
                     help="Override raw log token budget (default: 80K for openai, 25K recommended for ollama qwen3:8b on consumer GPU)")
+    ap.add_argument("--truncation", default="filler_pruned", choices=["filler_pruned", "chronological"],
+                    help="filler_pruned (default) keeps all meaningful sessions + samples filler. chronological cuts at the budget boundary.")
+    ap.add_argument("--seed", type=int, default=42, help="Filler-sampling seed.")
     args = ap.parse_args()
-    run(args.persona, args.provider, args.model, args.batch_size, args.judge_model, args.log_budget)
+    run(args.persona, args.provider, args.model, args.batch_size, args.judge_model,
+        args.log_budget, truncation=args.truncation, seed=args.seed)
 
 
 if __name__ == "__main__":

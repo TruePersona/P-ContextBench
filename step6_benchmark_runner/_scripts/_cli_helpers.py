@@ -142,6 +142,107 @@ def load_prompt_sections(prompt_path: Path) -> dict[str, str]:
     return {"pass1": pass1, "pass2": pass2}
 
 
+def strip_to_raw_logs_filler_pruned(
+    app_logs: dict[str, Any],
+    target_tokens: int,
+    seed: int = 42,
+) -> str:
+    """Flatten messenger + calendar to text, but downsample filler sessions
+    so the total fits target_tokens. All meaningful_sessions and all calendar
+    events are retained. Filler sessions are sampled deterministically by
+    seed.
+
+    This is the fair-comparison truncation: every model under test sees the
+    same meaningful evidence, with filler scaled to the model's context
+    window. Avoids the failure mode where naive chronological truncation
+    accidentally drops meaningful evidence in late-window dates.
+    """
+    import random as _random
+
+    messenger = app_logs.get("messenger", {})
+    meaningful_sessions = messenger.get("meaningful_sessions", []) or []
+    filler_sessions = messenger.get("filler_sessions", []) or []
+    calendar = app_logs.get("calendar", {})
+    cal_events = calendar.get("events", []) if isinstance(calendar, dict) else (calendar or [])
+
+    persona_name = app_logs.get("persona_name") or app_logs.get("name", "persona")
+
+    def render_session(s: dict[str, Any]) -> str:
+        contact = s.get("contact") or s.get("other_person") or "unknown"
+        date = s.get("date", "")
+        out = [f"--- {date} | {persona_name} <-> {contact} ---"]
+        for m in s.get("messages", []) or []:
+            out.append(f"[{m.get('time','')}] {m.get('sender','')}: {m.get('text','')}")
+        out.append("")
+        return "\n".join(out)
+
+    def render_event(e: dict[str, Any]) -> str:
+        date = e.get("date", "")
+        start = e.get("start_time", "")
+        end = e.get("end_time", "")
+        title = e.get("title", "")
+        loc = e.get("location", "")
+        participants = ", ".join(e.get("participants", []) or [])
+        notes = e.get("notes", "")
+        return (
+            f"{date} | {start}-{end} | {title} | @ {loc} | with {participants} | "
+            f"Notes: {notes}"
+        )
+
+    meaningful_sorted = sorted(
+        meaningful_sessions,
+        key=lambda s: (s.get("date", ""), (s.get("messages") or [{"time": ""}])[0].get("time", "")),
+    )
+    cal_sorted = sorted(cal_events, key=lambda e: (e.get("date", ""), e.get("start_time", "")))
+
+    fixed_text_parts = [render_session(s) for s in meaningful_sorted]
+    fixed_text_parts.extend(render_event(e) for e in cal_sorted)
+    fixed_text = "\n".join(fixed_text_parts)
+    fixed_tokens = approx_token_count(fixed_text)
+
+    remaining = target_tokens - fixed_tokens
+    if remaining <= 0 or not filler_sessions:
+        return fixed_text
+
+    rng = _random.Random(seed)
+    rendered_filler = [render_session(s) for s in filler_sessions]
+    indexed = list(enumerate(rendered_filler))
+    rng.shuffle(indexed)
+
+    accumulated_chars = 0
+    char_budget = remaining * 4
+    selected_idx: list[int] = []
+    for idx, text in indexed:
+        if accumulated_chars + len(text) > char_budget:
+            continue
+        selected_idx.append(idx)
+        accumulated_chars += len(text)
+
+    selected_idx.sort()
+
+    all_lines: list[str] = []
+    meaningful_by_date: list[tuple[str, str]] = []
+    for s in meaningful_sorted:
+        meaningful_by_date.append((
+            s.get("date", ""),
+            render_session(s),
+        ))
+    for idx in selected_idx:
+        s = filler_sessions[idx]
+        meaningful_by_date.append((
+            s.get("date", ""),
+            rendered_filler[idx],
+        ))
+
+    meaningful_by_date.sort(key=lambda x: x[0])
+    for _, text in meaningful_by_date:
+        all_lines.append(text)
+    for e in cal_sorted:
+        all_lines.append(render_event(e))
+
+    return "\n".join(all_lines)
+
+
 def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
     """Same flattening as the canonical generator.py — keep in sync."""
     lines: list[str] = []

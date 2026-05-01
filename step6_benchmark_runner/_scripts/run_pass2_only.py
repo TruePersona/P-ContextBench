@@ -20,6 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from _cli_helpers import (
+    call_and_parse_json,
     call_claude_cli,
     extract_json,
     fill,
@@ -61,7 +62,7 @@ def run(persona: str, pass1_path: Path, judge_model: str, batch_size: int, out_p
             f"{len(batch)} entries."
         )
         print(f"[pass2/{persona}] batch {bi}/{len(batches)} judge={judge_model}", flush=True)
-        parsed = extract_json(call_claude_cli(prompt, model=judge_model, timeout_sec=1500, max_retries=2))
+        parsed = call_and_parse_json(prompt, model=judge_model, timeout_sec=1500, max_retries=3)
         evals = parsed.get("evaluations", [])
         case_meta = {c["id"]: c for c in batch}
         for ev in evals:

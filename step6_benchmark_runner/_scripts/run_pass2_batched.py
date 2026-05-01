@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from _cli_helpers import (
+    call_and_parse_json,
     call_claude_cli,
     extract_json,
     fill,
@@ -141,8 +142,7 @@ def run(persona: str, judge_model: str, batch_size: int) -> None:
             f"{persona} judge={judge_model} cases={batch[0]['id']}..{batch[-1]['id']}",
             flush=True,
         )
-        raw = call_claude_cli(prompt, model=judge_model, timeout_sec=1500, max_retries=2)
-        parsed = extract_json(raw)
+        parsed = call_and_parse_json(prompt, model=judge_model, timeout_sec=1500, max_retries=3)
         evals = parsed.get("evaluations", [])
         # Merge in subtype/is_capstone from test_cases for aggregation
         case_meta = {c["id"]: c for c in batch}
