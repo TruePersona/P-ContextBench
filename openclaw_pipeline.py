@@ -49,13 +49,21 @@ STEP6_DIR = REPO_ROOT / "step6_benchmark_runner"
 def call_claude(prompt: str, model: str | None = None, max_retries: int = 2) -> str:
     """Call the `claude` CLI with a prompt written to a temp file.
 
+    Each call is a fresh OS subprocess. Tools are explicitly disabled via
+    `--tools ""` so the LLM is a pure inference function for the duration of
+    the call: prompt on stdin, response on stdout, no filesystem access, no
+    shell access, no network access beyond the model API. This is the
+    benchmark's structural isolation guarantee. The orchestrator (this
+    Python process) handles all I/O.
+
     Uses a temp file to dodge Windows cmdline / pipe length limits on long
     prompts (the pipeline's merge prompt can exceed 100KB).
 
     If `model` is provided, passes `--model {model}` to the CLI so the run is
-    deterministic across CLI default drifts.
+    deterministic across CLI default drifts. Always pin to an exact model
+    string (e.g. `claude-opus-4-7`), never an alias (`opus`).
     """
-    cmd = [CLAUDE_CMD, "-p"]
+    cmd = [CLAUDE_CMD, "-p", "--tools", ""]
     if model:
         cmd += ["--model", model]
     last_stderr = ""
@@ -230,14 +238,19 @@ def run_step4(
     log_end: str,
     per_fact_max_attempts: int,
     model: str | None = None,
+    verifier_model: str | None = None,
 ) -> Path:
     """Per-fact generate-then-verify loop via the CLI, then merge.
 
-    Without true model independence (one CLI on one subscription), the
-    reverse-inferability gate is prompt-enforced rather than model-enforced.
-    The verifier subprocess still receives only the fragments, not the hidden
-    fact, so its inference is a genuine test of fragment sufficiency.
+    The reverse-inferability gate is the structural defense: each hidden fact's
+    fragments must be re-recoverable by an independent verifier model that does
+    not see the ground-truth label. Pass a different `verifier_model` from
+    `model` so the gate is not the generator pattern-matching its own output.
+    Both invocations are fresh `claude -p --tools ""` subprocesses, so the
+    verifier has no access to the generator's prompt or response history.
     """
+    if verifier_model is None:
+        verifier_model = model
     hidden_facts = profile["hidden_facts"]
     persona = {
         "name": profile.get("name", ""),
@@ -286,7 +299,7 @@ def run_step4(
                 "{{PERSONA_OCCUPATION}}", str(persona["occupation"])
             )
             ver_prompt = ver_prompt.replace("{{PERSONA_LOCATION}}", str(persona["location"]))
-            verification = extract_json(call_claude(ver_prompt, model=model))
+            verification = extract_json(call_claude(ver_prompt, model=verifier_model))
             last_fragments = fragments
             last_verification = verification
 
@@ -342,8 +355,8 @@ def run_step4(
     merge_prompt = fill(merge_prompt, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", [])
 
     app_log = extract_json(call_claude(merge_prompt, model=model))
-    # Defense-in-depth: strip per-session/per-event source_fact_ids so a
-    # Backend C orchestrator that hands the raw JSON to a Pass 1 subagent
+    # Defense-in-depth: strip per-session/per-event source_fact_ids so any
+    # downstream consumer that hands the raw JSON to a Pass 1 inference call
     # cannot accidentally leak fact-anchored sessions. Traceability is
     # preserved via cross_app_index.
     messenger = app_log.get("messenger", {})
@@ -443,6 +456,7 @@ def run_pipeline(
     log_end: str = "2026-04-20",
     per_fact_max_attempts: int = 3,
     model: str | None = None,
+    verifier_model: str | None = None,
     judge_model: str | None = None,
 ) -> None:
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
@@ -487,7 +501,8 @@ def run_pipeline(
     if start <= 4 <= stop:
         run_step4(
             profile, corrected_social_circle, step4_out, name,
-            log_start, log_end, per_fact_max_attempts, model=model,
+            log_start, log_end, per_fact_max_attempts,
+            model=model, verifier_model=verifier_model,
         )
 
     app_logs_path = step4_out / f"{n}_app_logs.json"
@@ -528,6 +543,12 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=Path, help="Path to a seed JSON")
     parser.add_argument(
+        "--persona", type=str, default=None,
+        help="Persona name shorthand (e.g. julio_simmons); resolves to "
+        "step1_seed/data_samples/output/<persona>_seed.json. Mutually "
+        "exclusive with --seed and --all.",
+    )
+    parser.add_argument(
         "--all", action="store_true", help="Run against every seed JSON in step1_seed/"
     )
     parser.add_argument("--start", type=int, default=2, choices=[2, 3, 4, 5, 6])
@@ -536,19 +557,51 @@ def main() -> None:
     parser.add_argument("--log-end", default="2026-04-20")
     parser.add_argument("--per-fact-max-attempts", type=int, default=3)
     parser.add_argument(
-        "--model", default=None,
-        help="Model passed to every `claude -p` call (e.g. claude-opus-4-6). "
-        "If omitted, the CLI's configured default is used.",
+        "--model", default="claude-opus-4-7",
+        help="Generator model passed to every `claude -p` call. MUST be an "
+        "exact pinned string (e.g. claude-opus-4-7), never an alias (`opus`). "
+        "Aliases drift across CLI versions; reproducibility requires the exact "
+        "model identifier in the artifact metadata.",
     )
     parser.add_argument(
-        "--judge-model", default=None,
-        help="Model used for Step 6 Pass 2 scoring. Defaults to --model. "
-        "Pass a different model here to keep the scorer independent.",
+        "--verifier-model", default="claude-sonnet-4-6",
+        help="Verifier model for Step 4's reverse-inferability gate. MUST be "
+        "an exact pinned string. Should be a different model family from "
+        "--model so the verifier is independent.",
+    )
+    parser.add_argument(
+        "--judge-model", default="claude-sonnet-4-6",
+        help="Judge model for Step 6 Pass 2 scoring. MUST be an exact pinned "
+        "string. Should be different from --model to keep the scorer "
+        "independent of the answerer.",
     )
     args = parser.parse_args()
 
+    # Reject obvious aliases. Anthropic CLI may resolve aliases internally
+    # but the artifact metadata won't record which version was actually used,
+    # which breaks the reproducibility contract.
+    for flag, val in [
+        ("--model", args.model),
+        ("--verifier-model", args.verifier_model),
+        ("--judge-model", args.judge_model),
+    ]:
+        if val in {"opus", "sonnet", "haiku"}:
+            parser.error(
+                f"{flag} {val!r} is an alias. Use the exact pinned model "
+                f"string (e.g. claude-opus-4-7). Aliases drift across CLI "
+                f"versions and break reproducibility."
+            )
+
     if args.start > args.stop:
         parser.error("--start must be <= --stop")
+
+    # Resolve --persona to --seed
+    if args.persona:
+        if args.seed or args.all:
+            parser.error("--persona is mutually exclusive with --seed and --all")
+        args.seed = STEP1_DIR / "data_samples" / "output" / f"{args.persona}_seed.json"
+        if not args.seed.exists():
+            parser.error(f"Persona seed not found: {args.seed}")
 
     if args.all:
         seed_dir = STEP1_DIR / "data_samples" / "output"
@@ -556,16 +609,20 @@ def main() -> None:
             run_pipeline(
                 seed_file, args.start, args.stop,
                 args.log_start, args.log_end, args.per_fact_max_attempts,
-                model=args.model, judge_model=args.judge_model,
+                model=args.model,
+                verifier_model=args.verifier_model,
+                judge_model=args.judge_model,
             )
     elif args.seed:
         run_pipeline(
             args.seed, args.start, args.stop,
             args.log_start, args.log_end, args.per_fact_max_attempts,
-            model=args.model, judge_model=args.judge_model,
+            model=args.model,
+            verifier_model=args.verifier_model,
+            judge_model=args.judge_model,
         )
     else:
-        parser.error("Provide --seed <path> or --all")
+        parser.error("Provide --persona <name>, --seed <path>, or --all")
 
 
 if __name__ == "__main__":
