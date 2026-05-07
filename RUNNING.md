@@ -212,126 +212,249 @@ python step6_benchmark_runner/generator.py \
 
 ## Backend C: Coding agent on subscription
 
-You have a coding agent open on the repo (Claude Code, Cursor, Antigravity, Codex, Continue, Cline, Devin, or any equivalent that exposes a subagent / Task tool). You drive the pipeline by talking to an orchestrator agent that reads inputs from disk, spawns one subagent per LLM call with that step's prompt filled in, and writes outputs back to disk. Billing routes through whatever subscription powers the coding tool.
+You have a coding agent on a subscription (Claude Code, Cursor, Antigravity, Codex, Continue, Cline, Devin, or any tool that exposes a subagent / Task primitive). The agent receives a single self-contained master prompt and executes the entire PersonaBench pipeline by spawning one isolated subagent per LLM call.
 
-This is the right backend when you want to iterate: tweak a prompt, ask the orchestrator to rerun just Step 4 on one persona, inspect the trace, tweak again. It is also the only backend where every LLM call can be routed to a different model in the same run with a single sign-in.
-
-### Why this backend exists
-
-Two structural properties that Backends A and B have to approximate:
-
-- **Inherent context isolation.** Every subagent starts with a blank context. There is no session state to delete between Pass 1 calls. Step 6's session-delete hack is unnecessary here.
-- **Per-call model selection without juggling auth.** The orchestrator can spawn the Step 4 fragment generator on a frontier model and the reverse-inferability verifier on a smaller model in the same run, all under one coding-tool subscription, no API key juggling.
+This is the right backend for interactive iteration, prompt engineering, and reproducing published numbers without juggling API keys. Subagent context isolation is inherent, so the session-delete pattern from Backend B is not needed here.
 
 ### Prerequisites
 
-- A coding agent that exposes a subagent tool (the ability to spawn an isolated agent with a custom prompt).
+- A coding agent with a subagent / Task primitive exposed.
 - The agent has read and write access to the repo at the same paths used in Backends A and B.
-- A small JSON-extraction helper on the orchestrator side (regex plus `json.loads` is enough).
+- The repo is the agent's working directory; the master prompt resolves all file paths relative to it.
 
-### Runbook (one persona, Steps 4 through 6)
+### How to invoke
 
-The orchestrator pseudocode below is vendor-neutral. Translate it into your agent's subagent API. Every `spawn_subagent(prompt)` is one isolated LLM call with the prompt as the only context.
+Open a chat with the agent in the repo root. Paste the master prompt below. Send. The agent executes the entire pipeline across all personas without further input.
 
-#### Step 4: App log synthesis
-
-Inputs (read from disk):
-- `step2_interview/data_samples/output/{persona}_verification.json`, field `corrected_extracted_profile.hidden_facts`
-- `step3_social_circle/data_samples/output/{persona}_social_circle_verification.json`, field `corrected_social_circle`
+### Master prompt
 
 ```
-contact_usage = {}
-verified_fragments = []
-trace = []
+You are the orchestrator for a PersonaBench Backend C run. This prompt is
+self-contained. Execute the full pipeline below by spawning isolated
+subagents for every LLM call. Do not ask the user for clarifications.
 
-for HF in hidden_facts:
-    for attempt in 1..3:
-        # GENERATOR subagent (preferred: frontier-class model)
-        gen_prompt = step4_app_log_synthesizer/prompt.txt
-            with {{INSERT_HIDDEN_FACT_JSON_HERE}} = HF
-            with {{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}} = corrected_social_circle
-            with {{LOG_START_DATE}}, {{LOG_END_DATE}} = log window
-            with {{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}} = contact_usage
-        fragments = extract_json( spawn_subagent(gen_prompt) )
+CONFIGURATION
 
-        # VERIFIER subagent (preferred: a smaller or different model from the generator)
-        ver_prompt = step4_app_log_synthesizer/verification_prompt.txt
-            with {{INSERT_FRAGMENTS_JSON_HERE}} = fragments        # NO hidden fact
-            with {{PERSONA_NAME}}, {{PERSONA_AGE}}, {{PERSONA_OCCUPATION}}, {{PERSONA_LOCATION}}
-        verification = extract_json( spawn_subagent(ver_prompt) )
+  PERSONAS          all *_seed.json in step1_seed/data_samples/output/
+                    (override by listing names comma-separated)
+  STEPS             2, 3, 4, 5, 6
+  GENERATOR_MODEL   claude-opus-4-6
+  VERIFIER_MODEL    claude-sonnet-4-6
+  JUDGE_MODEL       claude-sonnet-4-6
+  REPO_ROOT         . (current working directory)
+  LOG_WINDOW        2026-02-20 to 2026-04-20
+  MAX_FACT_ATTEMPTS 3
+  MAX_BATCH_RETRIES 3
+  TEMPERATURE       0 (if the subagent tool exposes it)
 
-        if verification.verdict == "RECOVERED" and label_overlap >= 40%:
-            verified_fragments += tag(fragments, HF.fact_id)
-            update contact_usage from fragments
-            break
+EXECUTION DISCIPLINE
 
-# MERGE subagent (preferred: frontier-class model)
-merge_prompt = step4_app_log_synthesizer/merge_prompt.txt
-    with verified_fragments, hidden_facts, corrected_social_circle, persona, window
-app_logs = extract_json( spawn_subagent(merge_prompt) )
+  R1 Spawn rule. Every LLM call is a separate subagent invocation. A
+     subagent receives only the filled prompt as its context. It has no
+     access to your chat history or to other subagents' contexts.
 
-write app_logs   -> step4_app_log_synthesizer/data_samples/output/{persona}_app_logs.json
-write trace      -> step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json
+  R2 JSON parse rule. Every subagent response is parsed as JSON. On parse
+     failure, retry the same call up to MAX_BATCH_RETRIES times. After
+     exhaustion, record the case as INCORRECT (Step 6) or passed:false
+     (Step 4) and continue. Never fabricate a JSON response.
+
+  R3 Determinism rule. Pass TEMPERATURE to every subagent if the tool
+     exposes it. Output is still subject to model-side nondeterminism, but
+     variance is minimized.
+
+  R4 Provenance rule. Every output JSON's metadata block records: backend
+     "C", agent_tool (your tool name), generator_model, verifier_model,
+     judge_model, run_date in ISO 8601, master_prompt_sha256 (SHA-256 of
+     the literal text of this prompt as pasted).
+
+  R5 Halt rule. If any step's verification reports more than 3 consecutive
+     rejections for the same persona, halt that persona, log the failure,
+     continue with the next persona. Do not halt the whole run.
+
+PIPELINE
+
+  For each persona P in PERSONAS:
+    Log: "=== {P} === starting at {ISO timestamp}"
+
+    Step 2 — Interview and verification (run if STEPS includes 2)
+      Read   step1_seed/data_samples/output/{P}_seed.json
+      Spawn  step2_interview/prompt.txt filled with seed JSON.
+             Model: GENERATOR_MODEL. Capture interview_json.
+             Validate keys "transcript" and "extracted_profile" exist.
+      Spawn  step2_interview/verification_prompt.txt filled with seed,
+             interview_json.transcript, interview_json.extracted_profile.
+             Model: VERIFIER_MODEL. Capture verification_json.
+             Validate "corrected_extracted_profile" exists.
+      Write  step2_interview/data_samples/output/{P}_interview.json
+             step2_interview/data_samples/output/{P}_verification.json
+
+    Step 3 — Social circle and verification (run if STEPS includes 3)
+      Read   {P}_verification.json (Step 2), {P}_interview.json (Step 2)
+      Spawn  step3_social_circle/prompt.txt filled with
+             corrected_extracted_profile and transcript.
+             Model: GENERATOR_MODEL. Capture circle_json.
+      Spawn  step3_social_circle/verification_prompt.txt filled with
+             profile, transcript, circle_json.
+             Model: VERIFIER_MODEL. Capture verification_json.
+             Validate "corrected_social_circle" exists.
+      Write  step3_social_circle/data_samples/output/{P}_social_circle.json
+             step3_social_circle/data_samples/output/{P}_social_circle_verification.json
+
+    Step 4 — App log synthesis (run if STEPS includes 4)
+      Read   corrected_extracted_profile.hidden_facts (Step 2)
+             corrected_social_circle (Step 3)
+      State  contact_usage = {} (mutable, accumulates across hidden facts)
+             verified_fragments = []
+             trace = []
+
+      For each hidden_fact HF in hidden_facts:
+        For attempt in 1..MAX_FACT_ATTEMPTS:
+          Spawn step4_app_log_synthesizer/prompt.txt filled with HF,
+                corrected_social_circle, LOG_WINDOW.start, LOG_WINDOW.end,
+                contact_usage. Model: GENERATOR_MODEL.
+                Capture fragments_json.
+          Spawn step4_app_log_synthesizer/verification_prompt.txt filled
+                with fragments_json (HF NOT included), persona identity
+                (name, age, occupation, location).
+                Model: VERIFIER_MODEL. Capture verification_json.
+          If verification_json.verdict == "RECOVERED":
+            Compute label_token_overlap =
+              |recovered_tokens ∩ ground_truth_tokens| / |ground_truth_tokens|
+              where tokens are alphanumeric substrings of length >= 3
+              extracted from candidate_label and ground_truth_label.
+            If label_token_overlap >= 0.40:
+              Append fragments to verified_fragments tagged with HF.fact_id.
+              Update contact_usage from fragments_json.contacts_used.
+              Append passed:true to trace.
+              Break attempt loop.
+        After attempts (loop exhausted without success):
+          Append passed:false to trace.
+          Append fragments_json (last attempt) to verified_fragments anyway.
+
+      Spawn  step4_app_log_synthesizer/merge_prompt.txt filled with
+             verified_fragments, hidden_facts, corrected_social_circle,
+             persona identity, LOG_WINDOW. Model: GENERATOR_MODEL.
+             Capture app_logs_json.
+
+      Sanitize: in app_logs_json, delete any "source_fact_ids" key from
+                every session in messenger.{meaningful_sessions,
+                filler_sessions, sessions} and from every event in
+                calendar.events. Defense in depth: a Pass 1 subagent that
+                bypasses the stripper still cannot see fact-anchored
+                sessions.
+
+      Write  step4_app_log_synthesizer/data_samples/output/{P}_app_logs.json
+             step4_app_log_synthesizer/data_samples/output/{P}_app_logs_trace.json
+
+    Step 5 — Test case synthesis (run if STEPS includes 5)
+      Read   profile (Step 2), app_logs (Step 4),
+             corrected_social_circle (Step 3)
+      Spawn  step5_testcases_synthesis/prompt.txt filled with all three.
+             Model: GENERATOR_MODEL. Capture test_cases_json.
+      Spawn  step5_testcases_synthesis/verification_prompt.txt filled with
+             test_cases_json, profile, app_logs.
+             Model: VERIFIER_MODEL. Capture verification_json.
+      If verification_json.coverage_deficit non-empty OR rejected count > 0:
+        Re-run generation with feedback. Up to 3 iterations total. The
+        last iteration's output is retained even if it does not pass.
+      Write  step5_testcases_synthesis/data_samples/output/{P}_test_cases.json
+             step5_testcases_synthesis/data_samples/output/{P}_test_cases_verification.json
+
+    Step 6 — Benchmark runner (run if STEPS includes 6)
+      Read   app_logs (Step 4), test_cases (Step 5)
+
+      Flatten app_logs to raw_text. Read ONLY these fields:
+        From each session in messenger.{meaningful_sessions, filler_sessions,
+        sessions}, sorted by date then first-message time:
+          emit "--- {date} | {persona_name} <-> {contact} ---"
+          for each message: emit "[{time}] {sender}: {text}"
+        From each event in calendar.events, sorted by date then start_time:
+          emit "{date} | {start_time}-{end_time} | {title} | @ {location} |
+                with {participants} | Notes: {notes}"
+        Do NOT read source_fact_ids, theme_plan, hidden_facts,
+        cross_app_index, persona_inputs_used, token_stats, session_id,
+        event_id, or any other field. The raw_text contains messenger
+        and calendar surface only.
+
+      Strip test cases. From every test case, remove fields:
+        ground_truth, expected_evidence, source_hidden_fact_ids,
+        source_subcategories, risk_surface_score, user_prompt_context,
+        expected_behavior.
+        Keep: id, type, subtype, framing, question, difficulty.
+        Call this stripped_cases.
+
+      Pass 1: For each test case TC in stripped_cases:
+        Spawn step6_benchmark_runner/prompt.txt PASS 1 section filled with
+              raw_text and the single test case TC.
+              Model: GENERATOR_MODEL. Each spawn is a fresh subagent,
+              zero shared history with prior cases.
+              Capture answer_json. Append to pass1_answers.
+
+      Write step6_benchmark_runner/data_samples/output/{P}_pass1_answers.json
+            step6_benchmark_runner/data_samples/output/{P}_app_logs_raw.txt
+
+      Pass 2: For each batch of 20 test cases:
+        Spawn step6_benchmark_runner/prompt.txt PASS 2 section filled with
+              the full test cases for the batch (including ground_truth)
+              and the corresponding pass1_answers entries.
+              Model: JUDGE_MODEL. Capture evaluations.
+      Aggregate evaluations into benchmark_results with overall_accuracy,
+      accuracy_by_type, type_5_breakdown.
+
+      Write step6_benchmark_runner/data_samples/output/{P}_benchmark_results.json
+
+    Log: "=== {P} === complete. Outputs written. Counts: <type counts>."
+
+INVARIANTS (verify after each persona; halt run if any fails)
+
+  I1 Every output file listed in per-step Write blocks exists on disk.
+  I2 Step 4 app_logs.json contains zero "source_fact_ids" keys inside any
+     session or event object.
+  I3 The Step 6 raw_text passed to Pass 1 contains zero occurrences of
+     "source_fact_ids", "theme_plan", "hidden_facts", "cross_app_index".
+  I4 Step 6 pass1_answers.json metadata records GENERATOR_MODEL.
+  I5 Step 6 benchmark_results.json metadata records both GENERATOR_MODEL
+     and JUDGE_MODEL.
+  I6 Every output JSON's metadata block contains backend "C", agent_tool,
+     run_date in ISO 8601, master_prompt_sha256.
+
+REFERENCES
+
+  Step prompt files: step{N}_*/prompt.txt, verification_prompt.txt,
+  merge_prompt.txt where applicable.
+  Background: README.md, RUNNING.md, REVIEW.md, PIPELINE_DESIGN.md.
+  Reproducibility contract: each output is a deterministic function of
+  inputs and model selection (modulo LLM stochasticity). The
+  master_prompt_sha256 in metadata is the fingerprint a reviewer
+  compares against the published reference.
+
+Begin with the first persona in PERSONAS at Step 2. Continue without
+asking until all personas complete or an invariant fails.
 ```
 
-#### Step 5: Test case synthesis
+### Variations
 
-```
-gen_prompt = step5_testcases_synthesis/prompt.txt
-    with corrected_extracted_profile, app_logs, corrected_social_circle
-test_cases = extract_json( spawn_subagent(gen_prompt) )
+To run a subset of personas, edit the `PERSONAS` line to a comma-separated list (e.g., `PERSONAS: julio_simmons, mary_alberti`).
 
-ver_prompt = step5_testcases_synthesis/verification_prompt.txt
-    with test_cases, corrected_extracted_profile, app_logs
-verification = extract_json( spawn_subagent(ver_prompt) )
+To run a subset of steps, edit the `STEPS` line (e.g., `STEPS: 4` to run Step 4 only, or `STEPS: 5, 6` to run Steps 5 and 6).
 
-if verification.coverage_deficit OR rejected_count > 0:
-    re-run gen_prompt with feedback (up to 3 iterations)
+To swap models, edit `GENERATOR_MODEL`, `VERIFIER_MODEL`, or `JUDGE_MODEL` to any model your subagent tool supports.
 
-write test_cases, verification -> step5_testcases_synthesis/data_samples/output/
-```
+### Reproducibility
 
-#### Step 6: Benchmark runner (two-pass)
+Two runs with the same configuration block produce equivalent outputs. Outputs are not byte-identical because LLM responses are stochastic, but numerical accuracy figures should match within 1 to 2 percentage points on a frontier model under the same judge.
 
-```
-# PASS 1: ONLY raw text logs + questions. STRIP ground_truth from test cases first.
-raw_text = strip_to_raw_logs(app_logs)        # contact / date / messages + calendar fields ONLY
-                                              # source_fact_ids and theme_plan are NEVER in this text
-stripped = strip_ground_truth(test_cases)
+The R4 Provenance rule instructs the agent to record `backend: C`, the agent tool name, model selection per role, run date, and `master_prompt_sha256` in every output file's metadata block. A reviewer compares the SHA-256 against the published reference to confirm the same prompt was used.
 
-pass1_prompt = step6_benchmark_runner/prompt.txt   (PASS 1 section)
-    with raw_text, stripped
-pass1_answers = extract_json( spawn_subagent(pass1_prompt) )
+The I1 through I6 invariants are post-hoc verifiable from outputs alone. A reviewer can run a 10-line script against published outputs to confirm protocol adherence without re-running the pipeline.
 
-# PASS 2: different subagent, different context. Sees ground truth + Pass 1 answers.
-pass2_prompt = step6_benchmark_runner/prompt.txt   (PASS 2 section)
-    with full test_cases (including ground_truth), pass1_answers
-final_results = extract_json( spawn_subagent(pass2_prompt) )
+### Critical isolation rule
 
-write pass1_answers, final_results -> step6_benchmark_runner/data_samples/output/
-```
+Never hand the raw `app_logs.json` to a Step 6 Pass 1 subagent. The JSON contains traceability fields the evaluator must not see. The master prompt's flatten step in Step 6 reads ONLY `messenger.{meaningful_sessions, filler_sessions, sessions}` per-message text and `calendar.events` event-surface fields. Backends A and B handle this automatically through `strip_to_raw_logs()`. Backend C orchestrators must follow the flatten rule explicitly; invariant I3 verifies the result.
 
-**Critical for Backend C:** never hand the raw `app_logs.json` to a Pass 1 subagent. Always run it through `strip_to_raw_logs()` (in `step6_benchmark_runner/generator.py`) first. The JSON contains traceability fields that the evaluator must not see. Backends A and B handle this automatically; Backend C orchestrators have to do it explicitly.
+### Parallelism
 
-### Parallelism on Backend C
-
-Subagents are isolated, so personas run in parallel:
-
-- One orchestrator instance per persona, each spawning its own chain. Five personas equals five orchestrators.
-- Within one persona's Step 4, batching 5 to 10 hidden facts per generator subagent reduces orchestration overhead. The default prompt is single-fact; batching needs a small prompt edit.
-
-For scaling to 100 personas, prefer Backend B over Backend C unless you are willing to keep an interactive session open the entire run. Backend C's interactive nature is its strength for iteration and its weakness for headless overnight runs.
-
----
-
-## Choosing between B and C
-
-Both are subscription-based and produce equivalent output files. They differ on operational mode:
-
-- **Pick B when** you want to fire one command and walk away (overnight runs, CI, scheduled cron, scaling to 100 personas).
-- **Pick C when** you want to iterate on prompts, debug a single step's failure, surface a Step 4 trace and propose a prompt edit, or run with all files visible in one directory and an agent driving the steps.
-
-Same outputs on disk. Same data quality. Different ergonomics.
+Subagents are isolated, so personas can run in parallel by spawning one orchestrator instance per persona, each driving its own chain. For scaling to 100 personas, prefer Backend B unless you are willing to keep an interactive session open per orchestrator. Backend C's interactive nature is its strength for iteration and its weakness for headless overnight runs.
 
 ---
 
