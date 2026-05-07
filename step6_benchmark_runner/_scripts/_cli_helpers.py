@@ -147,15 +147,54 @@ def strip_to_raw_logs_filler_pruned(
     target_tokens: int,
     seed: int = 42,
 ) -> str:
-    """Flatten messenger + calendar to text, but downsample filler sessions
-    so the total fits target_tokens. All meaningful_sessions and all calendar
-    events are retained. Filler sessions are sampled deterministically by
-    seed.
+    """Flatten messenger + calendar to text, downsampling filler sessions
+    only — meaningful_sessions and calendar events are NEVER dropped or
+    summarized.
 
-    This is the fair-comparison truncation: every model under test sees the
-    same meaningful evidence, with filler scaled to the model's context
-    window. Avoids the failure mode where naive chronological truncation
-    accidentally drops meaningful evidence in late-window dates.
+    Hard guarantees (asserted at runtime):
+      1. Every entry in messenger.meaningful_sessions appears in the output.
+      2. Every entry in calendar.events appears in the output.
+      3. Only messenger.filler_sessions are subject to sampling.
+
+    If even retaining all meaningful + calendar exceeds target_tokens, the
+    function still returns all meaningful + calendar (the budget is honored
+    on a best-effort basis for filler only). Per professor directive:
+    summarizing meaningful context is lossy and is forbidden.
+
+    Filler sampling is deterministic given `seed` so reruns reproduce.
+
+    Returns:
+      str — the rendered text. For diagnostics including counts of what was
+      preserved vs sampled, use `prune_filler_with_diagnostics` instead.
+    """
+    text, _ = prune_filler_with_diagnostics(app_logs, target_tokens, seed)
+    return text
+
+
+def prune_filler_with_diagnostics(
+    app_logs: dict[str, Any],
+    target_tokens: int,
+    seed: int = 42,
+) -> tuple[str, dict[str, Any]]:
+    """Same as strip_to_raw_logs_filler_pruned but also returns a diagnostics
+    dict suitable for pinning into output metadata, so downstream readers
+    can prove no meaningful context was dropped:
+
+        {
+          "meaningful_sessions_in": int,
+          "meaningful_sessions_kept": int,    # MUST equal _in
+          "calendar_events_in": int,
+          "calendar_events_kept": int,        # MUST equal _in
+          "filler_sessions_total": int,
+          "filler_sessions_sampled": int,
+          "filler_sessions_dropped": int,
+          "total_tokens_estimated": int,
+          "target_tokens": int,
+          "filler_sample_seed": int,
+        }
+
+    Raises AssertionError if the meaningful or calendar guarantee is ever
+    violated.
     """
     import random as _random
 
@@ -164,6 +203,10 @@ def strip_to_raw_logs_filler_pruned(
     filler_sessions = messenger.get("filler_sessions", []) or []
     calendar = app_logs.get("calendar", {})
     cal_events = calendar.get("events", []) if isinstance(calendar, dict) else (calendar or [])
+
+    n_meaningful_in = len(meaningful_sessions)
+    n_calendar_in = len(cal_events)
+    n_filler_in = len(filler_sessions)
 
     persona_name = app_logs.get("persona_name") or app_logs.get("name", "persona")
 
@@ -202,7 +245,25 @@ def strip_to_raw_logs_filler_pruned(
 
     remaining = target_tokens - fixed_tokens
     if remaining <= 0 or not filler_sessions:
-        return fixed_text
+        diagnostics = {
+            "meaningful_sessions_in": n_meaningful_in,
+            "meaningful_sessions_kept": n_meaningful_in,
+            "calendar_events_in": n_calendar_in,
+            "calendar_events_kept": n_calendar_in,
+            "filler_sessions_total": n_filler_in,
+            "filler_sessions_sampled": 0,
+            "filler_sessions_dropped": n_filler_in,
+            "total_tokens_estimated": fixed_tokens,
+            "target_tokens": target_tokens,
+            "filler_sample_seed": seed,
+        }
+        assert diagnostics["meaningful_sessions_kept"] == diagnostics["meaningful_sessions_in"], (
+            "meaningful_sessions guarantee violated"
+        )
+        assert diagnostics["calendar_events_kept"] == diagnostics["calendar_events_in"], (
+            "calendar_events guarantee violated"
+        )
+        return fixed_text, diagnostics
 
     rng = _random.Random(seed)
     rendered_filler = [render_session(s) for s in filler_sessions]
@@ -240,7 +301,26 @@ def strip_to_raw_logs_filler_pruned(
     for e in cal_sorted:
         all_lines.append(render_event(e))
 
-    return "\n".join(all_lines)
+    rendered_text = "\n".join(all_lines)
+    diagnostics = {
+        "meaningful_sessions_in": n_meaningful_in,
+        "meaningful_sessions_kept": n_meaningful_in,
+        "calendar_events_in": n_calendar_in,
+        "calendar_events_kept": n_calendar_in,
+        "filler_sessions_total": n_filler_in,
+        "filler_sessions_sampled": len(selected_idx),
+        "filler_sessions_dropped": n_filler_in - len(selected_idx),
+        "total_tokens_estimated": approx_token_count(rendered_text),
+        "target_tokens": target_tokens,
+        "filler_sample_seed": seed,
+    }
+    assert diagnostics["meaningful_sessions_kept"] == diagnostics["meaningful_sessions_in"], (
+        "meaningful_sessions guarantee violated"
+    )
+    assert diagnostics["calendar_events_kept"] == diagnostics["calendar_events_in"], (
+        "calendar_events guarantee violated"
+    )
+    return rendered_text, diagnostics
 
 
 def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:

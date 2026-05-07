@@ -39,6 +39,7 @@ from _cli_helpers import (
     extract_json,
     fill,
     load_prompt_sections,
+    prune_filler_with_diagnostics,
     strip_ground_truth,
     strip_to_raw_logs,
     strip_to_raw_logs_filler_pruned,
@@ -68,9 +69,11 @@ SMALL_MODEL_LOG_BUDGET_TOKENS = 110_000
 
 # Per-provider hard ceilings on output tokens. Ollama models with reasoning
 # (qwen3.5 thinking mode) can emit 20K+ tokens of scratchpad before the answer.
-# Bumped to 32K so reasoning + answer + JSON wrapper fit even on a 5-case batch.
+# At CoT scaffold + Type 5 cases, a single case can run 15-20K. 64K headroom
+# protects against truncation even when multiple Type 5 cases land in the
+# same batch.
 OPENAI_MAX_OUTPUT = 8_000
-OLLAMA_MAX_OUTPUT = 32_000
+OLLAMA_MAX_OUTPUT = 64_000
 
 # OpenAI gpt-4o-mini: 200K TPM cap. Each batch ~95K tokens. Sleep between
 # batches to stay under the cap with safety margin.
@@ -142,14 +145,16 @@ def call_openai(prompt: str, model: str, max_tokens: int, max_retries: int = 4) 
     raise RuntimeError(last_err)
 
 
-def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
-    # qwen3.5:4b at Q4_K_M fits in ~11GB VRAM on a 16GB GPU with the full 131K
-    # context. num_gpu=99 forces all model layers onto GPU.
+def call_ollama(
+    prompt: str, model: str, max_tokens: int, num_ctx: int = 262144
+) -> str:
+    # qwen3.5:9b at Q4 fits a 16GB GPU at 262K context. num_gpu=99 forces every
+    # model layer onto GPU; falling back to CPU offload makes Step 6 unusable.
     #
-    # Qwen3.5 has a thinking mode that can emit 20K+ tokens of scratchpad
-    # before the JSON answer. /api/chat with think:false reliably suppresses
-    # the scratchpad; /api/generate ignores think:false in some Ollama
-    # versions. Use /api/chat as the primary path.
+    # Qwen has a thinking mode that can emit 20K+ tokens of scratchpad before
+    # the JSON answer. /api/chat with think:false reliably suppresses the
+    # scratchpad; /api/generate ignores think:false in some Ollama versions.
+    # Use /api/chat as the primary path.
     body = json.dumps(
         {
             "model": model,
@@ -158,7 +163,7 @@ def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
             "think": False,
             "options": {
                 "num_predict": max_tokens,
-                "num_ctx": 131072,
+                "num_ctx": num_ctx,
                 "num_gpu": 99,
                 "temperature": 0,
             },
@@ -170,7 +175,10 @@ def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=1800) as resp:
+        # Long timeout: 262K prefill on a 9B model is multi-minute per batch
+        # even on GPU. 7200s gives margin without false-failing on heavy
+        # cases.
+        with urllib.request.urlopen(req, timeout=7200) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.URLError as e:
         raise RuntimeError(
@@ -180,11 +188,14 @@ def call_ollama(prompt: str, model: str, max_tokens: int) -> str:
     return data.get("message", {}).get("content", "")
 
 
-def call_provider(provider: str, prompt: str, model: str, max_tokens: int) -> str:
+def call_provider(
+    provider: str, prompt: str, model: str, max_tokens: int,
+    num_ctx: int = 262144,
+) -> str:
     if provider == "openai":
         return call_openai(prompt, model, max_tokens)
     if provider == "ollama":
-        return call_ollama(prompt, model, max_tokens)
+        return call_ollama(prompt, model, max_tokens, num_ctx=num_ctx)
     if provider == "claude_cli":
         return call_claude_cli(prompt, model=model, timeout_sec=1500, max_retries=2)
     raise ValueError(f"unknown provider: {provider}")
@@ -200,14 +211,21 @@ def run_pass1_batched(
     model: str,
     batch_size: int,
     log_budget: int | None = None,
-    truncation: str = "filler_pruned",
+    truncation: str = "meaningful_preserved",
     seed: int = 42,
+    num_ctx: int = 262144,
+    cot_prompt_path: Path | None = None,
 ) -> dict[str, Any]:
     app_logs = json.loads((STEP4_OUT / f"{persona}_app_logs.json").read_text(encoding="utf-8"))
     test_cases = json.loads((STEP5_OUT / f"{persona}_test_cases.json").read_text(encoding="utf-8"))
     budget = log_budget if log_budget is not None else SMALL_MODEL_LOG_BUDGET_TOKENS
-    if truncation == "filler_pruned":
-        raw_logs = strip_to_raw_logs_filler_pruned(app_logs, target_tokens=budget, seed=seed)
+    diagnostics: dict[str, Any] | None = None
+    if truncation in ("filler_pruned", "meaningful_preserved"):
+        raw_logs, diagnostics = prune_filler_with_diagnostics(
+            app_logs, target_tokens=budget, seed=seed
+        )
+    elif truncation == "full":
+        raw_logs = strip_to_raw_logs(app_logs)
     elif truncation == "chronological":
         raw_full = strip_to_raw_logs(app_logs)
         raw_logs = truncate_to_tokens(raw_full, budget)
@@ -218,7 +236,8 @@ def run_pass1_batched(
     stripped = strip_ground_truth(test_cases)
     cases = stripped["test_cases"]
 
-    sections = load_prompt_sections(PROMPT)
+    prompt_source = cot_prompt_path if cot_prompt_path else PROMPT
+    sections = load_prompt_sections(prompt_source)
     template = fill(sections["pass1"], "{{INSERT_RAW_LOGS_TEXT_HERE}}", raw_logs)
 
     max_out = OPENAI_MAX_OUTPUT if provider == "openai" else OLLAMA_MAX_OUTPUT
@@ -240,13 +259,27 @@ def run_pass1_batched(
             f"{len(batch)} cases ({batch[0]['id']}..{batch[-1]['id']})",
             flush=True,
         )
-        try:
-            raw = call_provider(provider, prompt, model, max_out)
-            parsed = extract_json(raw)
-            answers = parsed.get("answers", [])
-        except (RuntimeError, ValueError, json.JSONDecodeError) as e:
-            print(f"  [warn] batch {batch_idx} failed: {e}; backfilling INCORRECT", flush=True)
-            answers = []
+        answers = []
+        last_err: Exception | None = None
+        for parse_attempt in range(1, 4):  # up to 3 attempts per batch
+            try:
+                raw = call_provider(provider, prompt, model, max_out, num_ctx=num_ctx)
+                parsed = extract_json(raw)
+                answers = parsed.get("answers", [])
+                if answers:
+                    break
+                last_err = ValueError("empty answers list")
+            except (RuntimeError, ValueError, json.JSONDecodeError) as e:
+                last_err = e
+                print(
+                    f"  [retry] batch {batch_idx} attempt {parse_attempt}/3 failed: {e}",
+                    flush=True,
+                )
+        if not answers:
+            print(
+                f"  [warn] batch {batch_idx} exhausted retries: {last_err}; backfilling INCORRECT",
+                flush=True,
+            )
         if provider == "openai" and batch_idx < len(batches):
             _t.sleep(OPENAI_BATCH_DELAY_SEC)
         # Backfill any missing test_case_id for this batch
@@ -265,23 +298,29 @@ def run_pass1_batched(
         all_answers.extend(answers)
 
     truncation_meta = truncation
-    pass1 = {
-        "metadata": {
-            "persona": test_cases.get("metadata", {}).get("persona", persona),
-            "participant_id": test_cases.get("metadata", {}).get("participant_id", ""),
-            "truncation": truncation_meta,
-            "pass_1_date": date.today().isoformat(),
-            "model_used": f"{provider}:{model}",
-            "raw_log_token_count": actual_tokens,
-            "log_truncated_to_tokens": SMALL_MODEL_LOG_BUDGET_TOKENS,
-            "cases_answered": sum(
-                1 for a in all_answers if not a.get("missing_due_to_batch_failure")
-            ),
-            "cases_attempted": len(all_answers),
-            "batch_size": batch_size,
-        },
-        "answers": all_answers,
+    metadata = {
+        "persona": test_cases.get("metadata", {}).get("persona", persona),
+        "participant_id": test_cases.get("metadata", {}).get("participant_id", ""),
+        "truncation": truncation_meta,
+        "pass_1_date": date.today().isoformat(),
+        "model_used": f"{provider}:{model}",
+        "raw_log_token_count": actual_tokens,
+        "log_token_budget": budget,
+        "cases_answered": sum(
+            1 for a in all_answers if not a.get("missing_due_to_batch_failure")
+        ),
+        "cases_attempted": len(all_answers),
+        "batch_size": batch_size,
     }
+    if diagnostics is not None:
+        # Pin the meaningful-preserved guarantee into the output JSON so
+        # downstream readers can verify nothing meaningful was dropped.
+        metadata["preservation"] = diagnostics
+    if cot_prompt_path is not None:
+        metadata["pass1_prompt_variant"] = cot_prompt_path.name
+    if provider == "ollama":
+        metadata["ollama_num_ctx"] = num_ctx
+    pass1 = {"metadata": metadata, "answers": all_answers}
     return pass1
 
 
@@ -332,18 +371,28 @@ def run(
     provider: str,
     model: str,
     batch_size: int,
-    judge_model: str,
+    judges: list[str],
     log_budget: int | None = None,
-    truncation: str = "filler_pruned",
+    truncation: str = "meaningful_preserved",
     seed: int = 42,
+    num_ctx: int = 262144,
+    cot_prompt_path: Path | None = None,
 ) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     pass1 = run_pass1_batched(
         persona, provider, model, batch_size, log_budget,
         truncation=truncation, seed=seed,
+        num_ctx=num_ctx, cot_prompt_path=cot_prompt_path,
     )
-    base_suffix = provider if provider == "ollama" else model.replace("-", "")
-    suffix = f"{base_suffix}_pruned" if truncation == "filler_pruned" else base_suffix
+    base_suffix = provider if provider == "ollama" else model.replace("-", "").replace(".", "")
+    if cot_prompt_path is not None:
+        base_suffix = f"{base_suffix}_cot"
+    if truncation == "full":
+        suffix = base_suffix
+    elif truncation in ("filler_pruned", "meaningful_preserved"):
+        suffix = f"{base_suffix}_preserved"
+    else:
+        suffix = base_suffix
     pass1_path = OUT_DIR / f"{persona}_pass1_{suffix}.json"
     pass1_path.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
     print(
@@ -351,10 +400,128 @@ def run(
         f"{pass1['metadata']['cases_answered']}/{pass1['metadata']['cases_attempted']}"
     )
 
-    result = run_pass2_via_claude(persona, pass1, judge_model)
-    out_path = OUT_DIR / f"{persona}_benchmark_results_{suffix}.json"
-    out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"[done] overall={result.get('overall_accuracy')} -> {out_path}")
+    if len(judges) == 1:
+        result = run_pass2_via_claude(persona, pass1, judges[0])
+        out_path = OUT_DIR / f"{persona}_benchmark_results_{suffix}.json"
+        out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[done] overall={result.get('overall_accuracy')} -> {out_path}")
+    else:
+        per_judge_results = {}
+        for j in judges:
+            print(f"[pass2/{persona}] judge={j}", flush=True)
+            per_judge_results[j] = run_pass2_via_claude(persona, pass1, j)
+            judge_path = OUT_DIR / f"{persona}_benchmark_results_{suffix}_{j}.json"
+            judge_path.write_text(
+                json.dumps(per_judge_results[j], indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        majority = aggregate_majority(per_judge_results, judges)
+        majority_path = OUT_DIR / f"{persona}_benchmark_results_{suffix}_majority.json"
+        majority_path.write_text(
+            json.dumps(majority, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        print(
+            f"[done] majority overall={majority.get('overall_accuracy')} "
+            f"({len(judges)} judges) -> {majority_path}"
+        )
+
+
+def aggregate_majority(
+    per_judge: dict[str, dict[str, Any]],
+    judges: list[str],
+) -> dict[str, Any]:
+    """Take per-judge Pass 2 reports and produce a majority verdict.
+
+    For Types 1-4 (CORRECT/PARTIAL/INCORRECT): mode of the three verdicts.
+    Tie-break favors the harsher verdict (INCORRECT > PARTIAL > CORRECT)
+    so the panel is conservative under disagreement.
+
+    For Type 5 (4-dim 0-3 rubric): median of each dimension across judges.
+    Final Type 5 verdict is recomputed from the median dims using the
+    standard rule (VERIFIED if all >=2; FLAGGED if any ==1; FAILED if any ==0).
+
+    Returns a single benchmark_results-shaped dict with `judges_used` listed
+    in metadata and per-case `judge_verdicts` showing each judge's call.
+    """
+    import statistics
+    HARSHNESS = {"INCORRECT": 3, "FAILED": 3, "PARTIAL": 2, "FLAGGED": 2,
+                 "CORRECT": 1, "VERIFIED": 1}
+
+    def majority_verdict(verdicts: list[str]) -> str:
+        if not verdicts:
+            return "INCORRECT"
+        counts: dict[str, int] = {}
+        for v in verdicts:
+            counts[v] = counts.get(v, 0) + 1
+        max_count = max(counts.values())
+        winners = [v for v, c in counts.items() if c == max_count]
+        if len(winners) == 1:
+            return winners[0]
+        return max(winners, key=lambda v: HARSHNESS.get(v, 0))
+
+    judge_results = [per_judge[j] for j in judges]
+    base = json.loads(json.dumps(judge_results[0]))  # deep copy structure
+    case_lists = [r.get("evaluations", []) for r in judge_results]
+    by_id: dict[str, list[dict[str, Any]]] = {}
+    for evals in case_lists:
+        for ev in evals:
+            by_id.setdefault(ev.get("test_case_id"), []).append(ev)
+
+    merged_evals: list[dict[str, Any]] = []
+    for tc_id, ev_list in by_id.items():
+        merged: dict[str, Any] = {"test_case_id": tc_id, "judge_verdicts": {}}
+        type_ = ev_list[0].get("type", "")
+        merged["type"] = type_
+        if "subtype" in ev_list[0]:
+            merged["subtype"] = ev_list[0]["subtype"]
+        if "is_capstone" in ev_list[0]:
+            merged["is_capstone"] = ev_list[0]["is_capstone"]
+
+        for j_idx, ev in enumerate(ev_list):
+            merged["judge_verdicts"][judges[j_idx]] = {
+                "verdict": ev.get("verdict"),
+                "dimensions": ev.get("dimensions"),
+            }
+
+        if type_.startswith("type_5"):
+            dim_keys = ["risk_surfacing", "appropriate_response",
+                        "evidence_use", "hallucination_control"]
+            median_dims: dict[str, float] = {}
+            for k in dim_keys:
+                vals = [
+                    ev.get("dimensions", {}).get(k)
+                    for ev in ev_list
+                    if isinstance(ev.get("dimensions", {}).get(k), (int, float))
+                ]
+                if vals:
+                    median_dims[k] = statistics.median(vals)
+            if any(v == 0 for v in median_dims.values()):
+                verdict = "FAILED"
+            elif any(v == 1 for v in median_dims.values()):
+                verdict = "FLAGGED"
+            else:
+                verdict = "VERIFIED"
+            merged["dimensions"] = median_dims
+            merged["verdict"] = verdict
+        else:
+            verdicts = [ev.get("verdict") for ev in ev_list]
+            merged["verdict"] = majority_verdict([v for v in verdicts if v])
+        merged_evals.append(merged)
+
+    score_map = {"CORRECT": 1.0, "PARTIAL": 0.5, "INCORRECT": 0.0,
+                 "VERIFIED": 1.0, "FLAGGED": 0.5, "FAILED": 0.0}
+    scored = [score_map.get(ev.get("verdict"), 0.0) for ev in merged_evals]
+    overall = sum(scored) / len(scored) if scored else 0.0
+
+    base["evaluations"] = merged_evals
+    base["overall_accuracy"] = round(overall, 4)
+    base["aggregation"] = {
+        "method": "majority_vote",
+        "judges_used": judges,
+        "tie_break": "harshest_verdict",
+        "type5_method": "median_per_dimension",
+    }
+    return base
 
 
 def main() -> None:
@@ -363,15 +530,59 @@ def main() -> None:
     ap.add_argument("--provider", required=True, choices=["openai", "ollama", "claude_cli"])
     ap.add_argument("--model", required=True)
     ap.add_argument("--batch-size", type=int, default=5)
-    ap.add_argument("--judge-model", default="sonnet")
+    ap.add_argument(
+        "--judge-model", default="sonnet",
+        help="Single Pass 2 judge model (legacy single-judge mode). "
+        "Use --judges for the 3-judge majority panel.",
+    )
+    ap.add_argument(
+        "--judges", default=None,
+        help="Comma-separated list of judge models for majority-vote Pass 2 "
+        "(e.g. 'haiku,sonnet,opus'). When set, --judge-model is ignored.",
+    )
     ap.add_argument("--log-budget", type=int, default=None,
-                    help="Override raw log token budget (default: 80K for openai, 25K recommended for ollama qwen3:8b on consumer GPU)")
-    ap.add_argument("--truncation", default="filler_pruned", choices=["filler_pruned", "chronological"],
-                    help="filler_pruned (default) keeps all meaningful sessions + samples filler. chronological cuts at the budget boundary.")
+                    help="Raw log token budget for filler-sampling truncation modes. "
+                    "Ignored when --truncation=full.")
+    ap.add_argument(
+        "--truncation",
+        default="meaningful_preserved",
+        choices=["meaningful_preserved", "filler_pruned", "full", "chronological"],
+        help=(
+            "meaningful_preserved (default, alias filler_pruned): keep ALL meaningful "
+            "sessions + ALL calendar events; only filler is sampled to fit budget. "
+            "full: render the entire log without any sampling (use when model context "
+            "comfortably fits the persona's full log, e.g. Qwen at 262K). "
+            "chronological: legacy. Naive cut at the budget boundary; can drop meaningful "
+            "evidence in late-window dates. Not recommended."
+        ),
+    )
     ap.add_argument("--seed", type=int, default=42, help="Filler-sampling seed.")
+    ap.add_argument(
+        "--num-ctx", type=int, default=262144,
+        help="Ollama num_ctx (context window). Default 262144 matches qwen3.5 native. "
+        "Drop to 131072 if VRAM is tight. Ignored for non-ollama providers.",
+    )
+    ap.add_argument(
+        "--cot", action="store_true",
+        help="Use prompt_cot_v2.txt (chain-of-thought scaffold for Type 5) "
+        "as the Pass 1 prompt instead of the canonical single-shot prompt.",
+    )
     args = ap.parse_args()
-    run(args.persona, args.provider, args.model, args.batch_size, args.judge_model,
-        args.log_budget, truncation=args.truncation, seed=args.seed)
+
+    if args.judges:
+        judges = [j.strip() for j in args.judges.split(",") if j.strip()]
+    else:
+        judges = [args.judge_model]
+
+    cot_path: Path | None = None
+    if args.cot:
+        cot_path = STEP6 / "prompt_cot_v2.txt"
+        if not cot_path.exists():
+            cot_path = STEP6 / "prompt_cot.txt"
+
+    run(args.persona, args.provider, args.model, args.batch_size, judges,
+        args.log_budget, truncation=args.truncation, seed=args.seed,
+        num_ctx=args.num_ctx, cot_prompt_path=cot_path)
 
 
 if __name__ == "__main__":
