@@ -134,12 +134,51 @@ python openclaw_pipeline.py --persona julio_simmons \
   --judge-model claude-sonnet-4-6
 ```
 
-To evaluate with a different provider (e.g., for cross-model comparison):
+## Evaluating other models
+
+The benchmark dataset (Steps 1-5 outputs) is provider-agnostic. Only Step 6 calls the evaluated model. The `--provider openai` flag works with any OpenAI-compatible API by setting `OPENAI_BASE_URL`.
+
+**OpenAI GPT models:**
 
 ```bash
+export OPENAI_API_KEY="sk-..."
+
 python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
-  --provider openai --model gpt-5.5
+  --provider openai --model gpt-4.1
 ```
+
+**Local models via Ollama:**
+
+```bash
+ollama pull llama3.1:70b
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_API_KEY="ollama"
+
+python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
+  --provider openai --model llama3.1:70b
+```
+
+**Google Gemini (OpenAI-compatible endpoint):**
+
+```bash
+export OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
+export OPENAI_API_KEY="your-gemini-api-key"
+
+python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
+  --provider openai --model gemini-2.5-pro
+```
+
+**Hosted open-source models (Together, Fireworks, vLLM):**
+
+```bash
+export OPENAI_BASE_URL="https://api.together.xyz/v1"
+export OPENAI_API_KEY="your-together-key"
+
+python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
+  --provider openai --model meta-llama/Llama-3.1-70B-Instruct
+```
+
+Any provider that exposes an OpenAI-compatible `/v1/chat/completions` endpoint works the same way. To add a provider with a non-compatible API, extend `make_client()` and `call_llm()` in `llm.py`.
 
 ## Log window and filler ratio
 
