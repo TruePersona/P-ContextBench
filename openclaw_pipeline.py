@@ -452,8 +452,8 @@ def run_pipeline(
     seed_path: Path,
     start: int = 2,
     stop: int = 6,
-    log_start: str = "2026-02-20",
-    log_end: str = "2026-04-20",
+    log_start: str = "2026-03-01",
+    log_end: str = "2026-03-31",
     per_fact_max_attempts: int = 3,
     model: str | None = None,
     verifier_model: str | None = None,
@@ -553,8 +553,8 @@ def main() -> None:
     )
     parser.add_argument("--start", type=int, default=2, choices=[2, 3, 4, 5, 6])
     parser.add_argument("--stop", type=int, default=6, choices=[2, 3, 4, 5, 6])
-    parser.add_argument("--log-start", default="2026-02-20")
-    parser.add_argument("--log-end", default="2026-04-20")
+    parser.add_argument("--log-start", default="2026-03-01")
+    parser.add_argument("--log-end", default="2026-03-31")
     parser.add_argument("--per-fact-max-attempts", type=int, default=3)
     parser.add_argument(
         "--model", default="claude-opus-4-7",
