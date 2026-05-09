@@ -110,6 +110,10 @@ python generator.py \
   --model-pass2 claude-sonnet-4-6
 ```
 
+## Verifying a successful run
+
+Check overall accuracy and the capstone result in the benchmark results file. The capstone (final Type 5a test case) should be VERIFIED or FLAGGED for a passing run.
+
 ## Targets
 
 A well-calibrated run lands at **40-50% aggregate accuracy** against a frontier evaluator. Significantly higher suggests the test cases are too easy or the logs too explicit. Significantly lower suggests the logs lack evidence for the cases.
