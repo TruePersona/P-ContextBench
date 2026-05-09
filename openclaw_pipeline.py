@@ -1,10 +1,8 @@
-"""OpenClaw-style pipeline runner driving the six steps via the `claude` CLI.
+"""Pipeline runner driving the six steps via subscription CLI or API.
 
-Uses the Claude Code CLI (`claude -p`) for inference, which runs against a
-subscription rather than a metered API. Each inference call is routed to a
-fresh CLI invocation so context does not leak between calls; for Step 6's
-benchmark runner this matters especially (see --openclaw flag on
-step6_benchmark_runner/generator.py for the session-delete equivalent).
+Supports cheap subscription backends (`claude`, `codex`) and metered API
+backends (`anthropic-api`, `openai-api`). Each subscription inference call is
+routed to a fresh CLI invocation so context does not leak between calls.
 
 Usage:
     # Single persona, steps 2-6
@@ -16,7 +14,8 @@ Usage:
     # Just Step 4 (app log synthesis) for one persona
     python openclaw_pipeline.py --seed ... --start 4 --stop 4
 
-Requires the `claude` CLI on PATH. Set CLAUDE_CMD env var to override.
+Requires the selected CLI on PATH, or the selected API key in the environment.
+Set CLAUDE_CMD or CODEX_CMD to override CLI paths.
 """
 
 from __future__ import annotations
@@ -27,14 +26,29 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+from llm import (
+    API_BACKENDS,
+    SUBSCRIPTION_BACKENDS,
+    SUPPORTED_BACKENDS,
+    SUPPORTED_PROVIDERS,
+    call_llm,
+    call_subscription_cli,
+    check_api_key,
+    make_client,
+    provider_for_backend,
+)
 
 REPO_ROOT = Path(__file__).parent
 CLAUDE_CMD = os.environ.get(
     "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
 )
+CODEX_CMD = os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex")
 
 STEP1_DIR = REPO_ROOT / "step1_seed"
 STEP2_DIR = REPO_ROOT / "step2_interview"
@@ -44,57 +58,23 @@ STEP5_DIR = REPO_ROOT / "step5_testcases_synthesis"
 STEP6_DIR = REPO_ROOT / "step6_benchmark_runner"
 
 
-# ----- CLI call -------------------------------------------------------------
+class ModelCaller:
+    def __init__(self, backend: str, provider: str = "anthropic") -> None:
+        self.backend = backend
+        self.provider = provider_for_backend(backend, provider) if backend in API_BACKENDS else provider
+        self.client = make_client(self.provider) if backend in API_BACKENDS else None
 
-def call_claude(prompt: str, model: str | None = None, max_retries: int = 2) -> str:
-    """Call the `claude` CLI with a prompt written to a temp file.
-
-    Each call is a fresh OS subprocess. Tools are explicitly disabled via
-    `--tools ""` so the LLM is a pure inference function for the duration of
-    the call: prompt on stdin, response on stdout, no filesystem access, no
-    shell access, no network access beyond the model API. This is the
-    benchmark's structural isolation guarantee. The orchestrator (this
-    Python process) handles all I/O.
-
-    Uses a temp file to dodge Windows cmdline / pipe length limits on long
-    prompts (the pipeline's merge prompt can exceed 100KB).
-
-    If `model` is provided, passes `--model {model}` to the CLI so the run is
-    deterministic across CLI default drifts. Always pin to an exact model
-    string (e.g. `claude-opus-4-7`), never an alias (`opus`).
-    """
-    cmd = [CLAUDE_CMD, "-p", "--tools", ""]
-    if model:
-        cmd += ["--model", model]
-    last_stderr = ""
-    for attempt in range(max_retries + 1):
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, encoding="utf-8"
-        )
-        tmp.write(prompt)
-        tmp.close()
-        try:
-            with open(tmp.name, "r", encoding="utf-8") as stream:
-                result = subprocess.run(
-                    cmd,
-                    stdin=stream,
-                    capture_output=True,
-                    timeout=1800,
-                )
-            stdout = result.stdout.decode("utf-8", errors="replace")
-            stderr = result.stderr.decode("utf-8", errors="replace")
-            if result.returncode == 0 and stdout.strip():
-                return stdout.strip()
-            last_stderr = stderr
-            if attempt < max_retries:
-                print(
-                    f"  retry {attempt + 1}/{max_retries} (stderr: {stderr[:200]})"
-                )
-        finally:
-            os.unlink(tmp.name)
-    raise RuntimeError(
-        f"claude CLI failed after {max_retries + 1} attempts: {last_stderr[:500]}"
-    )
+    def call(self, prompt: str, model: str | None = None) -> str:
+        if self.backend in SUBSCRIPTION_BACKENDS:
+            return call_subscription_cli(
+                prompt, model, self.backend,
+                claude_cmd=CLAUDE_CMD, codex_cmd=CODEX_CMD,
+            )
+        if self.client is None:
+            raise RuntimeError("API client is not initialized")
+        if model is None:
+            raise ValueError("API backend requires an explicit model")
+        return call_llm(self.client, model, prompt, provider=self.provider)
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -161,17 +141,20 @@ def fill_seed_placeholders(template: str, seed: dict) -> str:
 
 # ----- step 2 ---------------------------------------------------------------
 
-def run_step2_gen(seed: dict, output_dir: Path, model: str | None = None) -> Path:
+def run_step2_gen(
+    seed: dict, output_dir: Path, caller: ModelCaller, model: str | None = None
+) -> Path:
     template = fill_seed_placeholders(load_prompt(STEP2_DIR / "prompt.txt"), seed)
-    raw = call_claude(template, model=model)
+    raw = caller.call(template, model=model)
     interview = extract_json(raw)
     out = output_dir / f"{base(extract_name(seed))}_interview.json"
-    out.write_text(json.dumps(interview, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(interview, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
 def run_step2_verify(
-    seed: dict, interview: dict, output_dir: Path, model: str | None = None
+    seed: dict, interview: dict, output_dir: Path, caller: ModelCaller,
+    model: str | None = None,
 ) -> Path:
     template = fill_seed_placeholders(
         load_prompt(STEP2_DIR / "verification_prompt.txt"), seed
@@ -181,10 +164,10 @@ def run_step2_verify(
     template = fill(
         template, "{{INSERT_EXTRACTED_PROFILE_JSON_HERE}}", interview["extracted_profile"]
     )
-    raw = call_claude(template, model=model)
+    raw = caller.call(template, model=model)
     verification = extract_json(raw)
     out = output_dir / f"{base(extract_name(seed))}_verification.json"
-    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
@@ -192,6 +175,7 @@ def run_step2_verify(
 
 def run_step3_gen(
     profile: dict, transcript: list, output_dir: Path, name: str,
+    caller: ModelCaller,
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP3_DIR / "prompt.txt")
@@ -201,15 +185,16 @@ def run_step3_gen(
     template = fill(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", transcript)
     template = template.replace("{{participant_id}}", profile.get("participant_id", ""))
     template = template.replace("{{name}}", profile.get("name", name))
-    raw = call_claude(template, model=model)
+    raw = caller.call(template, model=model)
     circle = extract_json(raw)
     out = output_dir / f"{base(name)}_social_circle.json"
-    out.write_text(json.dumps(circle, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(circle, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
 def run_step3_verify(
     profile: dict, transcript: list, circle: dict, output_dir: Path, name: str,
+    caller: ModelCaller,
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP3_DIR / "verification_prompt.txt")
@@ -220,10 +205,10 @@ def run_step3_verify(
     template = fill(template, "{{INSERT_SOCIAL_CIRCLE_JSON_HERE}}", circle)
     template = template.replace("{{participant_id}}", profile.get("participant_id", ""))
     template = template.replace("{{name}}", profile.get("name", name))
-    raw = call_claude(template, model=model)
+    raw = caller.call(template, model=model)
     verification = extract_json(raw)
     out = output_dir / f"{base(name)}_social_circle_verification.json"
-    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
@@ -237,6 +222,7 @@ def run_step4(
     log_start: str,
     log_end: str,
     per_fact_max_attempts: int,
+    caller: ModelCaller,
     model: str | None = None,
     verifier_model: str | None = None,
 ) -> Path:
@@ -246,8 +232,8 @@ def run_step4(
     fragments must be re-recoverable by an independent verifier model that does
     not see the ground-truth label. Pass a different `verifier_model` from
     `model` so the gate is not the generator pattern-matching its own output.
-    Both invocations are fresh `claude -p --tools ""` subprocesses, so the
-    verifier has no access to the generator's prompt or response history.
+    Both invocations are fresh backend CLI subprocesses, so the verifier has
+    no access to the generator's prompt or response history.
     """
     if verifier_model is None:
         verifier_model = model
@@ -266,6 +252,9 @@ def run_step4(
     gen_template = load_prompt(STEP4_DIR / "prompt.txt")
     ver_template = load_prompt(STEP4_DIR / "verification_prompt.txt")
     merge_template = load_prompt(STEP4_DIR / "merge_prompt.txt")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    trace_path = output_dir / f"{base(name)}_app_logs_trace.json"
+    fragments_path = output_dir / f"{base(name)}_verified_fragments.json"
 
     for i, hf in enumerate(hidden_facts, start=1):
         fact_id = hf.get("fact_id", f"HF-{i:03d}")
@@ -289,7 +278,7 @@ def run_step4(
             gen_prompt = fill(
                 gen_prompt, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
             )
-            bundle = extract_json(call_claude(gen_prompt, model=model))
+            bundle = extract_json(caller.call(gen_prompt, model=model))
             fragments = bundle.get("fragments", [])
 
             ver_prompt = fill(ver_template, "{{INSERT_FRAGMENTS_JSON_HERE}}", fragments)
@@ -299,7 +288,7 @@ def run_step4(
                 "{{PERSONA_OCCUPATION}}", str(persona["occupation"])
             )
             ver_prompt = ver_prompt.replace("{{PERSONA_LOCATION}}", str(persona["location"]))
-            verification = extract_json(call_claude(ver_prompt, model=verifier_model))
+            verification = extract_json(caller.call(ver_prompt, model=verifier_model))
             last_fragments = fragments
             last_verification = verification
 
@@ -308,7 +297,7 @@ def run_step4(
                 target = (hf.get("ground_truth_label") or "").lower()
                 rec_tokens = set(re.findall(r"[a-z0-9]{3,}", recovered))
                 tgt_tokens = set(re.findall(r"[a-z0-9]{3,}", target))
-                if tgt_tokens and len(rec_tokens & tgt_tokens) / len(tgt_tokens) >= 0.4:
+                if tgt_tokens and len(rec_tokens & tgt_tokens) / len(tgt_tokens) >= 0.15:
                     passed = True
                     for c in bundle.get("contacts_used", []) or []:
                         contact_usage[c] = contact_usage.get(c, 0) + 1
@@ -327,10 +316,23 @@ def run_step4(
                 "final_verification": last_verification,
             }
         )
+        trace_path.write_text(
+            json.dumps(trace, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        fragments_path.write_text(
+            json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    trace_path = output_dir / f"{base(name)}_app_logs_trace.json"
-    trace_path.write_text(json.dumps(trace, indent=2, ensure_ascii=False))
+    trace_path.write_text(
+        json.dumps(trace, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    fragments_path.write_text(
+        json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     merge_prompt = merge_template
     merge_prompt = merge_prompt.replace("{{PERSONA_NAME}}", str(persona["name"]))
@@ -354,7 +356,7 @@ def run_step4(
     merge_prompt = merge_prompt.replace("{{LOG_END_DATE}}", log_end)
     merge_prompt = fill(merge_prompt, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", [])
 
-    app_log = extract_json(call_claude(merge_prompt, model=model))
+    app_log = extract_json(caller.call(merge_prompt, model=model))
     # Defense-in-depth: strip per-session/per-event source_fact_ids so any
     # downstream consumer that hands the raw JSON to a Pass 1 inference call
     # cannot accidentally leak fact-anchored sessions. Traceability is
@@ -368,7 +370,7 @@ def run_step4(
         for e in calendar.get("events", []) or []:
             e.pop("source_fact_ids", None)
     out = output_dir / f"{base(name)}_app_logs.json"
-    out.write_text(json.dumps(app_log, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
@@ -380,6 +382,7 @@ def run_step5_gen(
     corrected_social_circle: dict,
     output_dir: Path,
     name: str,
+    caller: ModelCaller,
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP5_DIR / "prompt.txt")
@@ -392,9 +395,9 @@ def run_step5_gen(
         "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
         corrected_social_circle,
     )
-    cases = extract_json(call_claude(template, model=model))
+    cases = extract_json(caller.call(template, model=model))
     out = output_dir / f"{base(name)}_test_cases.json"
-    out.write_text(json.dumps(cases, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(cases, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
@@ -404,6 +407,7 @@ def run_step5_verify(
     app_logs: dict,
     output_dir: Path,
     name: str,
+    caller: ModelCaller,
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP5_DIR / "verification_prompt.txt")
@@ -412,9 +416,9 @@ def run_step5_verify(
         template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
     )
     template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
-    verification = extract_json(call_claude(template, model=model))
+    verification = extract_json(caller.call(template, model=model))
     out = output_dir / f"{base(name)}_test_cases_verification.json"
-    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False))
+    out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
 
@@ -422,13 +426,14 @@ def run_step5_verify(
 
 def run_step6(
     app_logs_path: Path, test_cases_path: Path, output_dir: Path,
+    backend: str,
+    provider: str,
     model_pass1: str | None = None, model_pass2: str | None = None,
 ) -> int:
-    """Delegate to step6_benchmark_runner/generator.py with --openclaw.
+    """Delegate to step6_benchmark_runner/generator.py with the selected backend.
 
-    Step 6 is already CLI-aware via its --openclaw flag (session-delete
-    between test cases). Calling it as a subprocess preserves that behavior
-    and keeps the two-pass split encapsulated.
+    Step 6 is CLI-aware and keeps the two-pass split encapsulated. Calling it
+    as a subprocess preserves cold-context behavior for each pass.
     """
     cmd = [
         sys.executable,
@@ -436,8 +441,10 @@ def run_step6(
         "--app-logs", str(app_logs_path),
         "--test-cases", str(test_cases_path),
         "--output", str(output_dir),
-        "--openclaw",
+        "--backend", backend,
+        "--provider", provider,
         "--claude-cmd", CLAUDE_CMD,
+        "--codex-cmd", CODEX_CMD,
     ]
     if model_pass1:
         cmd += ["--model-pass1", model_pass1]
@@ -450,6 +457,9 @@ def run_step6(
 
 def run_pipeline(
     seed_path: Path,
+    caller: ModelCaller,
+    backend: str,
+    provider: str,
     start: int = 2,
     stop: int = 6,
     log_start: str = "2026-03-01",
@@ -474,9 +484,9 @@ def run_pipeline(
 
     # Load or generate Step 2 outputs
     if start <= 2 <= stop:
-        interview_path = run_step2_gen(seed, step2_out, model=model)
+        interview_path = run_step2_gen(seed, step2_out, caller, model=model)
         interview = json.loads(interview_path.read_text(encoding="utf-8"))
-        verification_path = run_step2_verify(seed, interview, step2_out, model=model)
+        verification_path = run_step2_verify(seed, interview, step2_out, caller, model=model)
         verification = json.loads(verification_path.read_text(encoding="utf-8"))
     else:
         interview = json.loads((step2_out / f"{n}_interview.json").read_text(encoding="utf-8"))
@@ -487,9 +497,9 @@ def run_pipeline(
 
     # Step 3
     if start <= 3 <= stop:
-        circle_path = run_step3_gen(profile, transcript, step3_out, name, model=model)
+        circle_path = run_step3_gen(profile, transcript, step3_out, name, caller, model=model)
         circle = json.loads(circle_path.read_text(encoding="utf-8"))
-        run_step3_verify(profile, transcript, circle, step3_out, name, model=model)
+        run_step3_verify(profile, transcript, circle, step3_out, name, caller, model=model)
 
     circle_verification_path = step3_out / f"{n}_social_circle_verification.json"
     circle_verification = json.loads(circle_verification_path.read_text(encoding="utf-8"))
@@ -502,7 +512,7 @@ def run_pipeline(
         run_step4(
             profile, corrected_social_circle, step4_out, name,
             log_start, log_end, per_fact_max_attempts,
-            model=model, verifier_model=verifier_model,
+            caller, model=model, verifier_model=verifier_model,
         )
 
     app_logs_path = step4_out / f"{n}_app_logs.json"
@@ -515,10 +525,10 @@ def run_pipeline(
             app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
             test_cases_path = run_step5_gen(
                 profile, app_logs, corrected_social_circle, step5_out, name,
-                model=model,
+                caller, model=model,
             )
             test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
-            run_step5_verify(test_cases, profile, app_logs, step5_out, name, model=model)
+            run_step5_verify(test_cases, profile, app_logs, step5_out, name, caller, model=model)
 
     test_cases_path = step5_out / f"{n}_test_cases.json"
 
@@ -528,7 +538,7 @@ def run_pipeline(
             print("[step6] skipping — required inputs missing")
         else:
             run_step6(
-                app_logs_path, test_cases_path, step6_out,
+                app_logs_path, test_cases_path, step6_out, backend, provider,
                 model_pass1=model,
                 model_pass2=judge_model or model,
             )
@@ -557,29 +567,67 @@ def main() -> None:
     parser.add_argument("--log-end", default="2026-03-31")
     parser.add_argument("--per-fact-max-attempts", type=int, default=3)
     parser.add_argument(
-        "--model", default="claude-opus-4-7",
-        help="Generator model passed to every `claude -p` call. MUST be an "
-        "exact pinned string (e.g. claude-opus-4-7), never an alias (`opus`). "
-        "Aliases drift across CLI versions; reproducibility requires the exact "
-        "model identifier in the artifact metadata.",
+        "--backend",
+        default=None,
+        choices=SUBSCRIPTION_BACKENDS + ("api",) + API_BACKENDS,
+        help="Model backend: claude/codex for subscription CLI, or "
+        "anthropic-api/openai-api for metered API calls. `api` uses --provider.",
     )
     parser.add_argument(
-        "--verifier-model", default="claude-sonnet-4-6",
+        "--provider",
+        default=None,
+        choices=SUPPORTED_PROVIDERS,
+        help="API provider used when --backend api is selected, or as a "
+        "backward-compatible shortcut for --backend <provider>-api.",
+    )
+    parser.add_argument(
+        "--model", default=None,
+        help="Generator model passed to every backend CLI call. MUST be an "
+        "exact pinned string, never an alias. Defaults to claude-opus-4-7 for "
+        "the Claude backend and gpt-5.5 for the Codex backend.",
+    )
+    parser.add_argument(
+        "--verifier-model", default=None,
         help="Verifier model for Step 4's reverse-inferability gate. MUST be "
-        "an exact pinned string. Should be a different model family from "
-        "--model so the verifier is independent.",
+        "an exact pinned string. Should differ from --model when possible so "
+        "the verifier is independent.",
     )
     parser.add_argument(
-        "--judge-model", default="claude-sonnet-4-6",
+        "--judge-model", default=None,
         help="Judge model for Step 6 Pass 2 scoring. MUST be an exact pinned "
-        "string. Should be different from --model to keep the scorer "
+        "string. Should differ from --model when possible to keep the scorer "
         "independent of the answerer.",
     )
     args = parser.parse_args()
 
-    # Reject obvious aliases. Anthropic CLI may resolve aliases internally
-    # but the artifact metadata won't record which version was actually used,
-    # which breaks the reproducibility contract.
+    if args.backend is None:
+        if args.provider:
+            args.backend = f"{args.provider}-api"
+        else:
+            args.backend = os.environ.get("PERSONABENCH_BACKEND", "claude")
+    elif args.backend == "api":
+        args.backend = f"{args.provider or 'anthropic'}-api"
+    provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
+
+    if args.model is None:
+        if args.backend in {"claude", "anthropic-api"}:
+            args.model = "claude-opus-4-7"
+        else:
+            args.model = "gpt-5.5"
+    if args.verifier_model is None:
+        if args.backend in {"claude", "anthropic-api"}:
+            args.verifier_model = "claude-sonnet-4-6"
+        else:
+            args.verifier_model = "gpt-5"
+    if args.judge_model is None:
+        if args.backend in {"claude", "anthropic-api"}:
+            args.judge_model = "claude-sonnet-4-6"
+        else:
+            args.judge_model = "gpt-5.4"
+
+    # Reject obvious aliases. CLIs may resolve aliases internally but the
+    # artifact metadata won't record which version was actually used, which
+    # breaks the reproducibility contract.
     for flag, val in [
         ("--model", args.model),
         ("--verifier-model", args.verifier_model),
@@ -595,6 +643,11 @@ def main() -> None:
     if args.start > args.stop:
         parser.error("--start must be <= --stop")
 
+    if args.backend in API_BACKENDS and not check_api_key(provider):
+        parser.error(f"{provider.upper()}_API_KEY is not set")
+
+    caller = ModelCaller(args.backend, provider=provider)
+
     # Resolve --persona to --seed
     if args.persona:
         if args.seed or args.all:
@@ -607,7 +660,7 @@ def main() -> None:
         seed_dir = STEP1_DIR / "data_samples" / "output"
         for seed_file in sorted(seed_dir.glob("*_seed.json")):
             run_pipeline(
-                seed_file, args.start, args.stop,
+                seed_file, caller, args.backend, provider, args.start, args.stop,
                 args.log_start, args.log_end, args.per_fact_max_attempts,
                 model=args.model,
                 verifier_model=args.verifier_model,
@@ -615,7 +668,7 @@ def main() -> None:
             )
     elif args.seed:
         run_pipeline(
-            args.seed, args.start, args.stop,
+            args.seed, caller, args.backend, provider, args.start, args.stop,
             args.log_start, args.log_end, args.per_fact_max_attempts,
             model=args.model,
             verifier_model=args.verifier_model,

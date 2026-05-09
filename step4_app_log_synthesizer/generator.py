@@ -321,6 +321,13 @@ def run_step(
         json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
+    fragments_out = output_dir / f"{base_name}_verified_fragments.json"
+    fragments_out.write_text(
+        json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"[step4] saved {len(verified_fragments)} fragments to {fragments_out}")
+
     passed_count = sum(1 for t in trace if t["passed"])
     print(
         f"[step4] fragment phase done: {passed_count}/{len(hidden_facts)} "
@@ -333,11 +340,19 @@ def run_step(
         )
 
     print(f"[step4] merging fragments + filler for {persona['name']}")
-    app_log = merge_app_log(
-        client, model, verified_fragments, hidden_facts,
-        corrected_social_circle, persona, log_start, log_end, news_events,
-        provider=provider,
-    )
+    for merge_attempt in range(1, 4):
+        try:
+            app_log = merge_app_log(
+                client, model, verified_fragments, hidden_facts,
+                corrected_social_circle, persona, log_start, log_end,
+                news_events, provider=provider,
+            )
+            break
+        except Exception as e:
+            print(f"[step4] merge attempt {merge_attempt}/3 failed: {e}")
+            if merge_attempt == 3:
+                print("[step4] merge exhausted retries. Fragments saved to disk.")
+                return 1
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )

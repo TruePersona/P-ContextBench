@@ -5,11 +5,13 @@ template is in `step{N}/prompt.txt`.
 
 ## How a step runs
 
-A bash script opens a fresh `claude -p --tools "" --model <version>` shell
-for each LLM call. With `--tools ""` the model can only emit text (no file,
-shell, or network access). The script fills the prompt from
-`step{N}/prompt.txt`, pipes it on stdin, and writes the response to
-`step{N}/data_samples/output/`.
+The runner supports subscription CLI and API backends. The default cheap path
+opens a fresh subscription CLI subprocess for each LLM call: `claude -p
+--tools "" --model <version>` for Claude Code, or `codex exec` from a fresh
+empty working directory with an ephemeral session for Codex. API mode uses the
+selected provider SDK with a fresh request per call. The script fills the
+prompt from `step{N}/prompt.txt`, sends it to the selected backend, and writes
+the response to `step{N}/data_samples/output/`.
 
 ## Step ordering
 
