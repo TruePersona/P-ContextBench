@@ -2,14 +2,16 @@
 # Run a single PersonaBench pipeline step for one persona.
 #
 # Each invocation is a separate OS subprocess (this script forks Python which
-# forks `claude -p` per LLM call). Each `claude -p` call has --tools "" so the
-# LLM has no filesystem, shell, or network access during inference. This is
-# the benchmark's structural isolation guarantee.
+# forks the selected model CLI per LLM call). The default backend is `claude`;
+# pass `codex` as the third argument to use `codex exec`, or an API backend
+# if you want metered SDK calls.
 #
 # Usage:
-#   bash run_step.sh <step> <persona>
+#   bash run_step.sh <step> <persona> [backend] [model]
 #   bash run_step.sh 4 julio_simmons
 #   bash run_step.sh 6 alicia_gonzalez
+#   bash run_step.sh 6 julio_simmons codex gpt-5.5
+#   bash run_step.sh 6 julio_simmons anthropic-api claude-opus-4-7
 #
 # Steps:
 #   2   Interview and verification
@@ -20,13 +22,14 @@
 #
 # This script is a thin bash wrapper around openclaw_pipeline.py. The Python
 # orchestrator handles file I/O, prompt template filling, the per-fact loop in
-# Step 4, and the iterative refinement loop in Step 5. Every LLM call inside
-# the orchestrator is a fresh `claude -p --tools ""` subprocess.
+# Step 4, and the iterative refinement loop in Step 5.
 
 set -euo pipefail
 
 STEP="${1:-}"
 PERSONA="${2:-}"
+BACKEND="${3:-${PERSONABENCH_BACKEND:-claude}}"
+MODEL_ARG="${4:-}"
 
 if [[ -z "$STEP" || -z "$PERSONA" ]]; then
   echo "usage: bash run_step.sh <step> <persona>" >&2
@@ -42,17 +45,42 @@ esac
 cd "$(dirname "$0")"
 
 # Pinned model strings. Edit run_pipeline.sh's CONFIG to change in one place.
-GENERATOR_MODEL="${GENERATOR_MODEL:-claude-opus-4-7}"
-VERIFIER_MODEL="${VERIFIER_MODEL:-claude-sonnet-4-6}"
-JUDGE_MODEL="${JUDGE_MODEL:-claude-sonnet-4-6}"
-LOG_START="${LOG_START:-2026-02-20}"
-LOG_END="${LOG_END:-2026-04-20}"
+case "$BACKEND" in
+  claude)
+    DEFAULT_GENERATOR_MODEL="claude-opus-4-7"
+    DEFAULT_VERIFIER_MODEL="claude-sonnet-4-6"
+    DEFAULT_JUDGE_MODEL="claude-sonnet-4-6"
+    ;;
+  codex)
+    DEFAULT_GENERATOR_MODEL="${MODEL_ARG:-gpt-5.5}"
+    DEFAULT_VERIFIER_MODEL="gpt-5"
+    DEFAULT_JUDGE_MODEL="gpt-5.4"
+    ;;
+  anthropic-api)
+    DEFAULT_GENERATOR_MODEL="${MODEL_ARG:-claude-opus-4-7}"
+    DEFAULT_VERIFIER_MODEL="claude-sonnet-4-6"
+    DEFAULT_JUDGE_MODEL="claude-sonnet-4-6"
+    ;;
+  openai-api)
+    DEFAULT_GENERATOR_MODEL="${MODEL_ARG:-gpt-5.5}"
+    DEFAULT_VERIFIER_MODEL="gpt-5"
+    DEFAULT_JUDGE_MODEL="gpt-5.4"
+    ;;
+  *) echo "error: backend must be claude, codex, anthropic-api, or openai-api (got '${BACKEND}')" >&2; exit 2 ;;
+esac
+
+GENERATOR_MODEL="${GENERATOR_MODEL:-${MODEL_ARG:-$DEFAULT_GENERATOR_MODEL}}"
+VERIFIER_MODEL="${VERIFIER_MODEL:-$DEFAULT_VERIFIER_MODEL}"
+JUDGE_MODEL="${JUDGE_MODEL:-$DEFAULT_JUDGE_MODEL}"
+LOG_START="${LOG_START:-2026-03-01}"
+LOG_END="${LOG_END:-2026-03-31}"
 MAX_FACT_ATTEMPTS="${MAX_FACT_ATTEMPTS:-3}"
 
 python openclaw_pipeline.py \
   --persona "${PERSONA}" \
   --start "${STEP}" \
   --stop "${STEP}" \
+  --backend "${BACKEND}" \
   --model "${GENERATOR_MODEL}" \
   --verifier-model "${VERIFIER_MODEL}" \
   --judge-model "${JUDGE_MODEL}" \
