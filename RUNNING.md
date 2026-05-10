@@ -25,7 +25,7 @@ All 5 personas have complete data through Step 5. To benchmark a model, run Step
 # Benchmark GPT 5 with GPT 5.4 as judge (Codex subscription)
 python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
   --backend codex \
-  --model gpt-5 \
+  --model gpt-5-mini \
   --judge-model gpt-5.4
 
 # Benchmark Opus 4.7 with Sonnet 4.6 as judge (Claude subscription)
@@ -37,7 +37,7 @@ python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
 # Score all 5 personas at once
 python openclaw_pipeline.py --all --start 6 --stop 6 \
   --backend codex \
-  --model gpt-5 \
+  --model gpt-5-mini \
   --judge-model gpt-5.4
 ```
 
@@ -68,7 +68,7 @@ python openclaw_pipeline.py \
 python openclaw_pipeline.py \
   --persona alicia_gonzalez --start 6 --stop 6 \
   --backend codex \
-  --model gpt-5 \
+  --model gpt-5-mini \
   --judge-model gpt-5.4
 ```
 
@@ -98,7 +98,7 @@ The pipeline uses four model roles. Three independence boundaries prevent system
 |---|---|---|---|
 | Generator | `claude-opus-4-7` | `gpt-5.5` | `--model` (Steps 2-5) |
 | Verifier | `claude-sonnet-4-6` | `gpt-5` | `--verifier-model` |
-| Evaluator | (run Step 6 separately) | `gpt-5` | `--model` (Step 6 only) |
+| Evaluator | (run Step 6 separately) | `gpt-5-mini` | `--model` (Step 6 only) |
 | Judge | `claude-sonnet-4-6` | `gpt-5.4` | `--judge-model` |
 
 Always run Step 6 in a separate invocation (`--start 6 --stop 6`) so the evaluator model can differ from the generator.

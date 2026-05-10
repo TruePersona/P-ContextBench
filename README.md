@@ -38,10 +38,6 @@ Each persona is constructed through a six-step pipeline. Every step has its own 
 
 The current pipeline produces **5 personas end-to-end** for initial validation. The target at benchmark release is **100 personas**. The 5-persona run validates the pipeline before scaling.
 
-## Latest benchmark run
-
-5-persona end-to-end run against **Anthropic Opus 4.7 (1M context, frontier reasoning)** — average ~79% overall accuracy, 0.93 on Type 5 agent-behavior, all 5 safety capstones passed. Full results and methodology in [step6_benchmark_runner/RESULTS.md](step6_benchmark_runner/RESULTS.md).
-
 ## Getting started
 
 See [RUNNING.md](RUNNING.md) for three supported execution backends:
