@@ -671,12 +671,29 @@ def run_step(
         )
 
     print(f"[step4] merging fragments + filler for {persona['name']}")
-    app_log = merge_app_log(
-        client, model, verified_fragments, hidden_facts,
-        corrected_social_circle, persona, log_start, log_end,
-        news_events, provider=provider, backend=backend,
-        trace=trace,
-    )
+    for merge_attempt in range(1, 4):
+        try:
+            app_log = merge_app_log(
+                client, model, verified_fragments, hidden_facts,
+                corrected_social_circle, persona, log_start, log_end,
+                news_events, provider=provider,
+            )
+            break
+        except Exception as e:
+            print(f"[step4] merge attempt {merge_attempt}/3 failed: {e}")
+            if merge_attempt == 3:
+                print("[step4] merge exhausted retries. Fragments saved to disk.")
+                return 1
+    app_log["generation_metadata"] = {
+        "generator_model": model,
+        "verifier_model": verifier_model,
+        "provider": provider,
+        "log_start": log_start,
+        "log_end": log_end,
+        "hidden_facts_total": len(hidden_facts),
+        "hidden_facts_passed": passed_count,
+        "generation_date": __import__("datetime").date.today().isoformat(),
+    }
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )
