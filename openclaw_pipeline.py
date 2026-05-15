@@ -369,6 +369,17 @@ def run_step4(
     if isinstance(calendar, dict):
         for e in calendar.get("events", []) or []:
             e.pop("source_fact_ids", None)
+    app_log["generation_metadata"] = {
+        "generator_model": model or "unknown",
+        "verifier_model": verifier_model or "unknown",
+        "log_start": log_start,
+        "log_end": log_end,
+        "hidden_facts_total": len(hidden_facts),
+        "hidden_facts_passed": sum(
+            1 for t in trace if t["passed"]
+        ),
+        "generation_date": __import__("datetime").date.today().isoformat(),
+    }
     out = output_dir / f"{base(name)}_app_logs.json"
     out.write_text(json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
