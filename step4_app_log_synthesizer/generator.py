@@ -353,6 +353,16 @@ def run_step(
             if merge_attempt == 3:
                 print("[step4] merge exhausted retries. Fragments saved to disk.")
                 return 1
+    app_log["generation_metadata"] = {
+        "generator_model": model,
+        "verifier_model": verifier_model,
+        "provider": provider,
+        "log_start": log_start,
+        "log_end": log_end,
+        "hidden_facts_total": len(hidden_facts),
+        "hidden_facts_passed": passed_count,
+        "generation_date": __import__("datetime").date.today().isoformat(),
+    }
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )
