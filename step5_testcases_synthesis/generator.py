@@ -1,11 +1,11 @@
-"""Step 5 — Test case generation and verification.
+"""Step 5 -- Test case generation and verification.
 
 Two phases:
 
-  1. Generation     — fills prompt.txt with the corrected extracted profile,
+  1. Generation     -- fills prompt with the corrected extracted profile,
                       app logs, and corrected social circle. Calls the LLM
                       and writes the test case file.
-  2. Verification   — fills verification_prompt.txt with the test cases plus
+  2. Verification   -- fills verification prompt with the test cases plus
                       the profile and app logs. Calls the LLM and writes the
                       verification report and corrected test cases.
 
@@ -24,13 +24,24 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import anthropic
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from llm import (
+    API_BACKENDS,
+    SUBSCRIPTION_BACKENDS,
+    call_llm,
+    call_subscription_cli,
+    check_api_key,
+    make_client,
+    provider_for_backend,
+)
 
 STEP_DIR = Path(__file__).parent
-PROMPT_PATH = STEP_DIR / "prompt.txt"
-VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
+PROMPT_V1_PATH = STEP_DIR / "prompt.txt"
+PROMPT_V2_PATH = STEP_DIR / "prompt_v2.txt"
+VERIFICATION_V1_PATH = STEP_DIR / "verification_prompt.txt"
+VERIFICATION_V2_PATH = STEP_DIR / "verification_prompt_v2.txt"
 
-DEFAULT_MODEL = "claude-opus-4-6"
+DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_MAX_ITERATIONS = 3
 
 
@@ -44,71 +55,126 @@ def fill_json(template: str, placeholder: str, payload: Any) -> str:
     )
 
 
-def call_llm(client: anthropic.Anthropic, model: str, prompt: str) -> str:
-    response = client.messages.create(
-        model=model,
-        max_tokens=64_000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-            }
-        ],
-    )
-    blocks = [b.text for b in response.content if b.type == "text"]
-    return "".join(blocks)
-
-
 def extract_json(text: str) -> dict[str, Any]:
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     payload = fenced.group(1) if fenced else text
     start = payload.find("{")
     if start == -1:
         raise ValueError("No JSON object found in LLM output")
-    return json.loads(payload[start:])
+    raw = payload[start:]
+    decoder = json.JSONDecoder()
+    try:
+        obj, _ = decoder.raw_decode(raw)
+        return obj
+    except json.JSONDecodeError:
+        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
+        return obj
+
+
+def _fix_invalid_escapes(text: str) -> str:
+    valid = set('"\\/bfnrtu')
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
+            if text[i + 1] in valid:
+                out.append(text[i])
+                out.append(text[i + 1])
+                i += 2
+            else:
+                out.append(text[i + 1])
+                i += 2
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def strip_filler_for_step5(app_logs: dict[str, Any]) -> dict[str, Any]:
+    """Remove filler sessions from app logs before injecting into Step 5 prompt.
+
+    Filler sessions exist to challenge the evaluator in Step 6 (they are noise
+    the model must sift through). Step 5 only needs meaningful sessions and
+    hidden_facts to build evidence anchors and test cases. Stripping filler
+    reduces the prompt from ~826K tokens to ~185K tokens.
+    """
+    trimmed = dict(app_logs)
+    messenger = dict(app_logs.get("messenger", {}))
+    messenger.pop("filler_sessions", None)
+    trimmed["messenger"] = messenger
+    trimmed.pop("cross_app_index", None)
+    trimmed.pop("token_stats", None)
+    trimmed.pop("surprises_woven", None)
+    trimmed.pop("metadata", None)
+    return trimmed
+
+
+def do_call(
+    prompt: str,
+    model: str,
+    client: Any | None,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+) -> str:
+    if backend in SUBSCRIPTION_BACKENDS:
+        return call_subscription_cli(
+            prompt, model, backend, claude_cmd=claude_cmd, codex_cmd=codex_cmd
+        )
+    assert client is not None
+    return call_llm(client, model, prompt, provider=provider)
 
 
 def run_generation(
-    client: anthropic.Anthropic,
-    model: str,
     corrected_profile: dict[str, Any],
     app_logs: dict[str, Any],
     corrected_social_circle: dict[str, Any],
+    model: str,
+    client: Any | None,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+    prompt_version: str = "v1",
 ) -> dict[str, Any]:
-    template = load_prompt(PROMPT_PATH)
+    prompt_path = PROMPT_V2_PATH if prompt_version == "v2" else PROMPT_V1_PATH
+    template = load_prompt(prompt_path)
     template = fill_json(
         template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", corrected_profile
     )
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
+    logs_for_prompt = strip_filler_for_step5(app_logs)
+    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     template = fill_json(
         template,
         "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
         corrected_social_circle,
     )
-    raw = call_llm(client, model, template)
+    raw = do_call(template, model, client, backend, provider, claude_cmd, codex_cmd)
     return extract_json(raw)
 
 
 def run_verification(
-    client: anthropic.Anthropic,
-    model: str,
     test_cases: dict[str, Any],
     corrected_profile: dict[str, Any],
     app_logs: dict[str, Any],
+    model: str,
+    client: Any | None,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+    prompt_version: str = "v1",
 ) -> dict[str, Any]:
-    template = load_prompt(VERIFICATION_PROMPT_PATH)
+    ver_path = VERIFICATION_V2_PATH if prompt_version == "v2" else VERIFICATION_V1_PATH
+    template = load_prompt(ver_path)
     template = fill_json(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
     template = fill_json(
         template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", corrected_profile
     )
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
-    raw = call_llm(client, model, template)
+    logs_for_prompt = strip_filler_for_step5(app_logs)
+    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
+    raw = do_call(template, model, client, backend, provider, claude_cmd, codex_cmd)
     return extract_json(raw)
 
 
@@ -131,6 +197,11 @@ def run_step(
     output_dir: Path,
     model: str,
     max_iterations: int,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+    prompt_version: str = "v1",
 ) -> int:
     corrected_profile_file = json.loads(profile_path.read_text(encoding="utf-8"))
     corrected_profile = corrected_profile_file["corrected_extracted_profile"]
@@ -138,7 +209,10 @@ def run_step(
     social_circle_file = json.loads(social_circle_path.read_text(encoding="utf-8"))
     corrected_social_circle = social_circle_file["corrected_social_circle"]
 
-    client = anthropic.Anthropic()
+    client = None
+    if backend in API_BACKENDS:
+        client = make_client(provider)
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     base_name = extract_base_name(profile_path)
@@ -146,17 +220,21 @@ def run_step(
     verification_out = output_dir / f"{base_name}_test_cases_verification.json"
 
     for attempt in range(1, max_iterations + 1):
-        print(f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name}")
+        print(f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name} (prompt {prompt_version})")
         test_cases = run_generation(
-            client, model, corrected_profile, app_logs, corrected_social_circle
+            corrected_profile, app_logs, corrected_social_circle,
+            model, client, backend, provider, claude_cmd, codex_cmd,
+            prompt_version=prompt_version,
         )
         test_cases_out.write_text(
             json.dumps(test_cases, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-        print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}")
+        print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name} (prompt {prompt_version})")
         verification = run_verification(
-            client, model, test_cases, corrected_profile, app_logs
+            test_cases, corrected_profile, app_logs,
+            model, client, backend, provider, claude_cmd, codex_cmd,
+            prompt_version=prompt_version,
         )
         verification_out.write_text(
             json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -203,10 +281,50 @@ def main() -> None:
     )
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--max-iterations", type=int, default=DEFAULT_MAX_ITERATIONS)
+    parser.add_argument(
+        "--backend",
+        default="claude",
+        choices=SUBSCRIPTION_BACKENDS + API_BACKENDS,
+        help="Inference backend: claude/codex for subscription CLI, "
+        "anthropic-api/openai-api for metered API.",
+    )
+    parser.add_argument(
+        "--provider",
+        default=None,
+        choices=("anthropic", "openai"),
+    )
+    parser.add_argument(
+        "--claude-cmd",
+        default=os.environ.get(
+            "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
+        ),
+    )
+    parser.add_argument(
+        "--codex-cmd",
+        default=os.environ.get(
+            "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
+        ),
+    )
+    parser.add_argument(
+        "--prompt-version",
+        default="v1",
+        choices=("v1", "v2"),
+        help="Prompt version: v1 (original) or v2 (structured output + 8 subtypes).",
+    )
     args = parser.parse_args()
 
-    if "ANTHROPIC_API_KEY" not in os.environ:
-        print("ANTHROPIC_API_KEY is not set.", file=sys.stderr)
+    backend = args.backend
+    provider = (
+        provider_for_backend(backend, args.provider or "anthropic")
+        if backend in API_BACKENDS
+        else (args.provider or "anthropic")
+    )
+
+    if backend in API_BACKENDS and not check_api_key(provider):
+        print(
+            f"{provider.upper()}_API_KEY is not set and no subscription backend was selected.",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     sys.exit(
@@ -217,6 +335,11 @@ def main() -> None:
             args.output,
             args.model,
             args.max_iterations,
+            backend,
+            provider,
+            args.claude_cmd,
+            args.codex_cmd,
+            prompt_version=args.prompt_version,
         )
     )
 

@@ -35,7 +35,8 @@ from llm import (
 )
 
 STEP_DIR = Path(__file__).parent
-PROMPT_PATH = STEP_DIR / "prompt.txt"
+PROMPT_V1_PATH = STEP_DIR / "prompt.txt"
+PROMPT_V2_PATH = STEP_DIR / "prompt_v2.txt"
 
 DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
@@ -43,9 +44,10 @@ DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
 
 # ----- prompt splitting ----------------------------------------------------
 
-def load_prompt_sections() -> dict[str, str]:
-    """Split prompt.txt into PASS 1 and PASS 2 sections on the big dividers."""
-    text = PROMPT_PATH.read_text(encoding="utf-8")
+def load_prompt_sections(prompt_version: str = "v1") -> dict[str, str]:
+    """Split prompt into PASS 1 and PASS 2 sections on the big dividers."""
+    prompt_path = PROMPT_V2_PATH if prompt_version == "v2" else PROMPT_V1_PATH
+    text = prompt_path.read_text(encoding="utf-8")
     pass1_marker = "PASS 1 — ANSWERING"
     pass2_marker = "PASS 2 — SCORING"
     header_end = text.index(pass1_marker)
@@ -113,25 +115,34 @@ def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+FIELDS_HIDDEN_FROM_PASS1 = {
+    "ground_truth",
+    "expected_evidence",
+    "source_hidden_fact_ids",
+    "source_subcategories",
+    "risk_surface_score",
+    "user_prompt_context",
+    "expected_behavior",
+    "expected_resolution_label",
+    "expected_action_boundary",
+    "naive_compliance_consequence",
+    "construction_tags",
+    "hidden_fact_reasoning_roles",
+    "fact_check_risk",
+    "reasoning_requirement",
+}
+
+
 def strip_ground_truth(test_cases: dict[str, Any]) -> dict[str, Any]:
-    """Return a shallow copy of test_cases with ground_truth/expected_evidence
-    removed from each case. Questions, ids, types, subtype, framing remain."""
+    """Return a shallow copy of test_cases with answer-key fields removed.
+    Questions, ids, types, subtype, framing remain visible to Pass 1."""
     stripped = {"metadata": test_cases.get("metadata", {}), "test_cases": []}
     for tc in test_cases.get("test_cases", []):
         stripped["test_cases"].append(
             {
                 k: v
                 for k, v in tc.items()
-                if k
-                not in {
-                    "ground_truth",
-                    "expected_evidence",
-                    "source_hidden_fact_ids",
-                    "source_subcategories",
-                    "risk_surface_score",
-                    "user_prompt_context",
-                    "expected_behavior",
-                }
+                if k not in FIELDS_HIDDEN_FROM_PASS1
             }
         )
     return stripped
@@ -144,10 +155,13 @@ def extract_json(text: str) -> dict[str, Any]:
     if start == -1:
         raise ValueError("No JSON object found in LLM output")
     raw = payload[start:]
+    decoder = json.JSONDecoder()
     try:
-        return json.loads(raw)
+        obj, _ = decoder.raw_decode(raw)
+        return obj
     except json.JSONDecodeError:
-        return json.loads(_fix_invalid_escapes(raw))
+        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
+        return obj
 
 
 def _fix_invalid_escapes(text: str) -> str:
@@ -180,13 +194,41 @@ def run_pass_1(
     provider: str,
     claude_cmd: str,
     codex_cmd: str,
+    prompt_version: str = "v1",
 ) -> dict[str, Any]:
-    sections = load_prompt_sections()
+    sections = load_prompt_sections(prompt_version)
     template = fill(sections["pass1"], "{{INSERT_RAW_LOGS_TEXT_HERE}}", raw_logs)
     template = fill(
         template,
         "{{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}",
         test_cases_stripped,
+    )
+    if backend in SUBSCRIPTION_BACKENDS:
+        raw = call_subscription_cli(
+            template, model, backend, claude_cmd=claude_cmd, codex_cmd=codex_cmd
+        )
+    else:
+        assert client is not None
+        raw = call_llm(client, model, template, provider=provider)
+    return extract_json(raw)
+
+
+def _call_pass2_single(
+    sections: dict[str, str],
+    test_cases_batch: dict[str, Any],
+    answers_batch: dict[str, Any],
+    model: str,
+    client: Any | None,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+) -> dict[str, Any]:
+    template = fill(
+        sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_batch
+    )
+    template = fill(
+        template, "{{INSERT_PASS_1_ANSWERS_JSON_HERE}}", answers_batch
     )
     if backend in SUBSCRIPTION_BACKENDS:
         raw = call_subscription_cli(
@@ -207,22 +249,63 @@ def run_pass_2(
     provider: str,
     claude_cmd: str,
     codex_cmd: str,
+    prompt_version: str = "v1",
+    batch_size: int = 5,
 ) -> dict[str, Any]:
-    sections = load_prompt_sections()
-    template = fill(
-        sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_full
-    )
-    template = fill(
-        template, "{{INSERT_PASS_1_ANSWERS_JSON_HERE}}", pass1_answers
-    )
-    if backend in SUBSCRIPTION_BACKENDS:
-        raw = call_subscription_cli(
-            template, model, backend, claude_cmd=claude_cmd, codex_cmd=codex_cmd
+    sections = load_prompt_sections(prompt_version)
+    all_cases = test_cases_full.get("test_cases", [])
+    all_answers = pass1_answers.get("answers", [])
+    answer_map = {a["test_case_id"]: a for a in all_answers}
+
+    if backend not in SUBSCRIPTION_BACKENDS or len(all_cases) <= batch_size:
+        return _call_pass2_single(
+            sections, test_cases_full, pass1_answers,
+            model, client, backend, provider, claude_cmd, codex_cmd,
         )
-    else:
-        assert client is not None
-        raw = call_llm(client, model, template, provider=provider)
-    return extract_json(raw)
+
+    merged_evaluations: list[dict[str, Any]] = []
+    merged_result: dict[str, Any] = {}
+
+    for i in range(0, len(all_cases), batch_size):
+        batch_cases = all_cases[i : i + batch_size]
+        batch_ids = {c["id"] for c in batch_cases}
+        batch_answers = [a for a in all_answers if a["test_case_id"] in batch_ids]
+
+        tc_batch = dict(test_cases_full)
+        tc_batch["test_cases"] = batch_cases
+        ans_batch = dict(pass1_answers)
+        ans_batch["answers"] = batch_answers
+
+        batch_num = i // batch_size + 1
+        total_batches = (len(all_cases) + batch_size - 1) // batch_size
+        print(f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases")
+
+        for attempt in range(3):
+            try:
+                result = _call_pass2_single(
+                    sections, tc_batch, ans_batch,
+                    model, client, backend, provider, claude_cmd, codex_cmd,
+                )
+                evals = result.get("evaluations", [])
+                if not evals and isinstance(result, dict) and "test_case_id" in result:
+                    evals = [result]
+                merged_evaluations.extend(evals)
+                if not merged_result:
+                    merged_result = result
+                break
+            except (json.JSONDecodeError, ValueError) as exc:
+                print(f"    batch {batch_num} attempt {attempt + 1} failed: {exc}")
+                if attempt == 2:
+                    print(f"    skipping batch {batch_num} after 3 attempts")
+
+    if not merged_result:
+        merged_result = {"evaluations": [], "metadata": {}}
+    merged_result["evaluations"] = merged_evaluations
+    merged_result["metadata"] = merged_result.get("metadata", {})
+    merged_result["metadata"]["total_cases"] = len(merged_evaluations)
+    merged_result["metadata"]["batched"] = True
+    merged_result["metadata"]["batches_total"] = (len(all_cases) + batch_size - 1) // batch_size
+    return merged_result
 
 
 # ----- entry point ---------------------------------------------------------
@@ -237,6 +320,8 @@ def run_step(
     provider: str,
     claude_cmd: str,
     codex_cmd: str,
+    prompt_version: str = "v1",
+    skip_pass1: bool = False,
 ) -> int:
     app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
     test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
@@ -255,20 +340,25 @@ def run_step(
     if backend in API_BACKENDS:
         client = make_client(provider)
 
-    print(f"[pass 1] answering {len(stripped['test_cases'])} cases for {base_name}")
-    pass1 = run_pass_1(
-        raw_logs,
-        stripped,
-        model_pass1,
-        client=client,
-        backend=backend,
-        provider=provider,
-        claude_cmd=claude_cmd,
-        codex_cmd=codex_cmd,
-    )
-    pass1_out.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
+    if skip_pass1 and pass1_out.exists():
+        print(f"[pass 1] skipped — loading existing {pass1_out.name}")
+        pass1 = json.loads(pass1_out.read_text(encoding="utf-8"))
+    else:
+        print(f"[pass 1] answering {len(stripped['test_cases'])} cases for {base_name} (prompt {prompt_version})")
+        pass1 = run_pass_1(
+            raw_logs,
+            stripped,
+            model_pass1,
+            client=client,
+            backend=backend,
+            provider=provider,
+            claude_cmd=claude_cmd,
+            codex_cmd=codex_cmd,
+            prompt_version=prompt_version,
+        )
+        pass1_out.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"[pass 2] scoring answers for {base_name}")
+    print(f"[pass 2] scoring answers for {base_name} (prompt {prompt_version})")
     pass2 = run_pass_2(
         test_cases,
         pass1,
@@ -278,6 +368,7 @@ def run_step(
         provider=provider,
         claude_cmd=claude_cmd,
         codex_cmd=codex_cmd,
+        prompt_version=prompt_version,
     )
     pass2_out.write_text(json.dumps(pass2, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -328,6 +419,18 @@ def main() -> None:
         "--codex-cmd",
         default=os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"),
     )
+    parser.add_argument(
+        "--prompt-version",
+        default="v1",
+        choices=("v1", "v2"),
+        help="Prompt version: v1 (original) or v2 (structured output + penalty scoring).",
+    )
+    parser.add_argument(
+        "--skip-pass1",
+        action="store_true",
+        help="Skip Pass 1 and reuse existing pass1_answers.json. Useful when "
+        "only the scoring prompt or judge model changed.",
+    )
     args = parser.parse_args()
     backend = "claude" if args.openclaw else args.backend
     provider = provider_for_backend(backend, args.provider or "anthropic") if backend in API_BACKENDS else (args.provider or "anthropic")
@@ -354,6 +457,8 @@ def main() -> None:
             provider,
             args.claude_cmd,
             args.codex_cmd,
+            prompt_version=args.prompt_version,
+            skip_pass1=args.skip_pass1,
         )
     )
 
