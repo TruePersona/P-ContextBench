@@ -34,6 +34,7 @@ def call_llm(
                 with client.messages.stream(
                     model=model,
                     max_tokens=64_000,
+                    temperature=0,
                     messages=[
                         {
                             "role": "user",
@@ -51,6 +52,7 @@ def call_llm(
             if provider == "openai":
                 response = client.chat.completions.create(
                     model=model,
+                    temperature=0,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 return response.choices[0].message.content
@@ -110,12 +112,20 @@ def call_claude_cli(
     if model:
         cmd += ["--model", model]
 
+    wrapped_prompt = (
+        "You are being used as a pure inference backend for PersonaBench. "
+        "Do not inspect files, run commands, browse, or use tools. Read the "
+        "instructions below in full and return ONLY the requested JSON output. "
+        "No preamble, no commentary, no markdown fences.\n\n"
+        + prompt
+    )
+
     last_stderr = ""
     for attempt in range(max_retries + 1):
         tmp = tempfile.NamedTemporaryFile(
             mode="w", suffix=".txt", delete=False, encoding="utf-8"
         )
-        tmp.write(prompt)
+        tmp.write(wrapped_prompt)
         tmp.close()
         try:
             with open(tmp.name, "r", encoding="utf-8") as stream:
@@ -123,7 +133,7 @@ def call_claude_cli(
                     cmd,
                     stdin=stream,
                     capture_output=True,
-                    timeout=1800,
+                    timeout=3600,
                 )
             stdout = result.stdout.decode("utf-8", errors="replace")
             stderr = result.stderr.decode("utf-8", errors="replace")
@@ -192,7 +202,7 @@ def call_codex_cli(
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                timeout=1800,
+                timeout=3600,
             )
             if result.returncode == 0:
                 if out_path.exists():
