@@ -1,0 +1,52 @@
+You are preparing search strategy for synthetic app-log filler.
+
+You must NOT invent news events. Your task is only to derive search queries and
+relevance guidance from the persona profile and social circle.
+
+The downstream system will use GDELT to fetch real sourced events in the app-log
+window. Your output should make those searches persona-relevant while avoiding
+private or fact-bearing evidence.
+
+Persona profile:
+{{PROFILE_JSON}}
+
+Social circle:
+{{SOCIAL_CIRCLE_JSON}}
+
+App-log window:
+{{LOG_WINDOW_JSON}}
+
+Rules:
+- Return search strategy only, not news.
+- Use generic, reusable reasoning; do not assume this persona is Alicia.
+- Prefer public/local events, weather, outages, campus/work/community context,
+  sports/culture/food/outdoors/travel only when supported by the profile.
+- Avoid medical, financial, family-conflict, therapy, medication, divorce, or
+  other private hidden-fact topics as news searches.
+- Keep queries broad enough that GDELT can find results.
+- Include likely contacts only from the supplied social circle.
+- Use exact phrase quotes only around short concrete anchors.
+
+Return only this JSON shape:
+{
+  "location_anchors": ["..."],
+  "public_interest_anchors": ["..."],
+  "exclude_topics": ["..."],
+  "preferred_event_mix": {
+    "local_news": 0.30,
+    "weather_outage": 0.25,
+    "work_campus": 0.15,
+    "culture_food_outdoors": 0.20,
+    "travel_consumer": 0.10
+  },
+  "gdelt_queries": [
+    {
+      "query": "\"City\" \"State\" weather",
+      "type": "weather",
+      "location_scope": "local | regional/national",
+      "relevance": "one sentence",
+      "likely_contacts": ["Contact Name"],
+      "anchors": ["City", "weather"]
+    }
+  ]
+}
