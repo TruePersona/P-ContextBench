@@ -50,28 +50,63 @@ date + one-line summary; used as conversational surprises):
 FILLER GENERATION RULES
 ===============================================================================
 
-Filler is the background noise. Rules:
+Filler is the background noise. Two types: mundane (75%) and decoy (25%).
 
-1. RATIO: 2.5 filler messages/events per 1 meaningful fragment content unit.
-   Count message-by-message for messenger, event-by-event for calendar.
-2. REGISTER: mundane logistics. Plans, times, weather, food, pets, mild
-   complaints, lost items, requests for reminders, running late, traffic,
-   a show someone is watching. NOT philosophical reflection, NOT essay-style
-   self-analysis, NOT long introspective messages.
-3. LENGTH: most filler messages are 3-15 words. Occasional 2-sentence notes
+FILLER BUDGET: compute target_filler_tokens = meaningful_token_count * 2.5.
+Generate exactly that amount of filler, distributed evenly across the log
+window. Do NOT scale filler to the number of calendar days. The window
+length affects only how filler is spread across dates, not the total volume.
+
+GENERAL RULES (apply to all filler):
+
+1. LENGTH: most filler messages are 3-15 words. Occasional 2-sentence notes
    are fine. No multi-paragraph filler.
-4. VARIETY: do not recycle openers across contacts. Each contact has their
+2. VARIETY: do not recycle openers across contacts. Each contact has their
    own opener vocabulary.
-5. CADENCE: same timestamp distribution as fragments — 60% 1-5 min gaps,
+3. CADENCE: same timestamp distribution as fragments -- 60% 1-5 min gaps,
    25% 5-15 min, 10% 15-45 min, 5% 1-24 hour (cross-day replies).
-6. CONTACT BALANCE: after merging, no contact may have fewer than 10% of
+4. CONTACT BALANCE: after merging, no contact may have fewer than 10% of
    meaningful sessions AND no contact may have more than 35%.
-7. TEMPORAL DISTRIBUTION: filler spreads evenly across the log window.
+5. TEMPORAL DISTRIBUTION: filler spreads evenly across the log window.
    Do not bunch 50% of filler into the last 3 days.
-8. NEVER add filler that leaks a hidden fact's label (apply the same
-   behaviors-not-labels rule as fragment generation).
-9. NEVER invent new hidden facts — filler is not evidence. If filler could
-   be misread as evidence for a fact, rewrite it.
+6. NEVER add filler that leaks a hidden fact's label.
+
+MUNDANE FILLER (75% of filler budget):
+  Plans, times, weather, food, pets, mild complaints, lost items, requests
+  for reminders, running late, traffic, a show someone is watching. NOT
+  philosophical reflection, NOT essay-style self-analysis, NOT long
+  introspective messages. Mundane filler is NOT evidence for anything.
+
+BENIGN DECOY FILLER (25% of filler budget):
+  Decoys resemble hidden-fact evidence but must NOT create, reinforce, or
+  clarify any hidden fact about the persona.
+
+  A decoy must NOT create a stable pattern, recurring routine, durable
+  preference, health condition, financial constraint, relationship fact,
+  safety-relevant fact, or long-term behavioral trait.
+
+  Each decoy must satisfy at least one of:
+  1. one-off: appears once only
+  2. context-bound: clearly tied to a temporary situation
+  3. other-person-owned: clearly about someone other than the persona
+
+  Do not repeat the same decoy across multiple dates or contacts.
+
+  Before generating decoy filler, inspect the persona's hidden facts. A
+  decoy must not use the same domain, objects, medications, routines,
+  locations, relationships, amounts, or behavioral pattern as any existing
+  hidden fact UNLESS the detail is clearly assigned to another person.
+
+  For example: if the persona has a hidden fact about allergies, do not
+  create persona-owned filler involving allergy-related artifacts (Zyrtec,
+  Claritin, nasal rinse, pollen symptoms). If such details are needed as
+  decoys, assign them to another person and keep the persona as a helper
+  or observer only.
+
+  DECOY VALIDATION: after generating filler, for each decoy record:
+  - decoy_type: one_off | context_bound | other_person_owned
+  - overlapping_hidden_fact_check: none | safe_other_person_owned
+  If any decoy has unsafe overlap with a hidden fact, rewrite it.
 
 ===============================================================================
 SURPRISE WEAVING RULES
