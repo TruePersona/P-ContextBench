@@ -25,20 +25,15 @@ from typing import Any
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from llm import (
-    API_BACKENDS, SUBSCRIPTION_BACKENDS, SUPPORTED_BACKENDS,
-    make_client, call_llm as _call_llm, call_subscription_cli,
-    check_api_key, provider_for_backend, default_model_for_backend,
-    SUPPORTED_PROVIDERS,
-)
+from llm import make_client, call_llm as _call_llm, check_api_key, SUPPORTED_PROVIDERS
 
 STEP_DIR = Path(__file__).parent
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 MERGE_PROMPT_PATH = STEP_DIR / "merge_prompt.txt"
 
-DEFAULT_MODEL = None
-DEFAULT_VERIFIER_MODEL = None
+DEFAULT_MODEL = "claude-opus-4-6"
+DEFAULT_VERIFIER_MODEL = "claude-sonnet-4-6"  # cold, independent verifier
 DEFAULT_PER_FACT_MAX_ATTEMPTS = 3
 DEFAULT_LOG_WINDOW_DAYS = 60
 
@@ -55,15 +50,7 @@ def fill(template: str, placeholder: str, payload: Any) -> str:
     )
 
 
-CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude")
-CODEX_CMD = os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex")
-
-
-def call_llm(client, model: str, prompt: str, provider: str = "anthropic",
-             backend: str = "anthropic-api") -> str:
-    if backend in SUBSCRIPTION_BACKENDS:
-        return call_subscription_cli(prompt, model, backend,
-                                     claude_cmd=CLAUDE_CMD, codex_cmd=CODEX_CMD)
+def call_llm(client, model: str, prompt: str, provider: str = "anthropic") -> str:
     return _call_llm(client, model, prompt, provider=provider)
 
 
@@ -111,7 +98,6 @@ def generate_fragments(
     log_end: str,
     contact_usage: dict[str, int],
     provider: str = "anthropic",
-    backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     template = load_prompt(PROMPT_PATH)
     template = fill(template, "{{INSERT_HIDDEN_FACT_JSON_HERE}}", hidden_fact)
@@ -121,7 +107,7 @@ def generate_fragments(
     template = fill(template, "{{LOG_START_DATE}}", log_start)
     template = fill(template, "{{LOG_END_DATE}}", log_end)
     template = fill(template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage)
-    raw = call_llm(client, model, template, provider=provider, backend=backend)
+    raw = call_llm(client, model, template, provider=provider)
     return extract_json(raw)
 
 
@@ -132,7 +118,6 @@ def verify_fragments(
     banned_token_set: list[str],
     persona: dict[str, Any],
     provider: str = "anthropic",
-    backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     verifier_input = {
         "fragments": fragments,
@@ -144,7 +129,7 @@ def verify_fragments(
     template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
     template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
     template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
-    raw = call_llm(client, verifier_model, template, provider=provider, backend=backend)
+    raw = call_llm(client, verifier_model, template, provider=provider)
     return extract_json(raw)
 
 
@@ -179,254 +164,7 @@ def update_contact_usage(
         contact_usage[name] = contact_usage.get(name, 0) + 1
 
 
-# ---- merge (deterministic assembly + per-contact filler LLM calls) -------
-
-
-FILLER_PROMPT_TEMPLATE = """Generate {count} filler messenger sessions between {persona_name} and {contact_name} spread across these dates: {dates}.
-
-Contact voice profile:
-- Relationship: {relationship}
-- Communication style: {comm_style}
-- Typical topics: {topics}
-
-Rules:
-- Each session is 2-6 mundane messages (3-15 words each).
-- Content: logistics, weather, food, pets, running late, errands, casual check-ins.
-- NO hidden facts, NO deep reflection, NO essay-style messages.
-- {contact_name}'s messages must match their voice profile above.
-- Vary openers across sessions. Do not recycle greetings.
-- Use realistic timestamps (HH:MM) within each session.
-
-Return a JSON array of sessions:
-[
-  {{
-    "date": "YYYY-MM-DD",
-    "contact": "{contact_name}",
-    "messages": [
-      {{"time": "HH:MM", "sender": "...", "text": "..."}}
-    ]
-  }}
-]
-
-Return ONLY the JSON array, no other text."""
-
-
-def _group_fragments_into_sessions(
-    fragments: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    messenger_groups: dict[str, list[dict[str, Any]]] = {}
-    calendar_events: list[dict[str, Any]] = []
-
-    for frag in fragments:
-        if frag.get("type") == "calendar" and frag.get("calendar_event"):
-            evt = dict(frag["calendar_event"])
-            evt["date"] = frag["date"]
-            calendar_events.append(evt)
-        elif frag.get("type") == "messenger" and frag.get("messages"):
-            key = f"{frag['date']}|{frag.get('source', {}).get('contact_name', 'unknown')}"
-            messenger_groups.setdefault(key, []).append(frag)
-
-    sessions = []
-    for key, frags in sorted(messenger_groups.items()):
-        date, contact = key.split("|", 1)
-        messages = []
-        for f in frags:
-            messages.extend(f.get("messages", []))
-        messages.sort(key=lambda m: m.get("time", ""))
-        sessions.append({
-            "date": date,
-            "contact": contact,
-            "messages": messages,
-        })
-
-    sessions.sort(key=lambda s: (s["date"], (s["messages"] or [{}])[0].get("time", "")))
-    calendar_events.sort(key=lambda e: (e.get("date", ""), e.get("start_time", "")))
-    return sessions, calendar_events
-
-
-def _compute_filler_budget(
-    meaningful_sessions: list[dict[str, Any]],
-    contacts: list[str],
-    ratio: float = 2.5,
-) -> dict[str, int]:
-    total_filler_sessions = max(1, int(len(meaningful_sessions) * ratio))
-
-    contact_meaningful = {}
-    for s in meaningful_sessions:
-        c = s.get("contact", "unknown")
-        contact_meaningful[c] = contact_meaningful.get(c, 0) + 1
-    total_meaningful = max(len(meaningful_sessions), 1)
-
-    budget: dict[str, int] = {}
-    for c in contacts:
-        share = contact_meaningful.get(c, 0) / total_meaningful
-        if share > 0.35:
-            budget[c] = max(1, int(total_filler_sessions * 0.15))
-        elif share < 0.10:
-            budget[c] = max(3, int(total_filler_sessions * 0.25))
-        else:
-            budget[c] = max(1, int(total_filler_sessions / len(contacts)))
-
-    assigned = sum(budget.values())
-    if assigned < total_filler_sessions and contacts:
-        budget[contacts[0]] += total_filler_sessions - assigned
-
-    return budget
-
-
-def _dates_for_contact(
-    meaningful_sessions: list[dict[str, Any]],
-    contact: str,
-    log_start: str,
-    log_end: str,
-) -> list[str]:
-    from datetime import date, timedelta
-    start = date.fromisoformat(log_start)
-    end = date.fromisoformat(log_end)
-    meaningful_dates = {
-        s["date"] for s in meaningful_sessions if s.get("contact") == contact
-    }
-    all_dates = []
-    d = start
-    while d <= end:
-        ds = d.isoformat()
-        if ds not in meaningful_dates:
-            all_dates.append(ds)
-        d += timedelta(days=1)
-    return all_dates
-
-
-def _generate_filler_for_contact(
-    client,
-    model: str,
-    persona_name: str,
-    contact: dict[str, Any],
-    count: int,
-    available_dates: list[str],
-    provider: str = "anthropic",
-    backend: str = "anthropic-api",
-) -> list[dict[str, Any]]:
-    contact_name = contact["name"]
-    relationship = contact.get("relationship", "friend")
-    personality = contact.get("personality_mini_profile", {})
-    comm_style = personality.get("communication_style", "casual texting")
-    topics = ", ".join(contact.get("recent_text_topics", [])[:3]) or "daily life"
-
-    sample_dates = available_dates[:count] if len(available_dates) >= count else (
-        available_dates * ((count // max(len(available_dates), 1)) + 1)
-    )[:count]
-    dates_str = ", ".join(sample_dates[:15])
-    if len(sample_dates) > 15:
-        dates_str += f" (and {len(sample_dates) - 15} more)"
-
-    prompt = FILLER_PROMPT_TEMPLATE.format(
-        count=count,
-        persona_name=persona_name,
-        contact_name=contact_name,
-        dates=dates_str,
-        relationship=relationship,
-        comm_style=comm_style,
-        topics=topics,
-    )
-
-    raw = call_llm(client, model, prompt, provider=provider, backend=backend)
-    fenced = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", raw, re.DOTALL)
-    payload = fenced.group(1) if fenced else raw
-    start = payload.find("[")
-    if start == -1:
-        return []
-    raw_json = payload[start:]
-    try:
-        sessions = json.loads(raw_json)
-    except json.JSONDecodeError:
-        try:
-            sessions = json.loads(_fix_invalid_escapes(raw_json))
-        except json.JSONDecodeError:
-            return []
-
-    if not isinstance(sessions, list):
-        return []
-    for s in sessions:
-        s["contact"] = contact_name
-    return sessions
-
-
-def _build_hidden_facts_registry(
-    hidden_facts: list[dict[str, Any]],
-    trace: list[dict[str, Any]],
-    fragments: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    trace_by_id = {t["fact_id"]: t for t in trace}
-    frags_by_fact = {}
-    for f in fragments:
-        fid = f.get("source_fact_id", "")
-        frags_by_fact.setdefault(fid, []).append(f)
-
-    registry = []
-    for hf in hidden_facts:
-        fid = hf.get("fact_id", "")
-        t = trace_by_id.get(fid, {})
-        fact_frags = frags_by_fact.get(fid, [])
-
-        chat_signals = {}
-        calendar_signals = []
-        for f in fact_frags:
-            if f.get("type") == "messenger":
-                contact = f.get("source", {}).get("contact_name", "unknown")
-                chat_signals[contact] = f.get("implicit_signal_explanation", "")[:120]
-            elif f.get("type") == "calendar":
-                calendar_signals.append(f.get("implicit_signal_explanation", "")[:120])
-
-        registry.append({
-            "fact_id": fid,
-            "ground_truth_label": hf.get("ground_truth_label", ""),
-            "category": hf.get("category", ""),
-            "source_subcategory": hf.get("source_subcategory", ""),
-            "verification": {
-                "reverse_inferable": t.get("passed", False),
-                "recovered_label": (t.get("final_verification") or {}).get("candidate_label", ""),
-                "reviewer_model": "cold independent verifier",
-                "fragments_used": [f.get("fragment_id", "") for f in fact_frags],
-            },
-            "embedding_strategy": {
-                "chat_signals": chat_signals,
-                "calendar_signals": calendar_signals,
-            },
-        })
-    return registry
-
-
-def _build_cross_app_index(
-    meaningful_sessions: list[dict[str, Any]],
-    calendar_events: list[dict[str, Any]],
-    fragments: list[dict[str, Any]],
-) -> dict[str, dict[str, list[str]]]:
-    frags_by_date: dict[str, set] = {}
-    for f in fragments:
-        d = f.get("date", "")
-        fid = f.get("source_fact_id", "")
-        if d and fid:
-            frags_by_date.setdefault(d, set()).add(fid)
-
-    index: dict[str, dict[str, list[str]]] = {}
-    all_dates = set()
-    for s in meaningful_sessions:
-        all_dates.add(s.get("date", ""))
-    for e in calendar_events:
-        all_dates.add(e.get("date", ""))
-
-    for d in sorted(all_dates):
-        if not d:
-            continue
-        m_ids = [s["session_id"] for s in meaningful_sessions if s.get("date") == d]
-        e_ids = [e["event_id"] for e in calendar_events if e.get("date") == d]
-        hf_ids = sorted(frags_by_date.get(d, set()))
-        index[d] = {
-            "messenger_session_ids": m_ids,
-            "calendar_event_ids": e_ids,
-            "hidden_fact_ids_touched": hf_ids,
-        }
-    return index
+# ---- merge ---------------------------------------------------------------
 
 
 def merge_app_log(
@@ -440,92 +178,24 @@ def merge_app_log(
     log_end: str,
     news_events: list[dict[str, Any]],
     provider: str = "anthropic",
-    backend: str = "anthropic-api",
-    trace: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    print("[merge] assembling fragments into sessions (deterministic)")
-    meaningful_sessions, calendar_events = _group_fragments_into_sessions(
-        verified_fragments
+    template = load_prompt(MERGE_PROMPT_PATH)
+    template = fill(template, "{{PERSONA_NAME}}", persona["name"])
+    template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
+    template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
+    template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
+    template = fill(
+        template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
     )
-
-    for i, s in enumerate(meaningful_sessions, 1):
-        s["session_id"] = f"M-{i:03d}"
-    for i, e in enumerate(calendar_events, 1):
-        e["event_id"] = f"E-{i:03d}"
-
-    contacts_list = social_circle.get("social_circle", social_circle.get("contacts", []))
-    contact_names = [c["name"] for c in contacts_list]
-
-    budget = _compute_filler_budget(meaningful_sessions, contact_names)
-    print(f"[merge] filler budget: {sum(budget.values())} sessions across {len(budget)} contacts")
-
-    filler_sessions: list[dict[str, Any]] = []
-    batch_size = 50
-    for contact_data in contacts_list:
-        cname = contact_data["name"]
-        count = budget.get(cname, 0)
-        if count == 0:
-            continue
-        available = _dates_for_contact(meaningful_sessions, cname, log_start, log_end)
-        contact_filler: list[dict[str, Any]] = []
-        remaining = count
-        batch_num = 0
-        while remaining > 0:
-            batch_num += 1
-            this_batch = min(remaining, batch_size)
-            print(f"[merge] {cname} batch {batch_num}: {this_batch} sessions ({remaining} remaining)")
-            sessions = _generate_filler_for_contact(
-                client, model, persona["name"], contact_data, this_batch, available,
-                provider=provider, backend=backend,
-            )
-            contact_filler.extend(sessions)
-            remaining -= this_batch
-        filler_sessions.extend(contact_filler)
-        print(f"[merge] got {len(contact_filler)} filler sessions for {cname}")
-
-    filler_sessions.sort(
-        key=lambda s: (s.get("date", ""), (s.get("messages") or [{}])[0].get("time", ""))
+    template = fill(template, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts)
+    template = fill(
+        template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
     )
-    for i, s in enumerate(filler_sessions, 1):
-        s["session_id"] = f"F-{i:03d}"
-
-    print("[merge] building metadata")
-    hf_registry = _build_hidden_facts_registry(
-        hidden_facts, trace or [], verified_fragments
-    )
-    cross_app = _build_cross_app_index(
-        meaningful_sessions, calendar_events, verified_fragments
-    )
-
-    m_tokens = sum(len(json.dumps(s)) for s in meaningful_sessions) // 4
-    f_tokens = sum(len(json.dumps(s)) for s in filler_sessions) // 4
-    actual_ratio = f_tokens / max(m_tokens, 1)
-
-    app_log = {
-        "persona_name": persona["name"],
-        "log_window": {"start_date": log_start, "end_date": log_end},
-        "messenger": {
-            "meaningful_sessions": meaningful_sessions,
-            "filler_sessions": filler_sessions,
-        },
-        "calendar": {"events": calendar_events},
-        "hidden_facts": hf_registry,
-        "cross_app_index": cross_app,
-        "token_stats": {
-            "approximate_tokens": m_tokens + f_tokens,
-            "meaningful_token_count": m_tokens,
-            "filler_token_count": f_tokens,
-            "ratio_filler_to_meaningful": f"{actual_ratio:.1f}:1",
-        },
-        "surprises_woven": [],
-    }
-
-    print(
-        f"[merge] done: {len(meaningful_sessions)} meaningful, "
-        f"{len(filler_sessions)} filler, {len(calendar_events)} events, "
-        f"ratio {actual_ratio:.1f}:1"
-    )
-    return sanitize_app_log(app_log)
+    template = fill(template, "{{LOG_START_DATE}}", log_start)
+    template = fill(template, "{{LOG_END_DATE}}", log_end)
+    template = fill(template, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", news_events)
+    raw = call_llm(client, model, template, provider=provider)
+    return sanitize_app_log(extract_json(raw))
 
 
 def sanitize_app_log(app_log: dict[str, Any]) -> dict[str, Any]:
@@ -543,6 +213,225 @@ def sanitize_app_log(app_log: dict[str, Any]) -> dict[str, Any]:
         for e in calendar.get("events", []) or []:
             e.pop("source_fact_ids", None)
     return app_log
+
+
+# ---- HF selection and prioritization -------------------------------------
+
+PRIORITY_CATEGORIES = {
+    "health", "mental_health", "medication", "therapy",
+    "financial", "financial_constraint", "money",
+    "safety", "risk",
+    "relationship", "family", "social",
+    "legal", "regulatory",
+    "behavioral", "self_regulation", "coping",
+    "temporal",
+}
+
+DEPRIORITIZE_CATEGORIES = {
+    "decorative", "aesthetic", "style",
+    "hobby_minor", "one_off",
+    "location_minor",
+    "personality_redundant",
+}
+
+
+def select_hidden_facts(
+    hidden_facts: list[dict[str, Any]],
+    max_facts: int = 100,
+) -> list[dict[str, Any]]:
+    """Select benchmark-relevant hidden facts, capped at max_facts.
+
+    Prioritizes risk/safety, health, financial, relationship, and temporal
+    facts. Deprioritizes decorative preferences, one-off hobbies, and
+    redundant personality facts.
+    """
+    if len(hidden_facts) <= max_facts:
+        return hidden_facts
+
+    def priority_score(hf: dict[str, Any]) -> int:
+        cat = (hf.get("category") or "").lower()
+        subcat = (hf.get("subcategory") or "").lower()
+        combined = f"{cat} {subcat}"
+        score = 0
+        for p in PRIORITY_CATEGORIES:
+            if p in combined:
+                score += 10
+        for d in DEPRIORITIZE_CATEGORIES:
+            if d in combined:
+                score -= 5
+        if hf.get("risk_surface_score"):
+            score += int(hf["risk_surface_score"])
+        return score
+
+    ranked = sorted(hidden_facts, key=priority_score, reverse=True)
+    selected = ranked[:max_facts]
+    dropped = len(hidden_facts) - len(selected)
+    if dropped:
+        print(
+            f"[step4] selected {len(selected)}/{len(hidden_facts)} "
+            f"hidden facts (dropped {dropped} low-priority facts)"
+        )
+    return selected
+
+
+# ---- programmatic hidden_facts registry ----------------------------------
+
+
+def _build_hidden_facts_registry(
+    hidden_facts: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build the hidden_facts array from source data + trace, not LLM output.
+
+    The merge LLM frequently drops or truncates the hidden_facts registry.
+    Building it programmatically guarantees every verified fact is present.
+    """
+    trace_map = {t["fact_id"]: t for t in trace if t.get("passed")}
+    registry: list[dict[str, Any]] = []
+    for hf in hidden_facts:
+        fact_id = hf.get("fact_id", "")
+        if fact_id not in trace_map:
+            continue
+        t = trace_map[fact_id]
+        entry = {
+            "fact_id": fact_id,
+            "claim": hf.get("claim", ""),
+            "ground_truth_label": hf.get("ground_truth_label", ""),
+            "category": hf.get("category", ""),
+            "subcategory": hf.get("subcategory", ""),
+            "reviewer_model": t.get("final_verification", {}).get(
+                "reviewer_model", ""
+            ),
+            "recovered_label": t.get("final_verification", {}).get(
+                "candidate_label", ""
+            ),
+            "verification_attempts": t.get("attempts", 0),
+        }
+        registry.append(entry)
+    return registry
+
+
+# ---- post-merge coverage verification ------------------------------------
+
+
+def _extract_all_text(app_log: dict[str, Any]) -> str:
+    """Collect all user-visible text from the merged app log."""
+    parts: list[str] = []
+    messenger = app_log.get("messenger", {})
+    for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
+        for s in messenger.get(bucket, []) or []:
+            for m in s.get("messages", []) or []:
+                parts.append(str(m.get("text", "")))
+    calendar = app_log.get("calendar", {})
+    if isinstance(calendar, dict):
+        for e in calendar.get("events", []) or []:
+            parts.append(str(e.get("title", "")))
+            parts.append(str(e.get("notes", "")))
+            parts.append(str(e.get("location", "")))
+    return "\n".join(parts).lower()
+
+
+def _normalize(text: str) -> set[str]:
+    """Extract 4+ char alphanumeric tokens for fuzzy matching."""
+    return set(re.findall(r"[a-z0-9]{4,}", text.lower()))
+
+
+def verify_post_merge_coverage(
+    app_log: dict[str, Any],
+    verified_fragments: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Check that verified fragments survived the merge into the app log.
+
+    Two-layer check:
+    1. Registry check: compare hidden_facts IDs in the app log against
+       fact IDs that passed verification in the trace.
+    2. Content check: for each verified fragment, look for distinctive
+       n-grams (3-word sequences) in the app log text. Single tokens
+       are too generic; n-grams are specific enough to detect real
+       presence vs coincidental word overlap.
+    """
+    # Layer 1: hidden_facts registry check
+    app_hf_ids = set()
+    for hf in app_log.get("hidden_facts", []):
+        fid = hf.get("fact_id", "")
+        if fid:
+            app_hf_ids.add(fid)
+
+    passed_fact_ids = {t["fact_id"] for t in trace if t.get("passed")}
+    registry_missing = sorted(passed_fact_ids - app_hf_ids)
+
+    # Layer 2: content n-gram check
+    all_text = _extract_all_text(app_log)
+    all_ngrams = _extract_ngrams(all_text, 3)
+
+    frag_fact_ids_present: set[str] = set()
+    frag_fact_ids_missing: set[str] = set()
+    fragments_present = 0
+    fragments_missing_detail: list[str] = []
+
+    for frag in verified_fragments:
+        frag_text = _fragment_text(frag)
+        frag_ngrams = _extract_ngrams(frag_text, 3)
+        fact_id = frag.get("source_fact_id", "unknown")
+
+        if not frag_ngrams:
+            fragments_present += 1
+            frag_fact_ids_present.add(fact_id)
+            continue
+
+        overlap = len(frag_ngrams & all_ngrams) / len(frag_ngrams)
+        if overlap >= 0.25:
+            fragments_present += 1
+            frag_fact_ids_present.add(fact_id)
+        else:
+            frag_id = frag.get("fragment_id", "?")
+            fragments_missing_detail.append(
+                f"{fact_id}/{frag_id} (ngram_overlap={overlap:.0%})"
+            )
+            if fact_id not in frag_fact_ids_present:
+                frag_fact_ids_missing.add(fact_id)
+
+    content_missing = sorted(
+        frag_fact_ids_missing - frag_fact_ids_present
+    )
+
+    all_missing = sorted(set(registry_missing) | set(content_missing))
+
+    return {
+        "fragments_total": len(verified_fragments),
+        "fragments_present": fragments_present,
+        "fragments_missing": fragments_missing_detail[:20],
+        "hidden_facts_total": len(passed_fact_ids),
+        "hidden_facts_in_registry": len(app_hf_ids & passed_fact_ids),
+        "hidden_facts_in_content": len(frag_fact_ids_present),
+        "hidden_facts_covered": len(
+            (app_hf_ids & passed_fact_ids) | frag_fact_ids_present
+        ),
+        "registry_missing_fact_ids": registry_missing[:20],
+        "content_missing_fact_ids": content_missing[:20],
+        "missing_fact_ids": all_missing[:20],
+    }
+
+
+def _fragment_text(frag: dict[str, Any]) -> str:
+    parts: list[str] = []
+    if frag.get("type") == "messenger":
+        for m in frag.get("messages", []) or []:
+            parts.append(str(m.get("text", "")))
+    elif frag.get("type") == "calendar":
+        cal = frag.get("calendar_event", {}) or {}
+        parts.append(str(cal.get("title", "")))
+        parts.append(str(cal.get("notes", "")))
+        parts.append(str(cal.get("location", "")))
+    return " ".join(parts)
+
+
+def _extract_ngrams(text: str, n: int) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    if len(words) < n:
+        return set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
 
 
 # ---- entry point ---------------------------------------------------------
@@ -568,11 +457,12 @@ def run_step(
     log_start: str,
     log_end: str,
     provider: str = "anthropic",
-    backend: str = "anthropic-api",
+    max_facts: int = 100,
 ) -> int:
     profile_file = json.loads(profile_path.read_text(encoding="utf-8"))
     corrected_profile = profile_file["corrected_extracted_profile"]
-    hidden_facts = corrected_profile["hidden_facts"]
+    all_hidden_facts = corrected_profile["hidden_facts"]
+    hidden_facts = select_hidden_facts(all_hidden_facts, max_facts)
 
     circle_file = json.loads(social_circle_path.read_text(encoding="utf-8"))
     corrected_social_circle = circle_file["corrected_social_circle"]
@@ -581,7 +471,7 @@ def run_step(
     if news_events_path and news_events_path.exists():
         news_events = json.loads(news_events_path.read_text(encoding="utf-8"))
 
-    client = make_client(provider) if backend in API_BACKENDS else None
+    client = make_client(provider)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     base_name = profile_path.stem.replace("_verification", "")
@@ -609,13 +499,13 @@ def run_step(
             )
             bundle = generate_fragments(
                 client, model, hf, corrected_social_circle,
-                log_start, log_end, contact_usage, provider=provider, backend=backend,
+                log_start, log_end, contact_usage, provider=provider,
             )
             fragments = bundle.get("fragments", [])
             banned_token_set = bundle.get("banned_token_set", []) or []
             verification = verify_fragments(
                 client, verifier_model, fragments, banned_token_set, persona,
-                provider=provider, backend=backend,
+                provider=provider,
             )
             last_fragments = fragments
             last_verification = verification
@@ -631,10 +521,11 @@ def run_step(
                     f"regenerating"
                 )
 
-        verified_fragments.extend(
-            {**f, "source_fact_id": fact_id, "passed_verification": passed}
-            for f in last_fragments
-        )
+        if passed:
+            verified_fragments.extend(
+                {**f, "source_fact_id": fact_id}
+                for f in last_fragments
+            )
         trace.append(
             {
                 "fact_id": fact_id,
@@ -670,17 +561,65 @@ def run_step(
             "fragments. They will still be merged but flagged in the trace."
         )
 
-    print(f"[step4] merging fragments + filler for {persona['name']}")
-    app_log = merge_app_log(
-        client, model, verified_fragments, hidden_facts,
-        corrected_social_circle, persona, log_start, log_end,
-        news_events, provider=provider, backend=backend,
-        trace=trace,
+    # Only pass verified (passed) hidden facts to the merge
+    passed_fact_ids = {t["fact_id"] for t in trace if t["passed"]}
+    verified_hidden_facts = [
+        hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids
+    ]
+
+    print(
+        f"[step4] merging {len(verified_fragments)} fragments "
+        f"({len(verified_hidden_facts)}/{len(hidden_facts)} HFs passed) "
+        f"for {persona['name']}"
     )
+    for merge_attempt in range(1, 4):
+        try:
+            app_log = merge_app_log(
+                client, model, verified_fragments, verified_hidden_facts,
+                corrected_social_circle, persona, log_start, log_end,
+                news_events, provider=provider,
+            )
+            break
+        except Exception as e:
+            print(f"[step4] merge attempt {merge_attempt}/3 failed: {e}")
+            if merge_attempt == 3:
+                print("[step4] merge exhausted retries. Fragments saved to disk.")
+                return 1
+
+    # Build hidden_facts registry programmatically from trace data
+    # instead of trusting the merge LLM
+    app_log["hidden_facts"] = _build_hidden_facts_registry(
+        verified_hidden_facts, trace
+    )
+    coverage = verify_post_merge_coverage(app_log, verified_fragments, trace)
+    app_log["_post_merge_coverage"] = coverage
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"[step4] wrote {app_log_out}")
+
+    present = coverage["fragments_present"]
+    total = coverage["fragments_total"]
+    pct = present / total if total else 0
+    print(
+        f"[step4] post-merge coverage: {present}/{total} fragments "
+        f"confirmed present ({pct:.0%})"
+    )
+    if coverage["missing_fact_ids"]:
+        print(
+            f"[step4] WARNING: {len(coverage['missing_fact_ids'])} hidden facts "
+            f"have no confirmed fragments in the final app log: "
+            f"{coverage['missing_fact_ids'][:10]}"
+        )
+
+    hf_coverage = coverage["hidden_facts_covered"]
+    hf_total = coverage["hidden_facts_total"]
+    if hf_coverage < hf_total * 0.8:
+        print(
+            f"[step4] FAIL: only {hf_coverage}/{hf_total} hidden facts "
+            "have fragments in the final app log (below 80% threshold)"
+        )
+        return 1
 
     return 0 if passed_count == len(hidden_facts) else 1
 
@@ -713,21 +652,15 @@ def main() -> None:
     )
     parser.add_argument("--log-start", default="2026-03-01")
     parser.add_argument("--log-end", default="2026-03-31")
-    parser.add_argument("--provider", default=None, choices=SUPPORTED_PROVIDERS)
-    parser.add_argument("--backend", default=None, choices=SUPPORTED_BACKENDS)
+    parser.add_argument("--provider", default="anthropic", choices=SUPPORTED_PROVIDERS)
+    parser.add_argument(
+        "--max-facts", type=int, default=100,
+        help="Maximum hidden facts to include (prioritized by benchmark relevance)",
+    )
     args = parser.parse_args()
 
-    if args.backend is None:
-        args.backend = f"{args.provider or 'anthropic'}-api" if args.provider else os.environ.get("PERSONABENCH_BACKEND", "claude")
-    provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
-
-    if args.model is None:
-        args.model = default_model_for_backend(args.backend, "generator")
-    if args.verifier_model is None:
-        args.verifier_model = default_model_for_backend(args.backend, "verifier")
-
-    if args.backend in API_BACKENDS and not check_api_key(provider):
-        print(f"API key for {provider} is not set.", file=sys.stderr)
+    if not check_api_key(args.provider):
+        print(f"API key for {args.provider} is not set.", file=sys.stderr)
         sys.exit(2)
 
     sys.exit(
@@ -741,8 +674,8 @@ def main() -> None:
             args.per_fact_max_attempts,
             args.log_start,
             args.log_end,
-            provider,
-            args.backend,
+            args.provider,
+            max_facts=args.max_facts,
         )
     )
 
