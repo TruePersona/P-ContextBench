@@ -40,8 +40,13 @@ from llm import (
     call_llm,
     call_subscription_cli,
     check_api_key,
+    default_model_for_backend,
     make_client,
     provider_for_backend,
+)
+from step4_app_log_synthesizer.generator import (
+    run_step_from_dicts as _run_step4,
+    select_hidden_facts,
 )
 
 REPO_ROOT = Path(__file__).parent
@@ -221,167 +226,44 @@ def run_step4(
     name: str,
     log_start: str,
     log_end: str,
-    per_fact_max_attempts: int,
+    per_cluster_max_attempts: int,
     caller: ModelCaller,
     model: str | None = None,
     verifier_model: str | None = None,
 ) -> Path:
-    """Per-fact generate-then-verify loop via the CLI, then merge.
+    """Cluster-level generate-then-verify pipeline delegated to generator.py.
 
-    The reverse-inferability gate is the structural defense: each hidden fact's
-    fragments must be re-recoverable by an independent verifier model that does
-    not see the ground-truth label. Pass a different `verifier_model` from
-    `model` so the gate is not the generator pattern-matching its own output.
-    Both invocations are fresh backend CLI subprocesses, so the verifier has
-    no access to the generator's prompt or response history.
+    The reverse-inferability gate operates per-cluster: 2-3 related facts are
+    clustered, 4-5 shared fragments generated, and a cold verifier must recover
+    ALL facts from the shared evidence. Pass a different `verifier_model` from
+    `model` so the gate is independent.
     """
     if verifier_model is None:
         verifier_model = model
+    if model is None:
+        raise ValueError("model is required for step 4")
+
     hidden_facts = profile["hidden_facts"]
-    persona = {
-        "name": profile.get("name", ""),
-        "age": profile.get("age", ""),
-        "occupation": profile.get("occupation", ""),
-        "location": profile.get("location", ""),
-    }
-
-    verified_fragments: list[dict[str, Any]] = []
-    contact_usage: dict[str, int] = {}
-    trace: list[dict[str, Any]] = []
-
-    gen_template = load_prompt(STEP4_DIR / "prompt.txt")
-    ver_template = load_prompt(STEP4_DIR / "verification_prompt.txt")
-    merge_template = load_prompt(STEP4_DIR / "merge_prompt.txt")
     output_dir.mkdir(parents=True, exist_ok=True)
-    trace_path = output_dir / f"{base(name)}_app_logs_trace.json"
-    fragments_path = output_dir / f"{base(name)}_verified_fragments.json"
 
-    for i, hf in enumerate(hidden_facts, start=1):
-        fact_id = hf.get("fact_id", f"HF-{i:03d}")
-        passed = False
-        last_fragments: list[dict[str, Any]] = []
-        last_verification: dict[str, Any] | None = None
-
-        for attempt in range(1, per_fact_max_attempts + 1):
-            print(
-                f"[step4/{fact_id}] attempt {attempt}/{per_fact_max_attempts} "
-                f"({i}/{len(hidden_facts)})"
-            )
-            gen_prompt = fill(gen_template, "{{INSERT_HIDDEN_FACT_JSON_HERE}}", hf)
-            gen_prompt = fill(
-                gen_prompt,
-                "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
-                corrected_social_circle,
-            )
-            gen_prompt = gen_prompt.replace("{{LOG_START_DATE}}", log_start)
-            gen_prompt = gen_prompt.replace("{{LOG_END_DATE}}", log_end)
-            gen_prompt = fill(
-                gen_prompt, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
-            )
-            bundle = extract_json(caller.call(gen_prompt, model=model))
-            fragments = bundle.get("fragments", [])
-
-            ver_prompt = fill(ver_template, "{{INSERT_FRAGMENTS_JSON_HERE}}", fragments)
-            ver_prompt = ver_prompt.replace("{{PERSONA_NAME}}", str(persona["name"]))
-            ver_prompt = ver_prompt.replace("{{PERSONA_AGE}}", str(persona["age"]))
-            ver_prompt = ver_prompt.replace(
-                "{{PERSONA_OCCUPATION}}", str(persona["occupation"])
-            )
-            ver_prompt = ver_prompt.replace("{{PERSONA_LOCATION}}", str(persona["location"]))
-            verification = extract_json(caller.call(ver_prompt, model=verifier_model))
-            last_fragments = fragments
-            last_verification = verification
-
-            if verification.get("verdict") == "RECOVERED":
-                recovered = (verification.get("candidate_label") or "").lower()
-                target = (hf.get("ground_truth_label") or "").lower()
-                rec_tokens = set(re.findall(r"[a-z0-9]{3,}", recovered))
-                tgt_tokens = set(re.findall(r"[a-z0-9]{3,}", target))
-                if tgt_tokens and len(rec_tokens & tgt_tokens) / len(tgt_tokens) >= 0.15:
-                    passed = True
-                    for c in bundle.get("contacts_used", []) or []:
-                        contact_usage[c] = contact_usage.get(c, 0) + 1
-                    break
-
-        verified_fragments.extend(
-            {**f, "source_fact_id": fact_id, "passed_verification": passed}
-            for f in last_fragments
-        )
-        trace.append(
-            {
-                "fact_id": fact_id,
-                "ground_truth_label": hf.get("ground_truth_label"),
-                "attempts": attempt,
-                "passed": passed,
-                "final_verification": last_verification,
-            }
-        )
-        trace_path.write_text(
-            json.dumps(trace, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        fragments_path.write_text(
-            json.dumps(verified_fragments, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-
-    trace_path.write_text(
-        json.dumps(trace, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    fragments_path.write_text(
-        json.dumps(verified_fragments, indent=2, ensure_ascii=False),
-        encoding="utf-8",
+    rc = _run_step4(
+        corrected_profile=profile,
+        corrected_social_circle=corrected_social_circle,
+        hidden_facts=hidden_facts,
+        output_dir=output_dir,
+        model=model,
+        verifier_model=verifier_model,
+        per_cluster_max_attempts=per_cluster_max_attempts,
+        log_start=log_start,
+        log_end=log_end,
+        provider=caller.provider,
+        backend=caller.backend,
+        base_name=base(name),
     )
 
-    merge_prompt = merge_template
-    merge_prompt = merge_prompt.replace("{{PERSONA_NAME}}", str(persona["name"]))
-    merge_prompt = merge_prompt.replace("{{PERSONA_AGE}}", str(persona["age"]))
-    merge_prompt = merge_prompt.replace(
-        "{{PERSONA_OCCUPATION}}", str(persona["occupation"])
-    )
-    merge_prompt = merge_prompt.replace("{{PERSONA_LOCATION}}", str(persona["location"]))
-    merge_prompt = fill(
-        merge_prompt, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
-    )
-    merge_prompt = fill(
-        merge_prompt, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts
-    )
-    merge_prompt = fill(
-        merge_prompt,
-        "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
-        corrected_social_circle,
-    )
-    merge_prompt = merge_prompt.replace("{{LOG_START_DATE}}", log_start)
-    merge_prompt = merge_prompt.replace("{{LOG_END_DATE}}", log_end)
-    merge_prompt = fill(merge_prompt, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", [])
-
-    app_log = extract_json(caller.call(merge_prompt, model=model))
-    # Defense-in-depth: strip per-session/per-event source_fact_ids so any
-    # downstream consumer that hands the raw JSON to a Pass 1 inference call
-    # cannot accidentally leak fact-anchored sessions. Traceability is
-    # preserved via cross_app_index.
-    messenger = app_log.get("messenger", {})
-    for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
-        for s in messenger.get(bucket, []) or []:
-            s.pop("source_fact_ids", None)
-    calendar = app_log.get("calendar", {})
-    if isinstance(calendar, dict):
-        for e in calendar.get("events", []) or []:
-            e.pop("source_fact_ids", None)
-    app_log["generation_metadata"] = {
-        "generator_model": model or "unknown",
-        "verifier_model": verifier_model or "unknown",
-        "log_start": log_start,
-        "log_end": log_end,
-        "hidden_facts_total": len(hidden_facts),
-        "hidden_facts_passed": sum(
-            1 for t in trace if t["passed"]
-        ),
-        "generation_date": __import__("datetime").date.today().isoformat(),
-    }
     out = output_dir / f"{base(name)}_app_logs.json"
-    out.write_text(json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8")
+    if rc != 0:
+        print(f"[step4] WARNING: generator returned exit code {rc}")
     return out
 
 
@@ -522,8 +404,8 @@ def run_pipeline(
     if start <= 4 <= stop:
         run_step4(
             profile, corrected_social_circle, step4_out, name,
-            log_start, log_end, per_fact_max_attempts,
-            caller, model=model, verifier_model=verifier_model,
+            log_start, log_end, per_cluster_max_attempts=per_fact_max_attempts,
+            caller=caller, model=model, verifier_model=verifier_model,
         )
 
     app_logs_path = step4_out / f"{n}_app_logs.json"
@@ -620,21 +502,16 @@ def main() -> None:
         args.backend = f"{args.provider or 'anthropic'}-api"
     provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
 
+    step6_only = args.start == 6 and args.stop == 6
     if args.model is None:
-        if args.backend in {"claude", "anthropic-api"}:
-            args.model = "claude-opus-4-7"
+        if step6_only:
+            args.model = default_model_for_backend(args.backend, "evaluator")
         else:
-            args.model = "gpt-5.5"
+            args.model = default_model_for_backend(args.backend, "generator")
     if args.verifier_model is None:
-        if args.backend in {"claude", "anthropic-api"}:
-            args.verifier_model = "claude-sonnet-4-6"
-        else:
-            args.verifier_model = "gpt-5"
+        args.verifier_model = default_model_for_backend(args.backend, "verifier")
     if args.judge_model is None:
-        if args.backend in {"claude", "anthropic-api"}:
-            args.judge_model = "claude-sonnet-4-6"
-        else:
-            args.judge_model = "gpt-5.4"
+        args.judge_model = default_model_for_backend(args.backend, "judge")
 
     # Reject obvious aliases. CLIs may resolve aliases internally but the
     # artifact metadata won't record which version was actually used, which

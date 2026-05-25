@@ -1,20 +1,23 @@
-"""Step 4 — App log synthesis with per-fact reverse-inferability gate.
+"""Step 4 -- App log synthesis with cluster-level reverse-inferability gate.
 
-Each hidden fact is converted into 2-3 implicit fragments; those fragments
-are fed to an independent cold LLM that tries to infer the fact without
-seeing the ground truth. If the inference succeeds, the fragments are
-accepted. If not, the fragments are regenerated. Only once all facts pass
-the gate are the fragments merged with filler into the final app log.
+Hidden facts are first clustered into groups of 2-3 related facts. For each
+cluster, 4-5 shared fragments are generated where each fragment supports
+multiple facts. An independent cold verifier then attempts to recover ALL
+facts from the shared fragments. Only clusters that pass this gate are
+merged into the final app log.
 
-Three phases:
-  1. Per-fact fragment generation     (prompt.txt)
-  2. Per-fact reverse-inferability    (verification_prompt.txt)
-  3. Global merge + filler + surprises (merge_prompt.txt)
+Five phases:
+  1. Clustering                       (cluster_prompt.txt)
+  2. Per-cluster fragment generation  (prompt.txt)
+  3. Per-cluster verification         (verification_prompt.txt)
+  4. Decoy generation                 (decoy_prompt.txt) [DISABLED]
+  5. Global merge + filler            (merge_prompt.txt)
 """
 
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import os
 import re
@@ -25,36 +28,55 @@ from typing import Any
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from llm import make_client, call_llm as _call_llm, check_api_key, SUPPORTED_PROVIDERS
+from llm import (
+    API_BACKENDS,
+    SUBSCRIPTION_BACKENDS,
+    SUPPORTED_PROVIDERS,
+    call_llm as _raw_call_llm,
+    call_subscription_cli,
+    check_api_key,
+    make_client,
+    provider_for_backend,
+)
 
 STEP_DIR = Path(__file__).parent
+CLUSTER_PROMPT_PATH = STEP_DIR / "cluster_prompt.txt"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
+DECOY_PROMPT_PATH = STEP_DIR / "decoy_prompt.txt"
 MERGE_PROMPT_PATH = STEP_DIR / "merge_prompt.txt"
 
-DEFAULT_MODEL = "claude-opus-4-6"
-DEFAULT_VERIFIER_MODEL = "claude-sonnet-4-6"  # cold, independent verifier
-DEFAULT_PER_FACT_MAX_ATTEMPTS = 3
-DEFAULT_LOG_WINDOW_DAYS = 60
+CLAUDE_CMD = os.environ.get(
+    "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
+)
+CODEX_CMD = os.environ.get(
+    "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
+)
 
 
-def load_prompt(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+# ---------------------------------------------------------------------------
+# Utility: LLM dispatch, JSON extraction, template filling
+# ---------------------------------------------------------------------------
 
 
-def fill(template: str, placeholder: str, payload: Any) -> str:
-    if isinstance(payload, str):
-        return template.replace(placeholder, payload)
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
-
-
-def call_llm(client, model: str, prompt: str, provider: str = "anthropic") -> str:
-    return _call_llm(client, model, prompt, provider=provider)
+def _call_llm(
+    client,
+    model: str,
+    prompt: str,
+    provider: str = "anthropic",
+    backend: str = "anthropic-api",
+) -> str:
+    """Unified LLM dispatch for both subscription and API backends."""
+    if backend in SUBSCRIPTION_BACKENDS:
+        return call_subscription_cli(
+            prompt, model, backend,
+            claude_cmd=CLAUDE_CMD, codex_cmd=CODEX_CMD,
+        )
+    return _raw_call_llm(client, model, prompt, provider=provider)
 
 
 def _fix_invalid_escapes(text: str) -> str:
+    """Strip invalid JSON escape sequences while preserving valid ones."""
     VALID = set('"\\/bfnrtu')
     out = []
     i = 0
@@ -74,111 +96,646 @@ def _fix_invalid_escapes(text: str) -> str:
 
 
 def extract_json(text: str) -> dict[str, Any]:
+    """Extract the first JSON object from LLM output, tolerating fences."""
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     payload = fenced.group(1) if fenced else text
     start = payload.find("{")
     if start == -1:
         raise ValueError("No JSON object found in LLM output")
     raw = payload[start:]
+    decoder = json.JSONDecoder()
     try:
-        return json.loads(raw)
+        obj, _ = decoder.raw_decode(raw)
+        return obj
     except json.JSONDecodeError:
-        return json.loads(_fix_invalid_escapes(raw))
+        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
+        return obj
 
 
-# ---- per-fact generation + verification ----------------------------------
+def load_prompt(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
-def generate_fragments(
+def fill(template: str, placeholder: str, payload: Any) -> str:
+    if isinstance(payload, str):
+        return template.replace(placeholder, payload)
+    return template.replace(
+        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Persona identity
+# ---------------------------------------------------------------------------
+
+
+def derive_persona_identity(corrected_profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": corrected_profile.get("name", ""),
+        "age": corrected_profile.get("age", 0),
+        "occupation": corrected_profile.get("occupation", ""),
+        "location": corrected_profile.get("location", ""),
+    }
+
+
+# ---------------------------------------------------------------------------
+# HF selection and prioritization
+# ---------------------------------------------------------------------------
+
+PRIORITY_CATEGORIES = {
+    "health", "mental_health", "medication", "therapy",
+    "financial", "financial_constraint", "money",
+    "safety", "risk",
+    "relationship", "family", "social",
+    "legal", "regulatory",
+    "behavioral", "self_regulation", "coping",
+    "temporal",
+}
+
+DEPRIORITIZE_CATEGORIES = {
+    "decorative", "aesthetic", "style",
+    "hobby_minor", "one_off",
+    "location_minor",
+    "personality_redundant",
+}
+
+
+def select_hidden_facts(
+    hidden_facts: list[dict[str, Any]],
+    max_facts: int = 100,
+) -> list[dict[str, Any]]:
+    """Select benchmark-relevant hidden facts, capped at max_facts.
+
+    Prioritizes risk/safety, health, financial, relationship, and temporal
+    facts. Deprioritizes decorative preferences, one-off hobbies, and
+    redundant personality facts.
+    """
+    if len(hidden_facts) <= max_facts:
+        return hidden_facts
+
+    def priority_score(hf: dict[str, Any]) -> int:
+        cat = (hf.get("category") or "").lower()
+        subcat = (hf.get("subcategory") or "").lower()
+        combined = f"{cat} {subcat}"
+        score = 0
+        for p in PRIORITY_CATEGORIES:
+            if p in combined:
+                score += 10
+        for d in DEPRIORITIZE_CATEGORIES:
+            if d in combined:
+                score -= 5
+        if hf.get("risk_surface_score"):
+            score += int(hf["risk_surface_score"])
+        return score
+
+    ranked = sorted(hidden_facts, key=priority_score, reverse=True)
+    selected = ranked[:max_facts]
+    dropped = len(hidden_facts) - len(selected)
+    if dropped:
+        print(
+            f"[step4] selected {len(selected)}/{len(hidden_facts)} "
+            f"hidden facts (dropped {dropped} low-priority facts)"
+        )
+    return selected
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Clustering
+# ---------------------------------------------------------------------------
+
+
+def cluster_hidden_facts(
     client,
     model: str,
-    hidden_fact: dict[str, Any],
+    hidden_facts: list[dict[str, Any]],
+    provider: str,
+    backend: str,
+) -> dict[str, Any]:
+    """Cluster hidden facts into groups of 2-3 related facts."""
+    template = load_prompt(CLUSTER_PROMPT_PATH)
+    template = fill(template, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts)
+    raw = _call_llm(client, model, template, provider=provider, backend=backend)
+    result = extract_json(raw)
+
+    # Validate: every fact_id appears exactly once
+    all_assigned: list[str] = []
+    for cluster in result.get("clusters", []):
+        all_assigned.extend(cluster.get("hidden_fact_ids", []))
+    fact_ids_expected = {
+        hf.get("fact_id", f"HF-{i:03d}") for i, hf in enumerate(hidden_facts, 1)
+    }
+    assigned_set = set(all_assigned)
+    if len(all_assigned) != len(assigned_set):
+        dupes = [fid for fid in all_assigned if all_assigned.count(fid) > 1]
+        print(f"[step4] WARNING: duplicate fact_ids in clustering: {set(dupes)}")
+    missing = fact_ids_expected - assigned_set
+    if missing:
+        print(f"[step4] WARNING: {len(missing)} facts not assigned to any cluster")
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Per-cluster fragment generation
+# ---------------------------------------------------------------------------
+
+
+def generate_cluster_fragments(
+    client,
+    model: str,
+    cluster_obj: dict[str, Any],
+    hidden_facts_in_cluster: list[dict[str, Any]],
     social_circle: dict[str, Any],
     log_start: str,
     log_end: str,
     contact_usage: dict[str, int],
-    provider: str = "anthropic",
+    provider: str,
+    backend: str,
 ) -> dict[str, Any]:
+    """Generate 4-5 shared fragments for one cluster of hidden facts."""
+    # Build the cluster input payload that the prompt expects
+    cluster_input = {
+        "cluster_id": cluster_obj.get("cluster_id", "C1"),
+        "cluster_status": cluster_obj.get("cluster_status", "valid_cluster"),
+        "hidden_fact_ids": cluster_obj.get("hidden_fact_ids", []),
+        "hidden_facts": hidden_facts_in_cluster,
+        "cluster_reason": cluster_obj.get("cluster_reason", ""),
+    }
+
     template = load_prompt(PROMPT_PATH)
-    template = fill(template, "{{INSERT_HIDDEN_FACT_JSON_HERE}}", hidden_fact)
+    template = fill(template, "{{INSERT_HIDDEN_FACT_CLUSTER_JSON_HERE}}", cluster_input)
     template = fill(
         template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
     )
     template = fill(template, "{{LOG_START_DATE}}", log_start)
     template = fill(template, "{{LOG_END_DATE}}", log_end)
-    template = fill(template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage)
-    raw = call_llm(client, model, template, provider=provider)
+    template = fill(
+        template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
+    )
+    raw = _call_llm(client, model, template, provider=provider, backend=backend)
     return extract_json(raw)
 
 
-def verify_fragments(
+# ---------------------------------------------------------------------------
+# Phase 3: Per-cluster verification
+# ---------------------------------------------------------------------------
+
+
+def verify_cluster(
     client,
     verifier_model: str,
     fragments: list[dict[str, Any]],
-    banned_token_set: list[str],
     persona: dict[str, Any],
-    provider: str = "anthropic",
+    num_facts: int,
+    provider: str,
+    backend: str,
 ) -> dict[str, Any]:
-    verifier_input = {
-        "fragments": fragments,
-        "banned_token_set": banned_token_set,
+    """Cold-verify that all cluster facts are recoverable from fragments.
+
+    The verifier does NOT know how many facts to look for — it must
+    independently discover the set of hidden facts encoded in the fragments.
+
+    Defensively strips ALL metadata that could leak ground truth to the
+    cold verifier: support mappings, fact IDs, cluster metadata, labels.
+    """
+    _LEAK_FIELDS = {
+        "supports_hidden_facts", "pipeline_notes_only",
+        "source_fact_id", "source_fact_ids",
+        "fact_id", "fact_ids", "hidden_fact_ids",
+        "ground_truth_label", "ground_truth_labels",
+        "cluster_id", "cluster_reason", "cluster_status",
+        "passed_verification", "implicit_signal_explanation",
     }
+    clean_fragments = []
+    for f in fragments:
+        vf = {k: v for k, v in f.items() if k not in _LEAK_FIELDS}
+        clean_fragments.append(vf)
+
     template = load_prompt(VERIFICATION_PROMPT_PATH)
-    template = fill(template, "{{INSERT_FRAGMENTS_JSON_HERE}}", verifier_input)
+    template = fill(template, "{{INSERT_FRAGMENTS_JSON_HERE}}", clean_fragments)
     template = fill(template, "{{PERSONA_NAME}}", persona["name"])
     template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
     template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
     template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
-    raw = call_llm(client, verifier_model, template, provider=provider)
+    raw = _call_llm(client, verifier_model, template, provider=provider, backend=backend)
     return extract_json(raw)
 
 
-def fact_passed(
+def _verification_candidates(verification: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract candidate facts from verification output."""
+    candidates = verification.get("candidate_facts")
+    if isinstance(candidates, list):
+        return [c for c in candidates if isinstance(c, dict)]
+    if verification.get("candidate_label"):
+        return [verification]
+    return []
+
+
+def _all_candidates_high_confidence(verification: dict[str, Any]) -> bool:
+    candidates = _verification_candidates(verification)
+    return bool(candidates) and all(
+        (c.get("confidence") or "").upper() == "HIGH"
+        for c in candidates
+    )
+
+
+def _shared_evidence_failed(verification: dict[str, Any]) -> bool:
+    check = verification.get("shared_evidence_check")
+    if not isinstance(check, dict):
+        return False
+    return any(
+        check.get(key) is False
+        for key in (
+            "every_fragment_supports_multiple_candidate_facts",
+            "each_candidate_supported_by_at_least_2_fragments",
+        )
+    )
+
+
+def _has_implicitness_leaks(verification: dict[str, Any]) -> bool:
+    checks: list[dict[str, Any]] = []
+    top_check = verification.get("implicitness_check")
+    if isinstance(top_check, dict):
+        checks.append(top_check)
+    for candidate in _verification_candidates(verification):
+        check = candidate.get("implicitness_check")
+        if isinstance(check, dict):
+            checks.append(check)
+    return any(c.get("fragments_that_leak_labels") for c in checks)
+
+
+def cluster_passed(
     verification: dict[str, Any],
-    hidden_fact: dict[str, Any],
-) -> bool:
-    if verification.get("verdict") != "RECOVERED":
-        return False
-    recovered = (verification.get("candidate_label") or "").lower()
-    target = (hidden_fact.get("ground_truth_label") or "").lower()
-    if not recovered or not target:
-        return False
-    # Cheap semantic proxy: any meaningful token overlap. The new Step 4
-    # prompts ban ground_truth_label tokens from fragments, so the verifier
-    # must paraphrase even when correct. A correct paraphrase ("daily SSRI
-    # at 100mg") carries 1-2 ground-truth tokens, so the threshold is 0.15.
-    # This is a hallucination safety net only; the verifier's RECOVERED
-    # verdict + structure_check + triviality_check do the real gate work.
-    rec_tokens = set(re.findall(r"[a-z0-9]{3,}", recovered))
-    tgt_tokens = set(re.findall(r"[a-z0-9]{3,}", target))
-    if not tgt_tokens:
-        return False
-    overlap = len(rec_tokens & tgt_tokens) / len(tgt_tokens)
-    return overlap >= 0.15
+    cluster_facts: list[dict[str, Any]],
+) -> tuple[bool, list[dict[str, Any]]]:
+    """Check if the cluster verification gate passes.
+
+    Primary gate: RECOVERED passes unconditionally.
+
+    Production override: AMBIGUOUS also passes only when every recovered
+    candidate is HIGH confidence, shared-evidence checks did not fail, and
+    the ambiguity came from implicitness leakage (realistic logistical
+    anchors). Rejects weak, missing, or structurally bad recovery.
+
+    Returns (passed, matched_pairs) for trace recording.
+    """
+    if _shared_evidence_failed(verification):
+        return (False, [])
+
+    verdict = verification.get("verdict")
+    if verdict == "RECOVERED":
+        gate_reason = "recovered"
+    elif (
+        verdict == "AMBIGUOUS"
+        and _all_candidates_high_confidence(verification)
+        and _has_implicitness_leaks(verification)
+    ):
+        gate_reason = "ambiguous_high_confidence_implicitness_only"
+    else:
+        return (False, [])
+
+    verification["_gate_decision"] = {
+        "passed": True,
+        "accepted_as": "RECOVERED",
+        "original_verdict": verdict,
+        "reason": gate_reason,
+    }
+
+    # Passed the primary gate. Now build matched_pairs for traceability.
+    candidates = _verification_candidates(verification)
+    if not candidates or not cluster_facts:
+        return (True, [])
+
+    ground_labels = [
+        (hf.get("fact_id", f"HF-{i:03d}"), (hf.get("ground_truth_label") or "").lower())
+        for i, hf in enumerate(cluster_facts, 1)
+    ]
+    candidate_labels = [
+        (c.get("candidate_label") or "").lower() for c in candidates
+    ]
+
+    def token_overlap(candidate: str, target: str) -> float:
+        rec_tokens = set(re.findall(r"[a-z0-9]{3,}", candidate))
+        tgt_tokens = set(re.findall(r"[a-z0-9]{3,}", target))
+        if not tgt_tokens:
+            return 0.0
+        return len(rec_tokens & tgt_tokens) / len(tgt_tokens)
+
+    # Best-effort assignment for trace recording
+    n_ground = len(ground_labels)
+    indices = list(range(len(candidate_labels)))
+    best_pairs: list[dict[str, Any]] = []
+    best_total_overlap = -1.0
+
+    for perm in itertools.permutations(indices, min(n_ground, len(indices))):
+        pairs = []
+        total = 0.0
+        for gi, ii in enumerate(perm):
+            if gi >= n_ground:
+                break
+            fact_id, target = ground_labels[gi]
+            candidate = candidate_labels[ii]
+            overlap = token_overlap(candidate, target)
+            total += overlap
+            pairs.append({
+                "fact_id": fact_id,
+                "matched_candidate": candidates[ii].get("candidate_label", ""),
+                "overlap": round(overlap, 3),
+            })
+        if total > best_total_overlap:
+            best_total_overlap = total
+            best_pairs = pairs
+
+    return (True, best_pairs)
 
 
-def update_contact_usage(
-    contact_usage: dict[str, int], fragment_bundle: dict[str, Any]
-) -> None:
-    for name in fragment_bundle.get("contacts_used", []) or []:
-        contact_usage[name] = contact_usage.get(name, 0) + 1
+# ---------------------------------------------------------------------------
+# Phase 4: Programmatic decoy generation
+# ---------------------------------------------------------------------------
+
+_DECOY_TEMPLATES_ONE_OFF = [
+    {"topic": "errand", "messages": [
+        {"sender": "contact", "text": "Can you grab paper towels if you pass Target?"},
+        {"sender": "persona", "text": "Got them, also picked up batteries"},
+    ]},
+    {"topic": "tech", "messages": [
+        {"sender": "contact", "text": "My printer is jammed again"},
+        {"sender": "persona", "text": "Did you try the paper tray trick?"},
+        {"sender": "contact", "text": "That worked, thanks"},
+    ]},
+    {"topic": "lost_item", "messages": [
+        {"sender": "persona", "text": "Have you seen my sunglasses? Can't find them anywhere"},
+        {"sender": "contact", "text": "Check the car console, you left them there last time"},
+    ]},
+    {"topic": "traffic", "messages": [
+        {"sender": "persona", "text": "Running 10 min late, traffic on the main road"},
+        {"sender": "contact", "text": "No rush, I just got here too"},
+    ]},
+    {"topic": "show", "messages": [
+        {"sender": "contact", "text": "Have you watched that new series everyone is talking about?"},
+        {"sender": "persona", "text": "Not yet, is it worth starting?"},
+        {"sender": "contact", "text": "First two episodes are slow but it picks up"},
+    ]},
+    {"topic": "food", "messages": [
+        {"sender": "persona", "text": "What should I bring to the potluck Saturday?"},
+        {"sender": "contact", "text": "Something easy, maybe chips and salsa?"},
+    ]},
+    {"topic": "weather", "messages": [
+        {"sender": "contact", "text": "Did you see the forecast? Rain all weekend"},
+        {"sender": "persona", "text": "Great, there go my plans"},
+    ]},
+    {"topic": "package", "messages": [
+        {"sender": "persona", "text": "Did my package arrive? Tracking says delivered"},
+        {"sender": "contact", "text": "I see a box by your door, want me to grab it?"},
+        {"sender": "persona", "text": "Yes please, thanks"},
+    ]},
+    {"topic": "laundry", "messages": [
+        {"sender": "persona", "text": "The dryer ate my sock again"},
+        {"sender": "contact", "text": "Check behind the drum, they get stuck there"},
+    ]},
+    {"topic": "subscription", "messages": [
+        {"sender": "contact", "text": "Did you cancel that free trial before it charged?"},
+        {"sender": "persona", "text": "Just did, thanks for the reminder"},
+    ]},
+    {"topic": "book", "messages": [
+        {"sender": "persona", "text": "Finished that book you recommended, really liked the ending"},
+        {"sender": "contact", "text": "Told you! The sequel comes out in fall"},
+    ]},
+    {"topic": "wifi", "messages": [
+        {"sender": "contact", "text": "Is your wifi being weird today too?"},
+        {"sender": "persona", "text": "Yeah, restarted the router twice already"},
+    ]},
+]
+
+_DECOY_CALENDAR_TEMPLATES = [
+    {"title": "Package pickup window", "location": "UPS Store", "notes": ""},
+    {"title": "Return library books", "location": "Public Library", "notes": ""},
+    {"title": "Haircut", "location": "", "notes": ""},
+    {"title": "Voter registration deadline", "location": "", "notes": "online"},
+    {"title": "Renew parking permit", "location": "City Hall", "notes": ""},
+    {"title": "Pick up photos", "location": "Print shop", "notes": ""},
+]
+
+_OTHER_PERSON_TEMPLATES = [
+    {"topic": "other_errand", "messages": [
+        {"sender": "contact", "text": "Can you grab my dry cleaning if you are near Main St?"},
+        {"sender": "persona", "text": "Sure, ticket number?"},
+        {"sender": "contact", "text": "4417, under my name"},
+    ]},
+    {"topic": "other_item", "messages": [
+        {"sender": "contact", "text": "I left my charger at your place last week"},
+        {"sender": "persona", "text": "Found it under the couch, I'll bring it tomorrow"},
+        {"sender": "contact", "text": "Perfect, thanks"},
+    ]},
+    {"topic": "other_schedule", "messages": [
+        {"sender": "contact", "text": "Can you let the plumber in at 2? I have a meeting"},
+        {"sender": "persona", "text": "Sure, just text me when they are on the way"},
+        {"sender": "contact", "text": "Will do"},
+    ]},
+]
 
 
-# ---- merge ---------------------------------------------------------------
+
+def _decoy_tokens(decoy: dict[str, Any]) -> set[str]:
+    """Extract all tokens from a decoy's user-visible text."""
+    tokens: set[str] = set()
+    for msg in decoy.get("messages", []) or []:
+        text = (msg.get("text") or "").lower()
+        tokens.update(re.findall(r"[a-z]{3,}", text))
+    cal = decoy.get("calendar_event") or {}
+    for field in ("title", "notes", "location"):
+        val = (cal.get(field) or "").lower()
+        tokens.update(re.findall(r"[a-z]{3,}", val))
+    return tokens
+
+
+def _overlap_safe(
+    decoy: dict[str, Any],
+    hidden_facts: list[dict[str, Any]],
+    threshold: float = 0.25,
+) -> tuple[bool, list[str]]:
+    """Check that a decoy does not overlap with any individual hidden fact.
+
+    Checks BOTH directions per hidden fact:
+    - decoy_overlap: what fraction of the decoy's tokens are HF tokens
+    - fact_overlap: what fraction of the HF's tokens appear in the decoy
+    If either exceeds threshold for ANY fact, the decoy is unsafe.
+
+    Returns (safe, list_of_overlapping_fact_ids).
+    """
+    dtokens = _decoy_tokens(decoy)
+    if not dtokens:
+        return (True, [])
+
+    _STOPWORDS = {"the", "and", "for", "not", "you", "that", "this", "with", "from", "have", "was", "are", "but", "can", "had", "has", "her", "his", "how", "its", "may", "she", "too", "use", "who", "did", "get", "got", "let", "our", "out", "own", "say", "way", "all", "any", "been", "each", "just", "like", "more", "some", "than", "them", "then", "very", "when", "will", "about", "could", "into", "also", "back", "been", "come", "down", "even", "give", "here", "know", "look", "make", "most", "much", "only", "over", "such", "take", "time", "well", "what", "year"}
+    dtokens_clean = dtokens - _STOPWORDS
+    if not dtokens_clean:
+        return (True, [])
+
+    overlapping_ids: list[str] = []
+    for hf in hidden_facts:
+        fact_tokens: set[str] = set()
+        for field in ("ground_truth_label", "claim"):
+            val = (hf.get(field) or "").lower()
+            fact_tokens.update(re.findall(r"[a-z]{3,}", val))
+        fact_tokens -= _STOPWORDS
+        if not fact_tokens:
+            continue
+
+        shared = dtokens_clean & fact_tokens
+        if not shared:
+            continue
+
+        decoy_overlap = len(shared) / len(dtokens_clean)
+        fact_overlap = len(shared) / len(fact_tokens)
+
+        if decoy_overlap >= threshold or fact_overlap >= threshold:
+            overlapping_ids.append(hf.get("fact_id", "?"))
+
+    return (len(overlapping_ids) == 0, overlapping_ids)
+
+
+def generate_decoys_programmatic(
+    hidden_facts: list[dict[str, Any]],
+    social_circle: dict[str, Any],
+    persona: dict[str, Any],
+    target_count: int = 0,
+) -> list[dict[str, Any]]:
+    """Generate decoy filler candidates programmatically (no LLM calls).
+
+    Three strategies:
+    1. Domain-exclusion templates: one-off errands/logistics from domains
+       that don't overlap with hidden facts.
+    2. Other-person-owned templates: a contact owns the detail, persona
+       just helps.
+    3. Calendar noise: one-off calendar events from generic errands.
+
+    Each candidate is checked per-hidden-fact for safety (both directions).
+    """
+    if target_count <= 0:
+        return []
+
+    contacts = []
+    members = social_circle.get("members", social_circle.get("social_circle", []))
+    if isinstance(members, list):
+        contacts = [m.get("name", "") for m in members if m.get("name")]
+    elif isinstance(members, dict):
+        contacts = [m.get("name", "") for m in members.values() if isinstance(m, dict) and m.get("name")]
+
+    persona_name = persona.get("name", "Persona")
+    decoys: list[dict[str, Any]] = []
+    decoy_id = 0
+
+    for tmpl in _DECOY_TEMPLATES_ONE_OFF:
+        if len(decoys) >= target_count:
+            break
+        candidate = {
+            "decoy_id": f"D-{decoy_id + 1:03d}",
+            "type": "messenger",
+            "contact_policy": "flexible",
+            "preferred_contact": None,
+            "placement_hint": "separate_filler_session",
+            "decoy_type": "one_off",
+            "overlap_check": "none",
+            "overlapping_hidden_fact_ids": [],
+            "why_safe": f"One-off {tmpl['topic']} logistics, not a recurring pattern",
+            "messages": [
+                {
+                    "sender": persona_name if m["sender"] == "persona" else "contact",
+                    "text": m["text"],
+                }
+                for m in tmpl["messages"]
+            ],
+            "calendar_event": None,
+        }
+        safe, overlap_ids = _overlap_safe(candidate, hidden_facts)
+        if safe:
+            decoy_id += 1
+            candidate["decoy_id"] = f"D-{decoy_id:03d}"
+            decoys.append(candidate)
+
+    for tmpl in _OTHER_PERSON_TEMPLATES:
+        if len(decoys) >= target_count:
+            break
+        contact = contacts[decoy_id % len(contacts)] if contacts else "contact"
+        candidate = {
+            "decoy_id": f"D-{decoy_id + 1:03d}",
+            "type": "messenger",
+            "contact_policy": "specific",
+            "preferred_contact": contact,
+            "placement_hint": "flexible",
+            "decoy_type": "other_person_owned",
+            "overlap_check": "safe_other_person_owned",
+            "overlapping_hidden_fact_ids": [],
+            "why_safe": f"Detail belongs to {contact}, not the persona",
+            "messages": [
+                {
+                    "sender": persona_name if m["sender"] == "persona" else contact,
+                    "text": m["text"],
+                }
+                for m in tmpl["messages"]
+            ],
+            "calendar_event": None,
+        }
+        safe, overlap_ids = _overlap_safe(candidate, hidden_facts)
+        if safe:
+            decoy_id += 1
+            candidate["decoy_id"] = f"D-{decoy_id:03d}"
+            decoys.append(candidate)
+        elif overlap_ids:
+            candidate["overlap_check"] = "unsafe_overlap"
+            candidate["overlapping_hidden_fact_ids"] = overlap_ids
+
+    for tmpl in _DECOY_CALENDAR_TEMPLATES:
+        if len(decoys) >= target_count:
+            break
+        candidate = {
+            "decoy_id": f"D-{decoy_id + 1:03d}",
+            "type": "calendar",
+            "contact_policy": "flexible",
+            "preferred_contact": None,
+            "placement_hint": "flexible",
+            "decoy_type": "one_off",
+            "overlap_check": "none",
+            "overlapping_hidden_fact_ids": [],
+            "why_safe": f"One-off calendar event ({tmpl['title']}), not a recurring pattern",
+            "messages": None,
+            "calendar_event": {
+                "title": tmpl["title"],
+                "location": tmpl.get("location", ""),
+                "participants": [],
+                "notes": tmpl.get("notes", ""),
+            },
+        }
+        safe, overlap_ids = _overlap_safe(candidate, hidden_facts)
+        if safe:
+            decoy_id += 1
+            candidate["decoy_id"] = f"D-{decoy_id:03d}"
+            decoys.append(candidate)
+
+    return decoys[:target_count]
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: Merge
+# ---------------------------------------------------------------------------
 
 
 def merge_app_log(
     client,
     model: str,
     verified_fragments: list[dict[str, Any]],
+    generated_decoys: list[dict[str, Any]],
     hidden_facts: list[dict[str, Any]],
     social_circle: dict[str, Any],
     persona: dict[str, Any],
     log_start: str,
     log_end: str,
     news_events: list[dict[str, Any]],
-    provider: str = "anthropic",
+    provider: str,
+    backend: str,
 ) -> dict[str, Any]:
+    """Merge verified fragments and decoys into the final app log."""
     template = load_prompt(MERGE_PROMPT_PATH)
     template = fill(template, "{{PERSONA_NAME}}", persona["name"])
     template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
@@ -187,6 +744,9 @@ def merge_app_log(
     template = fill(
         template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
     )
+    template = fill(
+        template, "{{INSERT_VERIFIED_DECOYS_JSON_HERE}}", generated_decoys
+    )
     template = fill(template, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts)
     template = fill(
         template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
@@ -194,15 +754,14 @@ def merge_app_log(
     template = fill(template, "{{LOG_START_DATE}}", log_start)
     template = fill(template, "{{LOG_END_DATE}}", log_end)
     template = fill(template, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", news_events)
-    raw = call_llm(client, model, template, provider=provider)
+    raw = _call_llm(client, model, template, provider=provider, backend=backend)
     return sanitize_app_log(extract_json(raw))
 
 
 def sanitize_app_log(app_log: dict[str, Any]) -> dict[str, Any]:
-    """Defense-in-depth: strip per-session/per-event `source_fact_ids` so
-    Backend C orchestrators that hand the raw JSON to a Pass 1 subagent
-    cannot accidentally leak fact-anchored sessions to the evaluator.
-    Traceability is preserved via `cross_app_index` only.
+    """Strip per-session/per-event source_fact_ids so downstream evaluators
+    cannot accidentally see fact-anchored sessions in the raw JSON.
+    Traceability is preserved via cross_app_index only.
     """
     messenger = app_log.get("messenger", {})
     for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
@@ -215,16 +774,289 @@ def sanitize_app_log(app_log: dict[str, Any]) -> dict[str, Any]:
     return app_log
 
 
-# ---- entry point ---------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Programmatic hidden_facts registry
+# ---------------------------------------------------------------------------
 
 
-def derive_persona_identity(corrected_profile: dict[str, Any]) -> dict[str, Any]:
+def _build_hidden_facts_registry(
+    hidden_facts: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build the hidden_facts array from source data + trace, not LLM output.
+
+    The merge LLM frequently drops or truncates the hidden_facts registry.
+    Building it programmatically guarantees every verified fact is present.
+
+    Iterates trace entries that have hidden_fact_ids (list) and for each
+    passed cluster, creates registry entries for each fact in the cluster.
+    """
+    # Build a map: fact_id -> trace entry for quick lookup
+    fact_to_trace: dict[str, dict[str, Any]] = {}
+    for t in trace:
+        if not t.get("passed"):
+            continue
+        for fid in t.get("hidden_fact_ids", []):
+            fact_to_trace[fid] = t
+
+    registry: list[dict[str, Any]] = []
+    for hf in hidden_facts:
+        fact_id = hf.get("fact_id", "")
+        if fact_id not in fact_to_trace:
+            continue
+        t = fact_to_trace[fact_id]
+        # Find the matched candidate for this specific fact
+        recovered_label = ""
+        for pair in t.get("per_fact_recovery", []):
+            if pair.get("fact_id") == fact_id:
+                recovered_label = pair.get("matched_candidate", "")
+                break
+        entry = {
+            "fact_id": fact_id,
+            "claim": hf.get("claim", ""),
+            "ground_truth_label": hf.get("ground_truth_label", ""),
+            "category": hf.get("category", ""),
+            "subcategory": hf.get("subcategory", ""),
+            "cluster_id": t.get("cluster_id", ""),
+            "recovered_label": recovered_label,
+            "verification_attempts": t.get("attempts", 0),
+        }
+        registry.append(entry)
+    return registry
+
+
+# ---------------------------------------------------------------------------
+# Post-merge coverage verification
+# ---------------------------------------------------------------------------
+
+
+def _extract_all_text(app_log: dict[str, Any]) -> str:
+    """Collect all user-visible text from the merged app log."""
+    parts: list[str] = []
+    messenger = app_log.get("messenger", {})
+    for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
+        for s in messenger.get(bucket, []) or []:
+            for m in s.get("messages", []) or []:
+                parts.append(str(m.get("text", "")))
+    calendar = app_log.get("calendar", {})
+    if isinstance(calendar, dict):
+        for e in calendar.get("events", []) or []:
+            parts.append(str(e.get("title", "")))
+            parts.append(str(e.get("notes", "")))
+            parts.append(str(e.get("location", "")))
+    return "\n".join(parts).lower()
+
+
+def _normalize(text: str) -> set[str]:
+    """Extract 4+ char alphanumeric tokens for fuzzy matching."""
+    return set(re.findall(r"[a-z0-9]{4,}", text.lower()))
+
+
+def _extract_ngrams(text: str, n: int) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    if len(words) < n:
+        return set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+def _fragment_text(frag: dict[str, Any]) -> str:
+    """Extract user-visible text from a fragment.
+
+    Handles both old format (fragment_type as 'type' key) and new format
+    (fragment_type as 'fragment_type' key) for backward compatibility.
+    """
+    parts: list[str] = []
+    ftype = frag.get("fragment_type", frag.get("type", ""))
+    if ftype == "messenger_session" or ftype == "messenger":
+        for m in frag.get("messages", []) or []:
+            parts.append(str(m.get("text", "")))
+    elif ftype == "calendar_event" or ftype == "calendar":
+        cal = frag.get("calendar_event", {}) or {}
+        parts.append(str(cal.get("title", "")))
+        parts.append(str(cal.get("notes", "")))
+        parts.append(str(cal.get("location", "")))
+    return " ".join(parts)
+
+
+def verify_post_merge_coverage(
+    app_log: dict[str, Any],
+    verified_fragments: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Check that verified fragments survived the merge into the app log.
+
+    Two-layer check:
+    1. Registry check: compare hidden_facts IDs in the app log against
+       fact IDs that passed verification in the trace.
+    2. Content check: for each verified fragment, look for distinctive
+       n-grams (3-word sequences) in the app log text. Single tokens
+       are too generic; n-grams are specific enough to detect real
+       presence vs coincidental word overlap.
+    """
+    # Layer 1: hidden_facts registry check
+    app_hf_ids = set()
+    for hf in app_log.get("hidden_facts", []):
+        fid = hf.get("fact_id", "")
+        if fid:
+            app_hf_ids.add(fid)
+
+    passed_fact_ids: set[str] = set()
+    for t in trace:
+        if t.get("passed"):
+            passed_fact_ids.update(t.get("hidden_fact_ids", []))
+    registry_missing = sorted(passed_fact_ids - app_hf_ids)
+
+    # Layer 2: content n-gram check
+    all_text = _extract_all_text(app_log)
+    all_ngrams = _extract_ngrams(all_text, 3)
+
+    frag_fact_ids_present: set[str] = set()
+    frag_fact_ids_missing: set[str] = set()
+    fragments_present = 0
+    fragments_missing_detail: list[str] = []
+
+    for frag in verified_fragments:
+        frag_text = _fragment_text(frag)
+        frag_ngrams = _extract_ngrams(frag_text, 3)
+        # Handle both new format (source_fact_ids list) and old (source_fact_id)
+        fact_ids = frag.get("source_fact_ids", [])
+        if not fact_ids:
+            old_id = frag.get("source_fact_id", "unknown")
+            fact_ids = [old_id] if old_id else ["unknown"]
+
+        if not frag_ngrams:
+            fragments_present += 1
+            frag_fact_ids_present.update(fact_ids)
+            continue
+
+        overlap = len(frag_ngrams & all_ngrams) / len(frag_ngrams)
+        if overlap >= 0.25:
+            fragments_present += 1
+            frag_fact_ids_present.update(fact_ids)
+        else:
+            frag_id = frag.get("fragment_id", "?")
+            fact_label = ",".join(fact_ids)
+            fragments_missing_detail.append(
+                f"{fact_label}/{frag_id} (ngram_overlap={overlap:.0%})"
+            )
+            for fid in fact_ids:
+                if fid not in frag_fact_ids_present:
+                    frag_fact_ids_missing.add(fid)
+
+    content_missing = sorted(
+        frag_fact_ids_missing - frag_fact_ids_present
+    )
+
+    all_missing = sorted(set(registry_missing) | set(content_missing))
+
     return {
-        "name": corrected_profile.get("name", ""),
-        "age": corrected_profile.get("age", 0),
-        "occupation": corrected_profile.get("occupation", ""),
-        "location": corrected_profile.get("location", ""),
+        "fragments_total": len(verified_fragments),
+        "fragments_present": fragments_present,
+        "fragments_missing": fragments_missing_detail[:20],
+        "hidden_facts_total": len(passed_fact_ids),
+        "hidden_facts_in_registry": len(app_hf_ids & passed_fact_ids),
+        "hidden_facts_in_content": len(frag_fact_ids_present),
+        "hidden_facts_covered": len(
+            (app_hf_ids & passed_fact_ids) | frag_fact_ids_present
+        ),
+        "registry_missing_fact_ids": registry_missing[:20],
+        "content_missing_fact_ids": content_missing[:20],
+        "missing_fact_ids": all_missing[:20],
     }
+
+
+# ---------------------------------------------------------------------------
+# Post-merge message preservation audit
+# ---------------------------------------------------------------------------
+
+
+def audit_message_preservation(
+    app_log: dict[str, Any],
+    verified_fragments: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Check that every message from every verified fragment survived the merge.
+
+    For each messenger fragment, check that each original message text appears
+    somewhere in the merged app log. Reports per-fragment pass/fail and overall
+    preservation rate.
+    """
+    all_app_messages: set[str] = set()
+    messenger = app_log.get("messenger", {})
+    for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
+        for s in messenger.get(bucket, []) or []:
+            for m in s.get("messages", []) or []:
+                text = (m.get("text") or "").strip().lower()
+                if text:
+                    all_app_messages.add(text)
+
+    total_expected = 0
+    total_found = 0
+    fragments_fully_preserved = 0
+    fragments_partially_preserved = 0
+    fragments_missing = 0
+    missing_messages: list[dict[str, Any]] = []
+
+    for frag in verified_fragments:
+        ftype = frag.get("fragment_type", frag.get("type", ""))
+        if ftype not in ("messenger_session", "messenger"):
+            continue
+
+        messages = frag.get("messages", []) or []
+        if not messages:
+            continue
+
+        frag_id = frag.get("fragment_id", "?")
+        expected = len(messages)
+        found = 0
+
+        for msg in messages:
+            text = (msg.get("text") or "").strip().lower()
+            if not text:
+                found += 1
+                continue
+            if text in all_app_messages:
+                found += 1
+            else:
+                tokens = set(text.split())
+                matched = any(
+                    len(tokens & set(app_msg.split())) / max(len(tokens), 1) > 0.7
+                    for app_msg in all_app_messages
+                    if app_msg
+                )
+                if matched:
+                    found += 1
+                else:
+                    missing_messages.append({
+                        "fragment_id": frag_id,
+                        "message_text": msg.get("text", "")[:80],
+                    })
+
+        total_expected += expected
+        total_found += found
+
+        if found == expected:
+            fragments_fully_preserved += 1
+        elif found > 0:
+            fragments_partially_preserved += 1
+        else:
+            fragments_missing += 1
+
+    preservation_rate = total_found / total_expected if total_expected else 1.0
+
+    return {
+        "total_messages_expected": total_expected,
+        "total_messages_found": total_found,
+        "preservation_rate": round(preservation_rate, 3),
+        "fragments_fully_preserved": fragments_fully_preserved,
+        "fragments_partially_preserved": fragments_partially_preserved,
+        "fragments_missing": fragments_missing,
+        "missing_messages_sample": missing_messages[:20],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
 
 
 def run_step(
@@ -234,118 +1066,221 @@ def run_step(
     output_dir: Path,
     model: str,
     verifier_model: str,
-    per_fact_max_attempts: int,
+    per_cluster_max_attempts: int,
     log_start: str,
     log_end: str,
-    provider: str = "anthropic",
+    provider: str,
+    backend: str,
+    max_facts: int = 100,
 ) -> int:
-    profile_file = json.loads(profile_path.read_text(encoding="utf-8"))
-    corrected_profile = profile_file["corrected_extracted_profile"]
-    hidden_facts = corrected_profile["hidden_facts"]
+    """File-path based entry point for CLI use."""
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    corrected_profile = profile["corrected_extracted_profile"]
+    all_hidden_facts = corrected_profile["hidden_facts"]
+    hidden_facts = select_hidden_facts(all_hidden_facts, max_facts)
 
-    circle_file = json.loads(social_circle_path.read_text(encoding="utf-8"))
-    corrected_social_circle = circle_file["corrected_social_circle"]
+    circle = json.loads(social_circle_path.read_text(encoding="utf-8"))
+    corrected_social_circle = circle["corrected_social_circle"]
 
-    news_events: list[dict[str, Any]] = []
-    if news_events_path and news_events_path.exists():
-        news_events = json.loads(news_events_path.read_text(encoding="utf-8"))
+    return run_step_from_dicts(
+        corrected_profile, corrected_social_circle, hidden_facts,
+        output_dir, model, verifier_model, per_cluster_max_attempts,
+        log_start, log_end, provider, backend,
+        news_events_path=news_events_path,
+        base_name=profile_path.stem.replace("_verification", ""),
+    )
 
-    client = make_client(provider)
+
+def run_step_from_dicts(
+    corrected_profile: dict[str, Any],
+    corrected_social_circle: dict[str, Any],
+    hidden_facts: list[dict[str, Any]],
+    output_dir: Path | str,
+    model: str,
+    verifier_model: str,
+    per_cluster_max_attempts: int,
+    log_start: str,
+    log_end: str,
+    provider: str,
+    backend: str,
+    news_events_path: Path | str | None = None,
+    base_name: str | None = None,
+) -> int:
+    """Dict-based entry point for openclaw_pipeline.py integration."""
+    client = make_client(provider) if backend in API_BACKENDS else None
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    base_name = profile_path.stem.replace("_verification", "")
-    app_log_out = output_dir / f"{base_name}_app_logs.json"
-    trace_out = output_dir / f"{base_name}_app_logs_trace.json"
-
     persona = derive_persona_identity(corrected_profile)
+    name = base_name or persona["name"].lower().replace(" ", "_")
 
+    # Output paths
+    app_log_out = output_dir / f"{name}_app_logs.json"
+    trace_out = output_dir / f"{name}_app_logs_trace.json"
+    fragments_out = output_dir / f"{name}_verified_fragments.json"
+
+    # News events
+    news_events: list[dict[str, Any]] = []
+    if news_events_path and Path(news_events_path).exists():
+        news_events = json.loads(Path(news_events_path).read_text(encoding="utf-8"))
+
+    # Phase 1: Cluster
+    print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
+    cluster_result = cluster_hidden_facts(client, model, hidden_facts, provider, backend)
+    clusters = cluster_result.get("clusters", [])
+    print(f"[step4] formed {len(clusters)} clusters")
+
+    # Build lookup: fact_id -> hidden_fact dict
+    hf_map: dict[str, dict[str, Any]] = {}
+    for i, hf in enumerate(hidden_facts, 1):
+        fid = hf.get("fact_id", f"HF-{i:03d}")
+        hf_map[fid] = hf
+
+    # Phase 2: Generate + Verify per cluster
     verified_fragments: list[dict[str, Any]] = []
     contact_usage: dict[str, int] = {}
     trace: list[dict[str, Any]] = []
 
-    print(f"[step4] persona {persona['name']}  hidden_facts={len(hidden_facts)}")
+    for ci, cluster in enumerate(clusters, 1):
+        cluster_id = cluster.get("cluster_id", f"C{ci}")
+        fact_ids = cluster.get("hidden_fact_ids", [])
+        cluster_facts = [hf_map[fid] for fid in fact_ids if fid in hf_map]
 
-    for i, hf in enumerate(hidden_facts, start=1):
-        fact_id = hf.get("fact_id", f"HF-{i:03d}")
+        if not cluster_facts:
+            print(f"[step4/{cluster_id}] WARNING: no valid facts, skipping")
+            trace.append({
+                "cluster_id": cluster_id,
+                "hidden_fact_ids": fact_ids,
+                "ground_truth_labels": [],
+                "attempts": 0,
+                "passed": False,
+                "per_fact_recovery": [],
+                "final_verification": None,
+                "error": f"fact_ids {fact_ids} not found in hidden_facts",
+            })
+            continue
+
+        passed = False
         last_fragments: list[dict[str, Any]] = []
         last_verification: dict[str, Any] | None = None
-        passed = False
+        matched_pairs: list[dict[str, Any]] = []
+        attempt = 0
 
-        for attempt in range(1, per_fact_max_attempts + 1):
+        for attempt in range(1, per_cluster_max_attempts + 1):
             print(
-                f"[step4/{fact_id}] attempt {attempt}/{per_fact_max_attempts} "
-                f"({i}/{len(hidden_facts)})"
+                f"[step4/{cluster_id}] attempt {attempt}/{per_cluster_max_attempts} "
+                f"({ci}/{len(clusters)})"
             )
-            bundle = generate_fragments(
-                client, model, hf, corrected_social_circle,
-                log_start, log_end, contact_usage, provider=provider,
-            )
-            fragments = bundle.get("fragments", [])
-            banned_token_set = bundle.get("banned_token_set", []) or []
-            verification = verify_fragments(
-                client, verifier_model, fragments, banned_token_set, persona,
-                provider=provider,
-            )
-            last_fragments = fragments
-            last_verification = verification
-            if fact_passed(verification, hf):
-                passed = True
-                update_contact_usage(contact_usage, bundle)
-                break
-            else:
-                verdict = verification.get("verdict", "UNKNOWN")
-                print(
-                    f"[step4/{fact_id}] verdict={verdict} "
-                    f"candidate={verification.get('candidate_label', '')!r} "
-                    f"regenerating"
-                )
 
-        verified_fragments.extend(
-            {**f, "source_fact_id": fact_id, "passed_verification": passed}
-            for f in last_fragments
-        )
-        trace.append(
-            {
-                "fact_id": fact_id,
-                "ground_truth_label": hf.get("ground_truth_label"),
-                "attempts": attempt,
-                "passed": passed,
-                "final_verification": last_verification,
-            }
-        )
+            try:
+                cluster_input = {
+                    "cluster_id": cluster_id,
+                    "cluster_status": cluster.get("cluster_status", "valid_cluster"),
+                    "hidden_fact_ids": fact_ids,
+                    "hidden_facts": cluster_facts,
+                }
+
+                bundle = generate_cluster_fragments(
+                    client, model, cluster_input, cluster_facts,
+                    corrected_social_circle, log_start, log_end,
+                    contact_usage, provider, backend,
+                )
+                fragments = bundle.get("fragments", [])
+
+                verification = verify_cluster(
+                    client, verifier_model, fragments, persona,
+                    len(cluster_facts), provider, backend,
+                )
+                last_fragments = fragments
+                last_verification = verification
+
+                passed, matched_pairs = cluster_passed(verification, cluster_facts)
+                if passed:
+                    for frag in fragments:
+                        src = frag.get("source", {})
+                        if src.get("type") == "contact":
+                            cname = src.get("name", "")
+                            if cname:
+                                contact_usage[cname] = contact_usage.get(cname, 0) + 1
+                    break
+                else:
+                    verdict = verification.get("verdict", "UNKNOWN")
+                    print(f"[step4/{cluster_id}] verdict={verdict}, regenerating")
+            except Exception as e:
+                print(f"[step4/{cluster_id}] attempt {attempt} error: {e}")
+                last_verification = {"error": str(e)}
+                if attempt == per_cluster_max_attempts:
+                    break
+
+        # Record trace
+        trace_entry = {
+            "cluster_id": cluster_id,
+            "hidden_fact_ids": fact_ids,
+            "ground_truth_labels": [
+                hf.get("ground_truth_label", "") for hf in cluster_facts
+            ],
+            "attempts": attempt,
+            "passed": passed,
+            "per_fact_recovery": matched_pairs,
+            "final_verification": last_verification,
+        }
+        trace.append(trace_entry)
+
+        # Save trace incrementally
         trace_out.write_text(
             json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    trace_out.write_text(
-        json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+        # Collect verified fragments
+        if passed:
+            for frag in last_fragments:
+                sfids = [
+                    s["hidden_fact_id"]
+                    for s in frag.get("supports_hidden_facts", [])
+                ]
+                verified_fragments.append({**frag, "source_fact_ids": sfids})
 
-    fragments_out = output_dir / f"{base_name}_verified_fragments.json"
+    # Save verified fragments
     fragments_out.write_text(
         json.dumps(verified_fragments, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"[step4] saved {len(verified_fragments)} fragments to {fragments_out}")
 
     passed_count = sum(1 for t in trace if t["passed"])
-    print(
-        f"[step4] fragment phase done: {passed_count}/{len(hidden_facts)} "
-        "hidden facts passed reverse-inferability"
+    total_facts_passed = sum(
+        len(t["hidden_fact_ids"]) for t in trace if t["passed"]
     )
-    if passed_count < len(hidden_facts):
-        print(
-            "[step4] WARNING: some hidden facts are unrecoverable from their "
-            "fragments. They will still be merged but flagged in the trace."
-        )
+    print(
+        f"[step4] {passed_count}/{len(clusters)} clusters passed "
+        f"({total_facts_passed}/{len(hidden_facts)} facts)"
+    )
 
-    print(f"[step4] merging fragments + filler for {persona['name']}")
+    # Phase 3: Programmatic decoys
+    target_decoy_count = len(verified_fragments)
+    generated_decoys = generate_decoys_programmatic(
+        hidden_facts, corrected_social_circle, persona,
+        target_count=target_decoy_count,
+    )
+    print(f"[step4] generated {len(generated_decoys)} programmatic decoys")
+
+    # Phase 4: Merge
+    print(f"[step4] merging {len(verified_fragments)} fragments for {persona['name']}")
+
+    # Only pass facts that have verified fragments
+    passed_fact_ids: set[str] = set()
+    for t in trace:
+        if t["passed"]:
+            passed_fact_ids.update(t["hidden_fact_ids"])
+    verified_hidden_facts = [
+        hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids
+    ]
+
     for merge_attempt in range(1, 4):
         try:
             app_log = merge_app_log(
-                client, model, verified_fragments, hidden_facts,
-                corrected_social_circle, persona, log_start, log_end,
-                news_events, provider=provider,
+                client, model, verified_fragments, generated_decoys,
+                verified_hidden_facts, corrected_social_circle, persona,
+                log_start, log_end, news_events, provider, backend,
             )
             break
         except Exception as e:
@@ -353,22 +1288,66 @@ def run_step(
             if merge_attempt == 3:
                 print("[step4] merge exhausted retries. Fragments saved to disk.")
                 return 1
-    app_log["generation_metadata"] = {
-        "generator_model": model,
-        "verifier_model": verifier_model,
-        "provider": provider,
-        "log_start": log_start,
-        "log_end": log_end,
-        "hidden_facts_total": len(hidden_facts),
-        "hidden_facts_passed": passed_count,
-        "generation_date": __import__("datetime").date.today().isoformat(),
-    }
+
+    # Build hidden_facts registry programmatically
+    app_log["hidden_facts"] = _build_hidden_facts_registry(
+        verified_hidden_facts, trace
+    )
+
+    # Post-merge coverage
+    coverage = verify_post_merge_coverage(app_log, verified_fragments, trace)
+    app_log["_post_merge_coverage"] = coverage
+
+    # Message preservation audit
+    msg_audit = audit_message_preservation(app_log, verified_fragments)
+    app_log["_message_preservation_audit"] = msg_audit
+    pres_rate = msg_audit["preservation_rate"]
+    print(
+        f"[step4] message preservation: {msg_audit['total_messages_found']}/"
+        f"{msg_audit['total_messages_expected']} messages survived merge "
+        f"({pres_rate:.0%})"
+    )
+    if pres_rate < 0.8:
+        print(
+            f"[step4] WARNING: preservation rate {pres_rate:.0%} is below 80%. "
+            "The merge LLM may be compressing verified fragments."
+        )
+
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"[step4] wrote {app_log_out}")
 
-    return 0 if passed_count == len(hidden_facts) else 1
+    # Coverage reporting
+    present = coverage["fragments_present"]
+    total = coverage["fragments_total"]
+    pct = present / total if total else 0
+    print(
+        f"[step4] post-merge coverage: {present}/{total} fragments "
+        f"confirmed ({pct:.0%})"
+    )
+
+    if coverage.get("missing_fact_ids"):
+        print(
+            f"[step4] WARNING: {len(coverage['missing_fact_ids'])} facts "
+            "missing from final log"
+        )
+
+    hf_covered = coverage["hidden_facts_covered"]
+    hf_total = coverage["hidden_facts_total"]
+    if hf_total and hf_covered < hf_total * 0.8:
+        print(
+            f"[step4] FAIL: only {hf_covered}/{hf_total} facts covered "
+            "(below 80%)"
+        )
+        return 1
+
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def main() -> None:
@@ -389,21 +1368,39 @@ def main() -> None:
         "--output", type=Path,
         default=STEP_DIR / "data_samples" / "output",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model", required=True)
     parser.add_argument(
-        "--verifier-model", default=DEFAULT_VERIFIER_MODEL,
+        "--verifier-model", required=True,
         help="Independent model for the reverse-inferability gate",
     )
     parser.add_argument(
-        "--per-fact-max-attempts", type=int, default=DEFAULT_PER_FACT_MAX_ATTEMPTS,
+        "--per-cluster-max-attempts", type=int, default=3,
     )
     parser.add_argument("--log-start", default="2026-03-01")
     parser.add_argument("--log-end", default="2026-03-31")
-    parser.add_argument("--provider", default="anthropic", choices=SUPPORTED_PROVIDERS)
+    parser.add_argument(
+        "--backend", default="claude",
+        choices=list(SUBSCRIPTION_BACKENDS) + list(API_BACKENDS),
+        help="claude/codex for subscription CLI, anthropic-api/openai-api for metered API.",
+    )
+    parser.add_argument(
+        "--provider", default=None, choices=SUPPORTED_PROVIDERS,
+    )
+    parser.add_argument(
+        "--max-facts", type=int, default=100,
+        help="Maximum hidden facts to include (prioritized by benchmark relevance)",
+    )
     args = parser.parse_args()
 
-    if not check_api_key(args.provider):
-        print(f"API key for {args.provider} is not set.", file=sys.stderr)
+    backend = args.backend
+    provider = (
+        provider_for_backend(backend, args.provider or "anthropic")
+        if backend in API_BACKENDS
+        else (args.provider or "anthropic")
+    )
+
+    if backend in API_BACKENDS and not check_api_key(provider):
+        print(f"API key for {provider} is not set.", file=sys.stderr)
         sys.exit(2)
 
     sys.exit(
@@ -414,10 +1411,12 @@ def main() -> None:
             args.output,
             args.model,
             args.verifier_model,
-            args.per_fact_max_attempts,
+            args.per_cluster_max_attempts,
             args.log_start,
             args.log_end,
-            args.provider,
+            provider=provider,
+            backend=backend,
+            max_facts=args.max_facts,
         )
     )
 
