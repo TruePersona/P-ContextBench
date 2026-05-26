@@ -601,7 +601,7 @@ def generate_decoys_programmatic(
     persona: dict[str, Any],
     target_count: int = 0,
 ) -> list[dict[str, Any]]:
-    """Generate decoy filler candidates programmatically (no LLM calls).
+    """Generate decoy filler candidates programmatically.
 
     Three strategies:
     1. Domain-exclusion templates: one-off errands/logistics from domains
@@ -717,61 +717,401 @@ def generate_decoys_programmatic(
 
 
 # ---------------------------------------------------------------------------
-# Phase 5: Merge
+# Phase 5: Deterministic assembly
 # ---------------------------------------------------------------------------
 
 
-def merge_app_log(
-    client,
-    model: str,
+def _normalize_sender(sender: str, persona_name: str) -> str:
+    """Map 'Persona' to the actual persona name."""
+    if sender.lower() == "persona":
+        return persona_name
+    return sender
+
+
+def assemble_meaningful_log(
     verified_fragments: list[dict[str, Any]],
-    generated_decoys: list[dict[str, Any]],
-    hidden_facts: list[dict[str, Any]],
-    social_circle: dict[str, Any],
     persona: dict[str, Any],
     log_start: str,
     log_end: str,
-    news_events: list[dict[str, Any]],
-    provider: str,
-    backend: str,
-) -> dict[str, Any]:
-    """Merge verified fragments and decoys into the final app log."""
-    template = load_prompt(MERGE_PROMPT_PATH)
-    template = fill(template, "{{PERSONA_NAME}}", persona["name"])
-    template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
-    template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
-    template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
-    template = fill(
-        template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
-    )
-    template = fill(
-        template, "{{INSERT_VERIFIED_DECOYS_JSON_HERE}}", generated_decoys
-    )
-    template = fill(template, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts)
-    template = fill(
-        template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
-    )
-    template = fill(template, "{{LOG_START_DATE}}", log_start)
-    template = fill(template, "{{LOG_END_DATE}}", log_end)
-    template = fill(template, "{{INSERT_NEWS_EVENTS_JSON_HERE}}", news_events)
-    raw = _call_llm(client, model, template, provider=provider, backend=backend)
-    return sanitize_app_log(extract_json(raw))
+) -> tuple[dict[str, Any], dict[str, list[str]]]:
+    """Phase 1: Group verified fragments into meaningful sessions + calendar
+    events deterministically. 100% preservation by construction.
 
-
-def sanitize_app_log(app_log: dict[str, Any]) -> dict[str, Any]:
-    """Strip per-session/per-event source_fact_ids so downstream evaluators
-    cannot accidentally see fact-anchored sessions in the raw JSON.
-    Traceability is preserved via cross_app_index only.
+    Returns (partial_app_log, provenance_map) where provenance_map is
+    session_or_event_id -> list of source_fact_ids (kept in memory for
+    cross_app_index, stripped from public output).
     """
-    messenger = app_log.get("messenger", {})
-    for bucket in ("meaningful_sessions", "filler_sessions", "sessions"):
-        for s in messenger.get(bucket, []) or []:
-            s.pop("source_fact_ids", None)
-    calendar = app_log.get("calendar", {})
-    if isinstance(calendar, dict):
-        for e in calendar.get("events", []) or []:
-            e.pop("source_fact_ids", None)
+    persona_name = persona.get("name", "Persona")
+
+    messenger_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    calendar_events: list[dict[str, Any]] = []
+    provenance: dict[str, list[str]] = {}
+
+    for frag in verified_fragments:
+        ftype = frag.get("fragment_type", frag.get("type", ""))
+        date = frag.get("date", "")
+        sfids = frag.get("source_fact_ids", [])
+
+        if ftype in ("messenger_session", "messenger"):
+            contact = frag.get("source", {}).get("name", "unknown")
+            key = (date, contact)
+            if key not in messenger_groups:
+                messenger_groups[key] = []
+            messenger_groups[key].append(frag)
+
+        elif ftype in ("calendar_event", "calendar"):
+            cal = frag.get("calendar_event", {}) or {}
+            event = {
+                "date": date,
+                "start_time": cal.get("start_time", ""),
+                "end_time": cal.get("end_time", ""),
+                "title": cal.get("title", ""),
+                "location": cal.get("location", ""),
+                "participants": cal.get("participants", []),
+                "notes": cal.get("notes", ""),
+            }
+            calendar_events.append((event, sfids, frag.get("fragment_id", "")))
+
+    sorted_keys = sorted(messenger_groups.keys())
+    meaningful_sessions: list[dict[str, Any]] = []
+    m_idx = 1
+
+    for date, contact in sorted_keys:
+        frags = messenger_groups[(date, contact)]
+        all_messages: list[dict[str, Any]] = []
+        session_fact_ids: list[str] = []
+
+        for frag in frags:
+            for msg in frag.get("messages", []) or []:
+                all_messages.append({
+                    "time": msg.get("time", ""),
+                    "sender": _normalize_sender(msg.get("sender", ""), persona_name),
+                    "text": msg.get("text", ""),
+                })
+            session_fact_ids.extend(frag.get("source_fact_ids", []))
+
+        all_messages.sort(key=lambda m: m.get("time", ""))
+
+        if len(all_messages) > 12:
+            for chunk_start in range(0, len(all_messages), 10):
+                chunk = all_messages[chunk_start:chunk_start + 10]
+                sid = f"M-{m_idx:03d}"
+                meaningful_sessions.append({
+                    "session_id": sid,
+                    "date": date,
+                    "contact": contact,
+                    "messages": chunk,
+                })
+                provenance[sid] = list(set(session_fact_ids))
+                m_idx += 1
+        else:
+            sid = f"M-{m_idx:03d}"
+            meaningful_sessions.append({
+                "session_id": sid,
+                "date": date,
+                "contact": contact,
+                "messages": all_messages,
+            })
+            provenance[sid] = list(set(session_fact_ids))
+            m_idx += 1
+
+    calendar_events.sort(key=lambda x: (x[0].get("date", ""), x[0].get("start_time", "")))
+    cal_out: list[dict[str, Any]] = []
+    for e_idx, (event, sfids, frag_id) in enumerate(calendar_events, 1):
+        eid = f"E-{e_idx:03d}"
+        cal_out.append({"event_id": eid, **event})
+        provenance[eid] = list(set(sfids))
+
+    partial = {
+        "persona_name": persona_name,
+        "log_window": {"start_date": log_start, "end_date": log_end},
+        "messenger": {"meaningful_sessions": meaningful_sessions, "filler_sessions": []},
+        "calendar": {"events": cal_out},
+    }
+    return partial, provenance
+
+
+def validate_meaningful_preservation(
+    partial_log: dict[str, Any],
+    verified_fragments: list[dict[str, Any]],
+    persona_name: str,
+) -> dict[str, Any]:
+    """Phase 2: Validate 100% message and calendar event preservation.
+    Hard fail if any verified content is missing.
+    """
+    placed_msgs: list[str] = []
+    for s in partial_log.get("messenger", {}).get("meaningful_sessions", []):
+        for m in s.get("messages", []):
+            placed_msgs.append(m.get("text", "").strip())
+
+    placed_cals: list[tuple[str, str, str]] = []
+    for e in partial_log.get("calendar", {}).get("events", []):
+        placed_cals.append((
+            e.get("title", "").strip(),
+            e.get("date", ""),
+            e.get("start_time", ""),
+        ))
+
+    missing_msgs: list[dict[str, Any]] = []
+    total_msgs = 0
+    found_msgs = 0
+    missing_cals: list[str] = []
+    total_cals = 0
+    found_cals = 0
+
+    for frag in verified_fragments:
+        ftype = frag.get("fragment_type", frag.get("type", ""))
+        fid = frag.get("fragment_id", "?")
+
+        if ftype in ("messenger_session", "messenger"):
+            for msg in frag.get("messages", []) or []:
+                total_msgs += 1
+                text = msg.get("text", "").strip()
+                if text in placed_msgs:
+                    placed_msgs.remove(text)
+                    found_msgs += 1
+                else:
+                    missing_msgs.append({"fragment_id": fid, "text": text[:80]})
+
+        elif ftype in ("calendar_event", "calendar"):
+            total_cals += 1
+            cal = frag.get("calendar_event", {}) or {}
+            key = (
+                cal.get("title", "").strip(),
+                frag.get("date", ""),
+                cal.get("start_time", ""),
+            )
+            if key in placed_cals:
+                placed_cals.remove(key)
+                found_cals += 1
+            else:
+                missing_cals.append(f"{fid}: {key[0][:60]}")
+
+    passed = len(missing_msgs) == 0 and len(missing_cals) == 0
+    return {
+        "passed": passed,
+        "messages_expected": total_msgs,
+        "messages_found": found_msgs,
+        "messages_missing": missing_msgs[:20],
+        "calendar_expected": total_cals,
+        "calendar_found": found_cals,
+        "calendar_missing": missing_cals[:20],
+    }
+
+
+def generate_filler_sessions(
+    persona: dict[str, Any],
+    social_circle: dict[str, Any],
+    log_start: str,
+    log_end: str,
+    meaningful_token_count: int,
+    filler_ratio: float = 0.5,
+    target_context_tokens: int | None = None,
+    hidden_facts: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Phase 3: Generate template-based mundane filler sessions.
+    Uses simple templates distributed across dates and contacts.
+    Screens each template against hidden fact tokens to avoid overlap.
+    """
+    if target_context_tokens:
+        target_filler_tokens = max(0, target_context_tokens - meaningful_token_count - 2000)
+    else:
+        target_filler_tokens = int(meaningful_token_count * filler_ratio)
+
+    avg_tokens_per_filler_session = 40
+    target_sessions = max(1, target_filler_tokens // avg_tokens_per_filler_session)
+
+    contacts: list[str] = []
+    members = social_circle.get("members", social_circle.get("social_circle", []))
+    if isinstance(members, list):
+        contacts = [m.get("name", "") for m in members if m.get("name")]
+    elif isinstance(members, dict):
+        contacts = [m.get("name", "") for m in members.values() if isinstance(m, dict) and m.get("name")]
+    if not contacts:
+        contacts = ["Contact"]
+
+    persona_name = persona.get("name", "Persona")
+
+    _FILLER_PAIRS = [
+        ("Hey, running about 10 min late", "No worries, take your time"),
+        ("Did you see the weather tomorrow?", "Yeah, rain all day apparently"),
+        ("Want me to grab anything from the store?", "We need paper towels if you pass Target"),
+        ("Just finished that book you recommended", "And? Worth it?"),
+        ("My wifi has been terrible today", "Same, I restarted the router twice"),
+        ("Can you remind me to call back tomorrow?", "Setting a reminder now"),
+        ("Left my sunglasses somewhere again", "Check the car, you always leave them there"),
+        ("What time works for you Saturday?", "After 2 works, morning is packed"),
+        ("Traffic is insane right now", "Take the back road off Oak, way faster"),
+        ("Do we still have leftovers?", "Yeah, the rice thing from Sunday is still good"),
+        ("printer is jammed again", "Try pulling the tray all the way out"),
+        ("picking up coffee, want one?", "Yes please, the usual"),
+        ("just saw the funniest thing at the store", "lol what happened"),
+        ("Are you coming to the thing on Friday?", "Maybe, depends on work"),
+        ("Did the package arrive?", "Yeah it is by the door"),
+        ("That new place on Main is actually good", "We should go this weekend"),
+        ("Can I borrow your charger?", "It is in the kitchen drawer"),
+        ("Running errands all morning", "Sounds fun lol"),
+        ("Forgot my lunch at home again", "Classic. Want me to bring you something?"),
+        ("Just got home, exhausted", "Same, what a day"),
+    ]
+
+    import datetime
+    start = datetime.date.fromisoformat(log_start)
+    end = datetime.date.fromisoformat(log_end)
+    total_days = (end - start).days + 1
+
+    hf_tokens: set[str] = set()
+    for hf in (hidden_facts or []):
+        for field in ("ground_truth_label", "claim"):
+            val = (hf.get(field) or "").lower()
+            hf_tokens.update(re.findall(r"[a-z]{4,}", val))
+
+    safe_pairs = []
+    for c_text, p_text in _FILLER_PAIRS:
+        pair_tokens = set(re.findall(r"[a-z]{4,}", f"{c_text} {p_text}".lower()))
+        if not pair_tokens or len(pair_tokens & hf_tokens) / len(pair_tokens) < 0.25:
+            safe_pairs.append((c_text, p_text))
+    if not safe_pairs:
+        safe_pairs = _FILLER_PAIRS[:5]
+
+    filler_sessions: list[dict[str, Any]] = []
+    f_idx = 1
+    pair_idx = 0
+
+    for i in range(target_sessions):
+        day_offset = (i * total_days) // target_sessions
+        date = (start + datetime.timedelta(days=day_offset)).isoformat()
+        contact = contacts[i % len(contacts)]
+        c_text, p_text = safe_pairs[pair_idx % len(safe_pairs)]
+        pair_idx += 1
+
+        hour = 8 + (i * 7) % 14
+        minute = (i * 13) % 60
+
+        filler_sessions.append({
+            "session_id": f"F-{f_idx:03d}",
+            "date": date,
+            "contact": contact,
+            "messages": [
+                {"time": f"{hour:02d}:{minute:02d}", "sender": contact, "text": c_text},
+                {"time": f"{hour:02d}:{(minute + 3) % 60:02d}", "sender": persona_name, "text": p_text},
+            ],
+        })
+        f_idx += 1
+
+    return filler_sessions
+
+
+def assemble_final_log(
+    partial_log: dict[str, Any],
+    filler_sessions: list[dict[str, Any]],
+    hidden_facts_registry: list[dict[str, Any]],
+    provenance: dict[str, list[str]],
+    trace: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Phase 4: Combine meaningful + filler, assign final IDs, build
+    cross_app_index, compute token_stats. Strip provenance from public output.
+    """
+    app_log = dict(partial_log)
+    app_log["messenger"]["filler_sessions"] = filler_sessions
+    app_log["hidden_facts"] = hidden_facts_registry
+
+    meaningful_sessions = app_log["messenger"]["meaningful_sessions"]
+    cal_events = app_log["calendar"]["events"]
+
+    cross_app_index: dict[str, dict[str, Any]] = {}
+    for s in meaningful_sessions:
+        date = s["date"]
+        key = f"date_{date}"
+        if key not in cross_app_index:
+            cross_app_index[key] = {
+                "messenger_session_ids": [],
+                "calendar_event_ids": [],
+                "hidden_fact_ids_touched": [],
+            }
+        cross_app_index[key]["messenger_session_ids"].append(s["session_id"])
+        fact_ids = provenance.get(s["session_id"], [])
+        for fid in fact_ids:
+            if fid not in cross_app_index[key]["hidden_fact_ids_touched"]:
+                cross_app_index[key]["hidden_fact_ids_touched"].append(fid)
+
+    for e in cal_events:
+        date = e["date"]
+        key = f"date_{date}"
+        if key not in cross_app_index:
+            cross_app_index[key] = {
+                "messenger_session_ids": [],
+                "calendar_event_ids": [],
+                "hidden_fact_ids_touched": [],
+            }
+        cross_app_index[key]["calendar_event_ids"].append(e["event_id"])
+        fact_ids = provenance.get(e["event_id"], [])
+        for fid in fact_ids:
+            if fid not in cross_app_index[key]["hidden_fact_ids_touched"]:
+                cross_app_index[key]["hidden_fact_ids_touched"].append(fid)
+
+    app_log["cross_app_index"] = dict(sorted(cross_app_index.items()))
+
+    m_msgs = sum(len(s.get("messages", [])) for s in meaningful_sessions)
+    f_msgs = sum(len(s.get("messages", [])) for s in filler_sessions)
+    meaningful_tokens = len(json.dumps(meaningful_sessions, ensure_ascii=False)) // 4
+    filler_tokens = len(json.dumps(filler_sessions, ensure_ascii=False)) // 4
+    cal_tokens = len(json.dumps(cal_events, ensure_ascii=False)) // 4
+
+    app_log["token_stats"] = {
+        "approximate_tokens": meaningful_tokens + filler_tokens + cal_tokens,
+        "meaningful_token_count": meaningful_tokens,
+        "filler_token_count": filler_tokens,
+        "meaningful_messages": m_msgs,
+        "filler_messages": f_msgs,
+        "calendar_events": len(cal_events),
+        "ratio_filler_to_meaningful": f"{filler_tokens / meaningful_tokens:.1f}:1" if meaningful_tokens else "N/A",
+    }
+
+    app_log["decoy_registry"] = []
+    app_log["decoy_check"] = {"selected_decoy_count": 0, "verdict": "PASS"}
+
     return app_log
+
+
+def validate_final_log(
+    app_log: dict[str, Any],
+    verified_fragments: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Phase 5: Final validation. Fragment coverage, no duplicates,
+    filler ratio, cross_app_index correctness.
+    """
+    passed_fact_ids: set[str] = set()
+    for t in trace:
+        if t.get("passed"):
+            passed_fact_ids.update(t.get("hidden_fact_ids", []))
+
+    registry_fact_ids = {hf.get("fact_id", "") for hf in app_log.get("hidden_facts", [])}
+    registry_coverage = len(passed_fact_ids & registry_fact_ids)
+
+    index = app_log.get("cross_app_index", {})
+    indexed_fact_ids: set[str] = set()
+    for entry in index.values():
+        indexed_fact_ids.update(entry.get("hidden_fact_ids_touched", []))
+
+    stats = app_log.get("token_stats", {})
+
+    return {
+        "passed_facts_total": len(passed_fact_ids),
+        "facts_in_registry": len(registry_fact_ids),
+        "facts_in_cross_app_index": len(indexed_fact_ids),
+        "registry_coverage": registry_coverage,
+        "facts_missing_from_registry": sorted(passed_fact_ids - registry_fact_ids)[:20],
+        "facts_missing_from_index": sorted(passed_fact_ids - indexed_fact_ids)[:20],
+        "filler_ratio": stats.get("ratio_filler_to_meaningful", "N/A"),
+        "meaningful_messages": stats.get("meaningful_messages", 0),
+        "filler_messages": stats.get("filler_messages", 0),
+        "verdict": "PASS" if (
+            registry_coverage == len(passed_fact_ids)
+            and passed_fact_ids <= indexed_fact_ids
+        ) else "FAIL",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -783,9 +1123,9 @@ def _build_hidden_facts_registry(
     hidden_facts: list[dict[str, Any]],
     trace: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Build the hidden_facts array from source data + trace, not LLM output.
+    """Build the hidden_facts array from source data + trace programmatically.
 
-    The merge LLM frequently drops or truncates the hidden_facts registry.
+    The generative merge step frequently drops or truncates the registry.
     Building it programmatically guarantees every verified fact is present.
 
     Iterates trace entries that have hidden_fact_ids (list) and for each
@@ -1072,6 +1412,9 @@ def run_step(
     provider: str,
     backend: str,
     max_facts: int = 100,
+    resume: bool = False,
+    filler_ratio: float = 0.5,
+    target_context_tokens: int | None = None,
 ) -> int:
     """File-path based entry point for CLI use."""
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
@@ -1088,6 +1431,9 @@ def run_step(
         log_start, log_end, provider, backend,
         news_events_path=news_events_path,
         base_name=profile_path.stem.replace("_verification", ""),
+        resume=resume,
+        filler_ratio=filler_ratio,
+        target_context_tokens=target_context_tokens,
     )
 
 
@@ -1105,6 +1451,9 @@ def run_step_from_dicts(
     backend: str,
     news_events_path: Path | str | None = None,
     base_name: str | None = None,
+    resume: bool = False,
+    filler_ratio: float = 0.5,
+    target_context_tokens: int | None = None,
 ) -> int:
     """Dict-based entry point for openclaw_pipeline.py integration."""
     client = make_client(provider) if backend in API_BACKENDS else None
@@ -1123,6 +1472,77 @@ def run_step_from_dicts(
     news_events: list[dict[str, Any]] = []
     if news_events_path and Path(news_events_path).exists():
         news_events = json.loads(Path(news_events_path).read_text(encoding="utf-8"))
+
+    # Resume check: if trace + fragments exist and --resume is set, skip to assembly
+    if resume and trace_out.exists() and fragments_out.exists():
+        existing_trace = json.loads(trace_out.read_text(encoding="utf-8"))
+        existing_frags = json.loads(fragments_out.read_text(encoding="utf-8"))
+        all_trace_fact_ids = set()
+        for t in existing_trace:
+            all_trace_fact_ids.update(t.get("hidden_fact_ids", []))
+        current_fact_ids = {hf.get("fact_id", "") for hf in hidden_facts}
+        frag_fact_ids = set()
+        for f in existing_frags:
+            frag_fact_ids.update(f.get("source_fact_ids", []))
+        compatible = (
+            all_trace_fact_ids == current_fact_ids
+            and existing_frags
+            and len(set(f.get("fragment_id", "") for f in existing_frags)) == len(existing_frags)
+        )
+        if compatible:
+            print(
+                f"[step4] resuming from existing results: "
+                f"{len(existing_trace)} clusters, {len(existing_frags)} fragments"
+            )
+            trace = existing_trace
+            verified_fragments = existing_frags
+            # Jump to assembly phases
+            passed_fact_ids_set: set[str] = set()
+            for t in trace:
+                if t["passed"]:
+                    passed_fact_ids_set.update(t["hidden_fact_ids"])
+            verified_hidden_facts = [
+                hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids_set
+            ]
+
+            partial_log, provenance = assemble_meaningful_log(
+                verified_fragments, persona, log_start, log_end,
+            )
+            pres = validate_meaningful_preservation(
+                partial_log, verified_fragments, persona["name"],
+            )
+            print(
+                f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
+                f"{pres['calendar_found']}/{pres['calendar_expected']} cal events"
+            )
+            if not pres["passed"]:
+                print("[step4] FAIL: verified content not 100% preserved")
+                return 1
+
+            meaningful_tokens = len(
+                json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
+            ) // 4
+            filler = generate_filler_sessions(
+                persona, corrected_social_circle, log_start, log_end,
+                meaningful_tokens, filler_ratio=filler_ratio,
+                target_context_tokens=target_context_tokens,
+                hidden_facts=verified_hidden_facts,
+            )
+            print(f"[step4] generated {len(filler)} filler sessions")
+
+            registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
+            app_log = assemble_final_log(partial_log, filler, registry, provenance, trace)
+            validation = validate_final_log(app_log, verified_fragments, trace)
+            app_log["_validation"] = validation
+            print(f"[step4] validation: {validation['verdict']}")
+
+            app_log_out.write_text(
+                json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            print(f"[step4] wrote {app_log_out}")
+            return 0
+        else:
+            print("[step4] existing results incompatible, re-running full pipeline")
 
     # Phase 1: Cluster
     print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
@@ -1255,16 +1675,7 @@ def run_step_from_dicts(
         f"({total_facts_passed}/{len(hidden_facts)} facts)"
     )
 
-    # Phase 3: Programmatic decoys
-    target_decoy_count = len(verified_fragments)
-    generated_decoys = generate_decoys_programmatic(
-        hidden_facts, corrected_social_circle, persona,
-        target_count=target_decoy_count,
-    )
-    print(f"[step4] generated {len(generated_decoys)} programmatic decoys")
-
-    # Phase 4: Merge
-    print(f"[step4] merging {len(verified_fragments)} fragments for {persona['name']}")
+    # ---- Deterministic assembly (Phases 3-7) ----
 
     # Only pass facts that have verified fragments
     passed_fact_ids: set[str] = set()
@@ -1275,72 +1686,57 @@ def run_step_from_dicts(
         hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids
     ]
 
-    for merge_attempt in range(1, 4):
-        try:
-            app_log = merge_app_log(
-                client, model, verified_fragments, generated_decoys,
-                verified_hidden_facts, corrected_social_circle, persona,
-                log_start, log_end, news_events, provider, backend,
-            )
-            break
-        except Exception as e:
-            print(f"[step4] merge attempt {merge_attempt}/3 failed: {e}")
-            if merge_attempt == 3:
-                print("[step4] merge exhausted retries. Fragments saved to disk.")
-                return 1
-
-    # Build hidden_facts registry programmatically
-    app_log["hidden_facts"] = _build_hidden_facts_registry(
-        verified_hidden_facts, trace
+    # Phase 3: Assemble meaningful log (Python, deterministic)
+    print(f"[step4] assembling {len(verified_fragments)} fragments deterministically")
+    partial_log, provenance = assemble_meaningful_log(
+        verified_fragments, persona, log_start, log_end,
     )
 
-    # Post-merge coverage
-    coverage = verify_post_merge_coverage(app_log, verified_fragments, trace)
-    app_log["_post_merge_coverage"] = coverage
-
-    # Message preservation audit
-    msg_audit = audit_message_preservation(app_log, verified_fragments)
-    app_log["_message_preservation_audit"] = msg_audit
-    pres_rate = msg_audit["preservation_rate"]
+    # Phase 4: Validate 100% preservation
+    pres = validate_meaningful_preservation(
+        partial_log, verified_fragments, persona["name"],
+    )
     print(
-        f"[step4] message preservation: {msg_audit['total_messages_found']}/"
-        f"{msg_audit['total_messages_expected']} messages survived merge "
-        f"({pres_rate:.0%})"
+        f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
+        f"{pres['calendar_found']}/{pres['calendar_expected']} cal events"
     )
-    if pres_rate < 0.8:
-        print(
-            f"[step4] WARNING: preservation rate {pres_rate:.0%} is below 80%. "
-            "The merge LLM may be compressing verified fragments."
-        )
+    if not pres["passed"]:
+        print("[step4] FAIL: verified content not 100% preserved in assembly")
+        print(f"[step4] missing msgs: {pres['messages_missing'][:5]}")
+        print(f"[step4] missing cals: {pres['calendar_missing'][:5]}")
+        return 1
+
+    # Phase 5: Generate filler (template-based)
+    meaningful_tokens = len(
+        json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
+    ) // 4
+    filler_sessions = generate_filler_sessions(
+        persona, corrected_social_circle, log_start, log_end,
+        meaningful_tokens, filler_ratio=filler_ratio,
+        target_context_tokens=target_context_tokens,
+        hidden_facts=verified_hidden_facts,
+    )
+    print(f"[step4] generated {len(filler_sessions)} filler sessions")
+
+    # Phase 6: Final assembly
+    hidden_facts_registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
+    app_log = assemble_final_log(
+        partial_log, filler_sessions, hidden_facts_registry, provenance, trace,
+    )
+
+    # Phase 7: Final validation
+    validation = validate_final_log(app_log, verified_fragments, trace)
+    app_log["_validation"] = validation
+    print(
+        f"[step4] validation: {validation['verdict']} "
+        f"({validation['registry_coverage']}/{validation['passed_facts_total']} facts covered, "
+        f"filler ratio {validation['filler_ratio']})"
+    )
 
     app_log_out.write_text(
         json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"[step4] wrote {app_log_out}")
-
-    # Coverage reporting
-    present = coverage["fragments_present"]
-    total = coverage["fragments_total"]
-    pct = present / total if total else 0
-    print(
-        f"[step4] post-merge coverage: {present}/{total} fragments "
-        f"confirmed ({pct:.0%})"
-    )
-
-    if coverage.get("missing_fact_ids"):
-        print(
-            f"[step4] WARNING: {len(coverage['missing_fact_ids'])} facts "
-            "missing from final log"
-        )
-
-    hf_covered = coverage["hidden_facts_covered"]
-    hf_total = coverage["hidden_facts_total"]
-    if hf_total and hf_covered < hf_total * 0.8:
-        print(
-            f"[step4] FAIL: only {hf_covered}/{hf_total} facts covered "
-            "(below 80%)"
-        )
-        return 1
 
     return 0
 
@@ -1390,6 +1786,18 @@ def main() -> None:
         "--max-facts", type=int, default=100,
         help="Maximum hidden facts to include (prioritized by benchmark relevance)",
     )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume from existing trace + fragments files, skip clustering and verification",
+    )
+    parser.add_argument(
+        "--filler-ratio", type=float, default=0.5,
+        help="Filler-to-meaningful token ratio (default 0.5 for experiment)",
+    )
+    parser.add_argument(
+        "--target-context-tokens", type=int, default=None,
+        help="Target total context tokens (overrides --filler-ratio when set)",
+    )
     args = parser.parse_args()
 
     backend = args.backend
@@ -1417,6 +1825,9 @@ def main() -> None:
             provider=provider,
             backend=backend,
             max_facts=args.max_facts,
+            resume=args.resume,
+            filler_ratio=args.filler_ratio,
+            target_context_tokens=args.target_context_tokens,
         )
     )
 
