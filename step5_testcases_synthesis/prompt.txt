@@ -16,13 +16,8 @@ This prompt is self-contained. All required data is inserted below.
 INPUT DATA
 ===============================================================================
 
-CORRECTED EXTRACTED PROFILE (read from data_samples/input/{persona}_verification.json,
-field: corrected_extracted_profile):
-{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}
-
 APP LOGS (read from data_samples/input/{persona}_app_logs.json — the merged messenger
-+ calendar output, with its hidden_facts array that mirrors the profile's hidden_facts
-schema):
++ calendar output, with its hidden_facts array as the canonical answer key):
 {{INSERT_APP_LOGS_JSON_HERE}}
 
 CORRECTED SOCIAL CIRCLE (read from data_samples/input/{persona}_social_circle_
@@ -35,10 +30,11 @@ GROUND TRUTH SOURCING
 ===============================================================================
 
 Throughout this prompt, HF (hidden fact, in its full expression) refers to one
-entry in the `corrected_extracted_profile.hidden_facts` registry produced by
-Step 2. Each HF carries a `fact_id`, a natural-language `claim`, a short
-canonical `ground_truth_label`, and behavioral evidence anchors from the
-interview. The HF registry is the canonical answer key.
+entry in the app log's `hidden_facts` array. Only facts that passed the
+reverse-inferability gate appear here. Each HF carries a `fact_id`, a
+natural-language `claim`, and a short canonical `ground_truth_label`. The
+app log's `hidden_facts` array is the canonical answer key — do NOT reference
+any external profile or verification file.
 
 Every test case's `ground_truth` field must be a literal copy of the
 `ground_truth_label` string from an HF entry. No paraphrasing, no synthesis,
@@ -142,7 +138,7 @@ COVERAGE RULES
 4. No two test cases may cite overlapping evidence sets of more than 50%.
    Duplicate reasoning paths are rejected.
 5. Every test case must cite at least one `source_hidden_fact_ids` entry that
-   resolves to a real HF in the corrected profile.
+   resolves to a real HF in the app log's hidden_facts array.
 
 ===============================================================================
 CAPSTONE RULES
@@ -298,7 +294,7 @@ For Type 5 entries, add these additional fields:
 PROCESS
 ===============================================================================
 
-1. Read the corrected_extracted_profile.hidden_facts array completely.
+1. Read the app_logs.hidden_facts array completely.
 2. Read the app_logs.hidden_facts array and verify fact_ids match the profile.
    If an app_log hidden_fact is missing from the profile, reject the run and
    request a schema reconciliation from the Step 4 owner.
