@@ -899,7 +899,7 @@ def generate_filler_sessions(
     log_start: str,
     log_end: str,
     meaningful_token_count: int,
-    filler_ratio: float = 0.5,
+    filler_ratio: float = 2.5,
     target_context_tokens: int | None = None,
     hidden_facts: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -1484,7 +1484,7 @@ def run_step(
     backend: str,
     max_facts: int = 100,
     resume: bool = False,
-    filler_ratio: float = 0.5,
+    filler_ratio: float = 2.5,
     target_context_tokens: int | None = None,
 ) -> int:
     """File-path based entry point for CLI use."""
@@ -1523,7 +1523,7 @@ def run_step_from_dicts(
     news_events_path: Path | str | None = None,
     base_name: str | None = None,
     resume: bool = False,
-    filler_ratio: float = 0.5,
+    filler_ratio: float = 2.5,
     target_context_tokens: int | None = None,
 ) -> int:
     """Dict-based entry point for openclaw_pipeline.py integration."""
@@ -1863,8 +1863,8 @@ def main() -> None:
         help="Resume from existing trace + fragments files, skip clustering and verification",
     )
     parser.add_argument(
-        "--filler-ratio", type=float, default=0.5,
-        help="Filler-to-meaningful token ratio (default 0.5 for experiment)",
+        "--filler-ratio", type=float, default=2.5,
+        help="Filler-to-meaningful token ratio (default 2.5)",
     )
     parser.add_argument(
         "--target-context-tokens", type=int, default=None,
