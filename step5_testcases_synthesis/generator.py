@@ -140,9 +140,6 @@ def run_generation(
 ) -> dict[str, Any]:
     prompt_path = PROMPT_V2_PATH if prompt_version == "v2" else PROMPT_V1_PATH
     template = load_prompt(prompt_path)
-    template = fill_json(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", corrected_profile
-    )
     logs_for_prompt = strip_filler_for_step5(app_logs)
     template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     template = fill_json(
@@ -169,9 +166,6 @@ def run_verification(
     ver_path = VERIFICATION_V2_PATH if prompt_version == "v2" else VERIFICATION_V1_PATH
     template = load_prompt(ver_path)
     template = fill_json(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
-    template = fill_json(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", corrected_profile
-    )
     logs_for_prompt = strip_filler_for_step5(app_logs)
     template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     raw = do_call(template, model, client, backend, provider, claude_cmd, codex_cmd)
@@ -302,7 +296,7 @@ def main() -> None:
     parser.add_argument(
         "--codex-cmd",
         default=os.environ.get(
-            "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
+            "CODEX_CMD", "codex"
         ),
     )
     parser.add_argument(

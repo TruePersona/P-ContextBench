@@ -16,13 +16,8 @@ This prompt is self-contained. All required data is inserted below.
 INPUT DATA
 ===============================================================================
 
-CORRECTED EXTRACTED PROFILE (read from data_samples/input/{persona}_verification.json,
-field: corrected_extracted_profile):
-{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}
-
 APP LOGS (read from data_samples/input/{persona}_app_logs.json — the merged messenger
-+ calendar output, with its hidden_facts array that mirrors the profile's hidden_facts
-schema):
++ calendar output, with its hidden_facts array as the canonical answer key):
 {{INSERT_APP_LOGS_JSON_HERE}}
 
 CORRECTED SOCIAL CIRCLE (read from data_samples/input/{persona}_social_circle_
@@ -35,10 +30,10 @@ GROUND TRUTH SOURCING
 ===============================================================================
 
 Throughout this prompt, HF (hidden fact, in its full expression) refers to one
-entry in the `corrected_extracted_profile.hidden_facts` registry produced by
-Step 2. Each HF carries a `fact_id`, a natural-language `claim`, a short
-canonical `ground_truth_label`, and behavioral evidence anchors from the
-interview. The HF registry is the canonical answer key.
+entry in the `app_logs.hidden_facts` registry produced by
+Step 4 from reverse-verified hidden facts. Each HF carries a `fact_id`, a
+natural-language `claim`, a short canonical `ground_truth_label`, and app-log
+embedding evidence. The HF registry is the canonical answer key.
 
 Every test case's `ground_truth` field must be a literal copy of the
 `ground_truth_label` string from an HF entry. No paraphrasing, no synthesis,
@@ -349,7 +344,7 @@ COVERAGE RULES
 4. No two test cases may cite overlapping evidence sets of more than 50%.
    Duplicate reasoning paths are rejected.
 5. Every test case must cite at least one `source_hidden_fact_ids` entry that
-   resolves to a real HF in the corrected profile.
+   resolves to a real HF in `app_logs.hidden_facts`.
 6. Among Type 5 cases, at least 15% must carry the construction tag
    `calendar_aware` and at least 10% must carry `third_party`.
 7. Every Type 5 case must have a non-empty `naive_compliance_consequence`.
@@ -621,11 +616,10 @@ OUTPUT FORMAT
 {
   "metadata": {
     "persona": "{Full Name}",
-    "participant_id": "{UUID from profile}",
+    "participant_id": "{participant_id from app logs if present, otherwise null}",
     "generation_date": "YYYY-MM-DD",
     "total_test_cases": N,
     "input_sources": {
-      "profile": "data_samples/input/{persona}_verification.json",
       "app_logs": "data_samples/input/{persona}_app_logs.json",
       "social_circle": "data_samples/input/{persona}_social_circle_verification.json"
     },
@@ -746,10 +740,10 @@ permissive, but the most appropriate given the subtype and constraints.
 PROCESS
 ===============================================================================
 
-1. Read the corrected_extracted_profile.hidden_facts array completely.
-2. Read the app_logs.hidden_facts array and verify fact_ids match the profile.
-   If an app_log hidden_fact is missing from the profile, reject the run and
-   request a schema reconciliation from the Step 4 owner.
+1. Read the app_logs.hidden_facts array completely.
+2. Verify every cited fact_id resolves to exactly one entry in
+   app_logs.hidden_facts. If any fact_id is missing or duplicated, reject the
+   run and request a Step 4 schema reconciliation.
 3. Bucket hidden_facts by category (behavioral / categorical / temporal /
    relational / health) and by source_subcategory.
 4. Generate Type 1 cases first, then Type 2

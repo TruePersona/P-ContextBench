@@ -326,6 +326,32 @@ def run_step(
     app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
     test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
 
+    # Filter out REJECTED test cases from Step 5 verification
+    verification_path = test_cases_path.parent / test_cases_path.name.replace(
+        "_test_cases.json", "_test_cases_verification.json"
+    )
+    if verification_path.exists():
+        verification = json.loads(verification_path.read_text(encoding="utf-8"))
+        rejected_ids: set[str] = set()
+        for ev in verification.get("evaluations", []):
+            if ev.get("overall_verdict") == "REJECTED":
+                eid = ev.get("test_case_id") or ev.get("id") or ""
+                if eid:
+                    rejected_ids.add(eid)
+        if rejected_ids:
+            original_count = len(test_cases.get("test_cases", []))
+            test_cases["test_cases"] = [
+                tc for tc in test_cases.get("test_cases", [])
+                if (tc.get("id") or tc.get("test_case_id") or "") not in rejected_ids
+            ]
+            filtered_count = len(test_cases["test_cases"])
+            if "metadata" in test_cases:
+                test_cases["metadata"]["total_test_cases"] = filtered_count
+            print(
+                f"[step6] filtered {original_count - filtered_count} REJECTED "
+                f"test cases ({filtered_count} remain)"
+            )
+
     raw_logs = strip_to_raw_logs(app_logs)
     stripped = strip_ground_truth(test_cases)
 
@@ -417,7 +443,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--codex-cmd",
-        default=os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"),
+        default=os.environ.get("CODEX_CMD", "codex"),
     )
     parser.add_argument(
         "--prompt-version",
