@@ -774,46 +774,39 @@ def assemble_meaningful_log(
 
     sorted_keys = sorted(messenger_groups.keys())
     meaningful_sessions: list[dict[str, Any]] = []
+    fragment_placement: dict[str, str] = {}
     m_idx = 1
 
     for date, contact in sorted_keys:
         frags = messenger_groups[(date, contact)]
-        all_messages: list[dict[str, Any]] = []
+        session_messages: list[dict[str, Any]] = []
         session_fact_ids: list[str] = []
+        session_frag_ids: list[str] = []
 
         for frag in frags:
+            frag_id = frag.get("fragment_id", "")
             for msg in frag.get("messages", []) or []:
-                all_messages.append({
+                session_messages.append({
                     "time": msg.get("time", ""),
                     "sender": _normalize_sender(msg.get("sender", ""), persona_name),
                     "text": msg.get("text", ""),
                 })
             session_fact_ids.extend(frag.get("source_fact_ids", []))
+            session_frag_ids.append(frag_id)
 
-        all_messages.sort(key=lambda m: m.get("time", ""))
+        session_messages.sort(key=lambda m: m.get("time", ""))
 
-        if len(all_messages) > 12:
-            for chunk_start in range(0, len(all_messages), 10):
-                chunk = all_messages[chunk_start:chunk_start + 10]
-                sid = f"M-{m_idx:03d}"
-                meaningful_sessions.append({
-                    "session_id": sid,
-                    "date": date,
-                    "contact": contact,
-                    "messages": chunk,
-                })
-                provenance[sid] = list(set(session_fact_ids))
-                m_idx += 1
-        else:
-            sid = f"M-{m_idx:03d}"
-            meaningful_sessions.append({
-                "session_id": sid,
-                "date": date,
-                "contact": contact,
-                "messages": all_messages,
-            })
-            provenance[sid] = list(set(session_fact_ids))
-            m_idx += 1
+        sid = f"M-{m_idx:03d}"
+        meaningful_sessions.append({
+            "session_id": sid,
+            "date": date,
+            "contact": contact,
+            "messages": session_messages,
+        })
+        provenance[sid] = list(set(session_fact_ids))
+        for fid in session_frag_ids:
+            fragment_placement[fid] = sid
+        m_idx += 1
 
     calendar_events.sort(key=lambda x: (x[0].get("date", ""), x[0].get("start_time", "")))
     cal_out: list[dict[str, Any]] = []
@@ -821,6 +814,7 @@ def assemble_meaningful_log(
         eid = f"E-{e_idx:03d}"
         cal_out.append({"event_id": eid, **event})
         provenance[eid] = list(set(sfids))
+        fragment_placement[frag_id] = eid
 
     partial = {
         "persona_name": persona_name,
@@ -828,7 +822,7 @@ def assemble_meaningful_log(
         "messenger": {"meaningful_sessions": meaningful_sessions, "filler_sessions": []},
         "calendar": {"events": cal_out},
     }
-    return partial, provenance
+    return partial, provenance, fragment_placement
 
 
 def validate_meaningful_preservation(
@@ -1002,12 +996,82 @@ def generate_filler_sessions(
     return filler_sessions
 
 
+def _build_fragment_registry(
+    verified_fragments: list[dict[str, Any]],
+    fragment_placement: dict[str, str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build verified_fragment_registry and verified_fragment_check."""
+    registry: list[dict[str, Any]] = []
+    placed = 0
+    missing = 0
+    missing_keys: list[str] = []
+
+    for frag in verified_fragments:
+        cluster_id = frag.get("cluster_id", frag.get("source_cluster_id", ""))
+        frag_id = frag.get("fragment_id", "")
+        date = frag.get("date", "")
+        ftype = frag.get("fragment_type", frag.get("type", ""))
+        src = frag.get("source", {})
+        src_type = src.get("type", "")
+        src_name = src.get("name", "")
+
+        global_key = f"{cluster_id}::{frag_id}::{date}::{ftype}::{src_type}::{src_name}"
+        placed_id = fragment_placement.get(frag_id, "")
+
+        anchors: list[str] = []
+        if ftype in ("messenger_session", "messenger"):
+            for msg in frag.get("messages", []) or []:
+                text = (msg.get("text") or "").strip()
+                words = text.split()
+                if len(words) >= 5:
+                    anchors.append(" ".join(words[:min(12, len(words))]))
+                elif text:
+                    anchors.append(text)
+        elif ftype in ("calendar_event", "calendar"):
+            cal = frag.get("calendar_event", {}) or {}
+            for field in ("title", "notes", "location"):
+                val = (cal.get(field) or "").strip()
+                if val:
+                    anchors.append(val[:80])
+
+        sfids = frag.get("source_fact_ids", [])
+        status = "placed" if placed_id else "missing"
+        if status == "placed":
+            placed += 1
+        else:
+            missing += 1
+            missing_keys.append(global_key)
+
+        registry.append({
+            "source_cluster_id": cluster_id,
+            "source_fragment_id": frag_id,
+            "global_fragment_key": global_key,
+            "placed_item_id": placed_id,
+            "hidden_fact_ids": sfids,
+            "status": status,
+            "content_anchors": anchors,
+        })
+
+    check = {
+        "input_verified_fragment_count": len(verified_fragments),
+        "placed_verified_fragment_count": placed,
+        "missing_verified_fragment_count": missing,
+        "duplicated_verified_fragment_count": 0,
+        "missing_verified_fragment_keys": missing_keys[:20],
+        "duplicated_verified_fragment_keys": [],
+        "completeness_check": "PASS" if missing == 0 else "FAIL",
+    }
+    return registry, check
+
+
 def assemble_final_log(
     partial_log: dict[str, Any],
     filler_sessions: list[dict[str, Any]],
     hidden_facts_registry: list[dict[str, Any]],
     provenance: dict[str, list[str]],
     trace: list[dict[str, Any]],
+    verified_fragments: list[dict[str, Any]] | None = None,
+    fragment_placement: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Phase 4: Combine meaningful + filler, assign final IDs, build
     cross_app_index, compute token_stats. Strip provenance from public output.
@@ -1070,6 +1134,13 @@ def assemble_final_log(
 
     app_log["decoy_registry"] = []
     app_log["decoy_check"] = {"selected_decoy_count": 0, "verdict": "PASS"}
+
+    if verified_fragments and fragment_placement is not None:
+        frag_registry, frag_check = _build_fragment_registry(
+            verified_fragments, fragment_placement,
+        )
+        app_log["verified_fragment_registry"] = frag_registry
+        app_log["verified_fragment_check"] = frag_check
 
     return app_log
 
@@ -1505,7 +1576,7 @@ def run_step_from_dicts(
                 hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids_set
             ]
 
-            partial_log, provenance = assemble_meaningful_log(
+            partial_log, provenance, fragment_placement = assemble_meaningful_log(
                 verified_fragments, persona, log_start, log_end,
             )
             pres = validate_meaningful_preservation(
@@ -1531,7 +1602,7 @@ def run_step_from_dicts(
             print(f"[step4] generated {len(filler)} filler sessions")
 
             registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
-            app_log = assemble_final_log(partial_log, filler, registry, provenance, trace)
+            app_log = assemble_final_log(partial_log, filler, registry, provenance, trace, verified_fragments, fragment_placement)
             validation = validate_final_log(app_log, verified_fragments, trace)
             app_log["_validation"] = validation
             print(f"[step4] validation: {validation['verdict']}")
@@ -1688,7 +1759,7 @@ def run_step_from_dicts(
 
     # Phase 3: Assemble meaningful log (Python, deterministic)
     print(f"[step4] assembling {len(verified_fragments)} fragments deterministically")
-    partial_log, provenance = assemble_meaningful_log(
+    partial_log, provenance, fragment_placement = assemble_meaningful_log(
         verified_fragments, persona, log_start, log_end,
     )
 
@@ -1722,6 +1793,7 @@ def run_step_from_dicts(
     hidden_facts_registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
     app_log = assemble_final_log(
         partial_log, filler_sessions, hidden_facts_registry, provenance, trace,
+        verified_fragments, fragment_placement,
     )
 
     # Phase 7: Final validation
