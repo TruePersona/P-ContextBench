@@ -53,7 +53,7 @@ REPO_ROOT = Path(__file__).parent
 CLAUDE_CMD = os.environ.get(
     "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
 )
-CODEX_CMD = os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex")
+CODEX_CMD = os.environ.get("CODEX_CMD", "codex")
 
 STEP1_DIR = REPO_ROOT / "step1_seed"
 STEP2_DIR = REPO_ROOT / "step2_interview"
@@ -279,9 +279,6 @@ def run_step5_gen(
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP5_DIR / "prompt.txt")
-    template = fill(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
-    )
     template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
     template = fill(
         template,
@@ -305,9 +302,6 @@ def run_step5_verify(
 ) -> Path:
     template = load_prompt(STEP5_DIR / "verification_prompt.txt")
     template = fill(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
-    template = fill(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
-    )
     template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
     verification = extract_json(caller.call(template, model=model))
     out = output_dir / f"{base(name)}_test_cases_verification.json"

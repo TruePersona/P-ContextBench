@@ -181,9 +181,7 @@ def call_codex_cli(
     import tempfile
     from pathlib import Path
 
-    cmd_name = codex_cmd or os.environ.get(
-        "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
-    )
+    cmd_name = codex_cmd or os.environ.get("CODEX_CMD", "codex")
     wrapped_prompt = (
         "You are being used as a pure inference backend for PersonaBench. "
         "Do not inspect files, run commands, browse, or use tools. Read only "
@@ -195,6 +193,7 @@ def call_codex_cli(
     for attempt in range(max_retries + 1):
         with tempfile.TemporaryDirectory(prefix="personabench_codex_") as tmp_dir:
             tmp_path = Path(tmp_dir)
+            prompt_path = tmp_path / "prompt.txt"
             out_path = tmp_path / "last_message.txt"
             cmd = [
                 cmd_name,
@@ -212,14 +211,36 @@ def call_codex_cli(
             if model:
                 cmd += ["--model", model]
             cmd.append("-")
-            result = subprocess.run(
-                cmd,
-                input=wrapped_prompt,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=3600,
-            )
+            if sys.platform == "win32":
+                def ps_quote(value: str) -> str:
+                    return "'" + value.replace("'", "''") + "'"
+
+                prompt_path.write_text(wrapped_prompt, encoding="utf-8")
+                model_arg = f" --model {ps_quote(model)}" if model else ""
+                ps_script = (
+                    "$ErrorActionPreference = 'Stop'; "
+                    f"$prompt = Get-Content -Raw -LiteralPath {ps_quote(str(prompt_path))}; "
+                    f"$prompt | & {ps_quote(cmd_name)} exec --ephemeral "
+                    "--skip-git-repo-check --ignore-rules --sandbox read-only "
+                    f"-C {ps_quote(str(tmp_path))} -o {ps_quote(str(out_path))}"
+                    f"{model_arg} -"
+                )
+                result = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps_script],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    timeout=3600,
+                )
+            else:
+                result = subprocess.run(
+                    cmd,
+                    input=wrapped_prompt,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    timeout=3600,
+                )
             if result.returncode == 0:
                 if out_path.exists():
                     text = out_path.read_text(encoding="utf-8").strip()

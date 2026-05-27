@@ -50,7 +50,7 @@ CLAUDE_CMD = os.environ.get(
     "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
 )
 CODEX_CMD = os.environ.get(
-    "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
+    "CODEX_CMD", "codex"
 )
 
 
@@ -912,7 +912,9 @@ def generate_filler_sessions(
     else:
         target_filler_tokens = int(meaningful_token_count * filler_ratio)
 
-    avg_tokens_per_filler_session = 40
+    # Template sessions are short in prose but cost roughly 60-70 JSON tokens.
+    # Start slightly high, then downsample by measured token count below.
+    avg_tokens_per_filler_session = 50
     target_sessions = max(1, target_filler_tokens // avg_tokens_per_filler_session)
 
     contacts: list[str] = []
@@ -993,6 +995,41 @@ def generate_filler_sessions(
         })
         f_idx += 1
 
+    def filler_token_count(sessions: list[dict[str, Any]]) -> int:
+        return len(json.dumps(sessions, ensure_ascii=False)) // 4
+
+    def renumber_sessions(sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for idx, session in enumerate(sessions, 1):
+            session["session_id"] = f"F-{idx:03d}"
+        return sessions
+
+    def sample_evenly(
+        sessions: list[dict[str, Any]],
+        desired_count: int,
+    ) -> list[dict[str, Any]]:
+        if desired_count >= len(sessions):
+            return sessions
+        if desired_count <= 1:
+            return sessions[:1]
+        last = len(sessions) - 1
+        return [
+            sessions[round(i * last / (desired_count - 1))]
+            for i in range(desired_count)
+        ]
+
+    max_filler_tokens = int(target_filler_tokens * 1.05)
+    tokens = filler_token_count(filler_sessions)
+    while tokens > max_filler_tokens and len(filler_sessions) > 1:
+        desired_count = max(
+            1,
+            int(len(filler_sessions) * target_filler_tokens / max(tokens, 1)),
+        )
+        if desired_count >= len(filler_sessions):
+            desired_count = len(filler_sessions) - 1
+        filler_sessions = sample_evenly(filler_sessions, desired_count)
+        tokens = filler_token_count(filler_sessions)
+
+    renumber_sessions(filler_sessions)
     return filler_sessions
 
 
@@ -1072,6 +1109,7 @@ def assemble_final_log(
     trace: list[dict[str, Any]],
     verified_fragments: list[dict[str, Any]] | None = None,
     fragment_placement: dict[str, str] | None = None,
+    target_filler_ratio: float = 2.5,
 ) -> dict[str, Any]:
     """Phase 4: Combine meaningful + filler, assign final IDs, build
     cross_app_index, compute token_stats. Strip provenance from public output.
@@ -1121,19 +1159,29 @@ def assemble_final_log(
     meaningful_tokens = len(json.dumps(meaningful_sessions, ensure_ascii=False)) // 4
     filler_tokens = len(json.dumps(filler_sessions, ensure_ascii=False)) // 4
     cal_tokens = len(json.dumps(cal_events, ensure_ascii=False)) // 4
+    target_filler_tokens = int(meaningful_tokens * target_filler_ratio)
 
     app_log["token_stats"] = {
         "approximate_tokens": meaningful_tokens + filler_tokens + cal_tokens,
         "meaningful_token_count": meaningful_tokens,
+        "target_total_filler_tokens": target_filler_tokens,
         "filler_token_count": filler_tokens,
+        "mundane_filler_token_count": filler_tokens,
+        "decoy_filler_token_count": 0,
         "meaningful_messages": m_msgs,
         "filler_messages": f_msgs,
         "calendar_events": len(cal_events),
+        "target_filler_ratio": f"{target_filler_ratio:g}:1",
         "ratio_filler_to_meaningful": f"{filler_tokens / meaningful_tokens:.1f}:1" if meaningful_tokens else "N/A",
     }
 
     app_log["decoy_registry"] = []
-    app_log["decoy_check"] = {"selected_decoy_count": 0, "verdict": "PASS"}
+    app_log["decoy_check"] = {
+        "selected_decoy_count": 0,
+        "rejected_decoy_count": 0,
+        "rejected_decoy_ids": [],
+        "verdict": "PASS",
+    }
 
     if verified_fragments and fragment_placement is not None:
         frag_registry, frag_check = _build_fragment_registry(
@@ -1149,14 +1197,22 @@ def validate_final_log(
     app_log: dict[str, Any],
     verified_fragments: list[dict[str, Any]],
     trace: list[dict[str, Any]],
+    target_filler_ratio: float | None = 2.5,
+    filler_ratio_tolerance: float = 0.10,
 ) -> dict[str, Any]:
     """Phase 5: Final validation. Fragment coverage, no duplicates,
     filler ratio, cross_app_index correctness.
     """
     passed_fact_ids: set[str] = set()
+    selected_fact_ids: set[str] = set()
+    failed_cluster_ids: list[str] = []
     for t in trace:
+        selected_fact_ids.update(t.get("hidden_fact_ids", []))
         if t.get("passed"):
             passed_fact_ids.update(t.get("hidden_fact_ids", []))
+        else:
+            failed_cluster_ids.append(t.get("cluster_id", ""))
+    failed_fact_ids = selected_fact_ids - passed_fact_ids
 
     registry_fact_ids = {hf.get("fact_id", "") for hf in app_log.get("hidden_facts", [])}
     registry_coverage = len(passed_fact_ids & registry_fact_ids)
@@ -1167,21 +1223,56 @@ def validate_final_log(
         indexed_fact_ids.update(entry.get("hidden_fact_ids_touched", []))
 
     stats = app_log.get("token_stats", {})
+    meaningful_tokens = stats.get("meaningful_token_count", 0) or 0
+    filler_tokens = stats.get("filler_token_count", 0) or 0
+    actual_filler_ratio = (
+        filler_tokens / meaningful_tokens if meaningful_tokens else None
+    )
+    if target_filler_ratio is None or actual_filler_ratio is None:
+        filler_ratio_pass = True
+        ratio_bounds: list[float] | None = None
+    else:
+        min_ratio = target_filler_ratio * (1 - filler_ratio_tolerance)
+        max_ratio = target_filler_ratio * (1 + filler_ratio_tolerance)
+        filler_ratio_pass = min_ratio <= actual_filler_ratio <= max_ratio
+        ratio_bounds = [round(min_ratio, 3), round(max_ratio, 3)]
+
+    fragment_check = app_log.get("verified_fragment_check", {})
+    fragment_check_pass = fragment_check.get("completeness_check", "PASS") == "PASS"
+
+    verdict = "PASS" if (
+        registry_coverage == len(passed_fact_ids)
+        and passed_fact_ids <= indexed_fact_ids
+        and not failed_fact_ids
+        and filler_ratio_pass
+        and fragment_check_pass
+    ) else "FAIL"
 
     return {
+        "selected_facts_total": len(selected_fact_ids),
         "passed_facts_total": len(passed_fact_ids),
+        "failed_facts_total": len(failed_fact_ids),
+        "failed_fact_ids": sorted(failed_fact_ids)[:20],
+        "failed_cluster_ids": [cid for cid in failed_cluster_ids if cid][:20],
         "facts_in_registry": len(registry_fact_ids),
         "facts_in_cross_app_index": len(indexed_fact_ids),
         "registry_coverage": registry_coverage,
         "facts_missing_from_registry": sorted(passed_fact_ids - registry_fact_ids)[:20],
         "facts_missing_from_index": sorted(passed_fact_ids - indexed_fact_ids)[:20],
         "filler_ratio": stats.get("ratio_filler_to_meaningful", "N/A"),
+        "target_filler_ratio": (
+            f"{target_filler_ratio:g}:1" if target_filler_ratio is not None else "N/A"
+        ),
+        "actual_filler_ratio": (
+            round(actual_filler_ratio, 3) if actual_filler_ratio is not None else None
+        ),
+        "filler_ratio_tolerance": filler_ratio_tolerance,
+        "filler_ratio_bounds": ratio_bounds,
+        "filler_ratio_pass": filler_ratio_pass,
         "meaningful_messages": stats.get("meaningful_messages", 0),
         "filler_messages": stats.get("filler_messages", 0),
-        "verdict": "PASS" if (
-            registry_coverage == len(passed_fact_ids)
-            and passed_fact_ids <= indexed_fact_ids
-        ) else "FAIL",
+        "verified_fragment_check": fragment_check.get("completeness_check", "PASS"),
+        "verdict": verdict,
     }
 
 
@@ -1465,6 +1556,19 @@ def audit_message_preservation(
     }
 
 
+def _upsert_trace_entry(
+    trace: list[dict[str, Any]],
+    trace_entry: dict[str, Any],
+) -> None:
+    """Replace a prior cluster trace entry, or append it if it is new."""
+    cluster_id = trace_entry.get("cluster_id")
+    for i, existing in enumerate(trace):
+        if existing.get("cluster_id") == cluster_id:
+            trace[i] = trace_entry
+            return
+    trace.append(trace_entry)
+
+
 # ---------------------------------------------------------------------------
 # Entry points
 # ---------------------------------------------------------------------------
@@ -1484,6 +1588,7 @@ def run_step(
     backend: str,
     max_facts: int = 100,
     resume: bool = False,
+    retry_failed: bool = False,
     filler_ratio: float = 2.5,
     target_context_tokens: int | None = None,
 ) -> int:
@@ -1503,6 +1608,7 @@ def run_step(
         news_events_path=news_events_path,
         base_name=profile_path.stem.replace("_verification", ""),
         resume=resume,
+        retry_failed=retry_failed,
         filler_ratio=filler_ratio,
         target_context_tokens=target_context_tokens,
     )
@@ -1523,6 +1629,7 @@ def run_step_from_dicts(
     news_events_path: Path | str | None = None,
     base_name: str | None = None,
     resume: bool = False,
+    retry_failed: bool = False,
     filler_ratio: float = 2.5,
     target_context_tokens: int | None = None,
 ) -> int:
@@ -1534,10 +1641,20 @@ def run_step_from_dicts(
     persona = derive_persona_identity(corrected_profile)
     name = base_name or persona["name"].lower().replace(" ", "_")
 
+    hf_map: dict[str, dict[str, Any]] = {}
+    for i, hf in enumerate(hidden_facts, 1):
+        fid = hf.get("fact_id", f"HF-{i:03d}")
+        hf_map[fid] = hf
+
     # Output paths
     app_log_out = output_dir / f"{name}_app_logs.json"
     trace_out = output_dir / f"{name}_app_logs_trace.json"
     fragments_out = output_dir / f"{name}_verified_fragments.json"
+
+    clusters: list[dict[str, Any]] | None = None
+    verified_fragments: list[dict[str, Any]] = []
+    contact_usage: dict[str, int] = {}
+    trace: list[dict[str, Any]] = []
 
     # News events
     news_events: list[dict[str, Any]] = []
@@ -1561,77 +1678,107 @@ def run_step_from_dicts(
             and len(set(f.get("fragment_id", "") for f in existing_frags)) == len(existing_frags)
         )
         if compatible:
-            print(
-                f"[step4] resuming from existing results: "
-                f"{len(existing_trace)} clusters, {len(existing_frags)} fragments"
-            )
-            trace = existing_trace
-            verified_fragments = existing_frags
-            # Jump to assembly phases
-            passed_fact_ids_set: set[str] = set()
-            for t in trace:
-                if t["passed"]:
-                    passed_fact_ids_set.update(t["hidden_fact_ids"])
-            verified_hidden_facts = [
-                hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids_set
-            ]
+            failed_trace = [t for t in existing_trace if not t.get("passed")]
+            if retry_failed and failed_trace:
+                print(
+                    f"[step4] retrying {len(failed_trace)} failed clusters "
+                    f"from existing trace"
+                )
+                clusters = [
+                    {
+                        "cluster_id": t.get("cluster_id", f"retry-{i}"),
+                        "cluster_status": "retry_failed",
+                        "hidden_fact_ids": t.get("hidden_fact_ids", []),
+                    }
+                    for i, t in enumerate(failed_trace, 1)
+                ]
+                trace = existing_trace
+                verified_fragments = existing_frags
+                for frag in verified_fragments:
+                    src = frag.get("source", {})
+                    if src.get("type") == "contact":
+                        cname = src.get("name", "")
+                        if cname:
+                            contact_usage[cname] = contact_usage.get(cname, 0) + 1
+            else:
+                if retry_failed:
+                    print("[step4] no failed clusters to retry; resuming assembly")
+                print(
+                    f"[step4] resuming from existing results: "
+                    f"{len(existing_trace)} clusters, {len(existing_frags)} fragments"
+                )
+                trace = existing_trace
+                verified_fragments = existing_frags
+                # Jump to assembly phases
+                passed_fact_ids_set: set[str] = set()
+                for t in trace:
+                    if t["passed"]:
+                        passed_fact_ids_set.update(t["hidden_fact_ids"])
+                verified_hidden_facts = [
+                    hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids_set
+                ]
 
-            partial_log, provenance, fragment_placement = assemble_meaningful_log(
-                verified_fragments, persona, log_start, log_end,
-            )
-            pres = validate_meaningful_preservation(
-                partial_log, verified_fragments, persona["name"],
-            )
-            print(
-                f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
-                f"{pres['calendar_found']}/{pres['calendar_expected']} cal events"
-            )
-            if not pres["passed"]:
-                print("[step4] FAIL: verified content not 100% preserved")
-                return 1
+                partial_log, provenance, fragment_placement = assemble_meaningful_log(
+                    verified_fragments, persona, log_start, log_end,
+                )
+                pres = validate_meaningful_preservation(
+                    partial_log, verified_fragments, persona["name"],
+                )
+                print(
+                    f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
+                    f"{pres['calendar_found']}/{pres['calendar_expected']} cal events"
+                )
+                if not pres["passed"]:
+                    print("[step4] FAIL: verified content not 100% preserved")
+                    return 1
 
-            meaningful_tokens = len(
-                json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
-            ) // 4
-            filler = generate_filler_sessions(
-                persona, corrected_social_circle, log_start, log_end,
-                meaningful_tokens, filler_ratio=filler_ratio,
-                target_context_tokens=target_context_tokens,
-                hidden_facts=verified_hidden_facts,
-            )
-            print(f"[step4] generated {len(filler)} filler sessions")
+                meaningful_tokens = len(
+                    json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
+                ) // 4
+                filler = generate_filler_sessions(
+                    persona, corrected_social_circle, log_start, log_end,
+                    meaningful_tokens, filler_ratio=filler_ratio,
+                    target_context_tokens=target_context_tokens,
+                    hidden_facts=verified_hidden_facts,
+                )
+                print(f"[step4] generated {len(filler)} filler sessions")
 
-            registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
-            app_log = assemble_final_log(partial_log, filler, registry, provenance, trace, verified_fragments, fragment_placement)
-            validation = validate_final_log(app_log, verified_fragments, trace)
-            app_log["_validation"] = validation
-            print(f"[step4] validation: {validation['verdict']}")
+                registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
+                app_log = assemble_final_log(
+                    partial_log, filler, registry, provenance, trace,
+                    verified_fragments, fragment_placement,
+                    target_filler_ratio=filler_ratio,
+                )
+                validation = validate_final_log(
+                    app_log, verified_fragments, trace,
+                    target_filler_ratio=(
+                        filler_ratio if target_context_tokens is None else None
+                    ),
+                )
+                app_log["_validation"] = validation
+                print(
+                    f"[step4] validation: {validation['verdict']} "
+                    f"({validation['passed_facts_total']}/{validation['selected_facts_total']} facts passed, "
+                    f"{validation['registry_coverage']}/{validation['passed_facts_total']} facts covered, "
+                    f"filler ratio {validation['filler_ratio']})"
+                )
 
-            app_log_out.write_text(
-                json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
-            print(f"[step4] wrote {app_log_out}")
-            return 0
+                app_log_out.write_text(
+                    json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                print(f"[step4] wrote {app_log_out}")
+                return 0 if validation["verdict"] == "PASS" else 1
         else:
             print("[step4] existing results incompatible, re-running full pipeline")
 
     # Phase 1: Cluster
-    print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
-    cluster_result = cluster_hidden_facts(client, model, hidden_facts, provider, backend)
-    clusters = cluster_result.get("clusters", [])
-    print(f"[step4] formed {len(clusters)} clusters")
-
-    # Build lookup: fact_id -> hidden_fact dict
-    hf_map: dict[str, dict[str, Any]] = {}
-    for i, hf in enumerate(hidden_facts, 1):
-        fid = hf.get("fact_id", f"HF-{i:03d}")
-        hf_map[fid] = hf
+    if clusters is None:
+        print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
+        cluster_result = cluster_hidden_facts(client, model, hidden_facts, provider, backend)
+        clusters = cluster_result.get("clusters", [])
+        print(f"[step4] formed {len(clusters)} clusters")
 
     # Phase 2: Generate + Verify per cluster
-    verified_fragments: list[dict[str, Any]] = []
-    contact_usage: dict[str, int] = {}
-    trace: list[dict[str, Any]] = []
-
     for ci, cluster in enumerate(clusters, 1):
         cluster_id = cluster.get("cluster_id", f"C{ci}")
         fact_ids = cluster.get("hidden_fact_ids", [])
@@ -1715,7 +1862,7 @@ def run_step_from_dicts(
             "per_fact_recovery": matched_pairs,
             "final_verification": last_verification,
         }
-        trace.append(trace_entry)
+        _upsert_trace_entry(trace, trace_entry)
 
         # Save trace incrementally
         trace_out.write_text(
@@ -1742,7 +1889,7 @@ def run_step_from_dicts(
         len(t["hidden_fact_ids"]) for t in trace if t["passed"]
     )
     print(
-        f"[step4] {passed_count}/{len(clusters)} clusters passed "
+        f"[step4] {passed_count}/{len(trace)} clusters passed "
         f"({total_facts_passed}/{len(hidden_facts)} facts)"
     )
 
@@ -1794,14 +1941,19 @@ def run_step_from_dicts(
     app_log = assemble_final_log(
         partial_log, filler_sessions, hidden_facts_registry, provenance, trace,
         verified_fragments, fragment_placement,
+        target_filler_ratio=filler_ratio,
     )
 
     # Phase 7: Final validation
-    validation = validate_final_log(app_log, verified_fragments, trace)
+    validation = validate_final_log(
+        app_log, verified_fragments, trace,
+        target_filler_ratio=filler_ratio if target_context_tokens is None else None,
+    )
     app_log["_validation"] = validation
     print(
         f"[step4] validation: {validation['verdict']} "
-        f"({validation['registry_coverage']}/{validation['passed_facts_total']} facts covered, "
+        f"({validation['passed_facts_total']}/{validation['selected_facts_total']} facts passed, "
+        f"{validation['registry_coverage']}/{validation['passed_facts_total']} facts covered, "
         f"filler ratio {validation['filler_ratio']})"
     )
 
@@ -1810,7 +1962,7 @@ def run_step_from_dicts(
     )
     print(f"[step4] wrote {app_log_out}")
 
-    return 0
+    return 0 if validation["verdict"] == "PASS" else 1
 
 
 # ---------------------------------------------------------------------------
@@ -1863,6 +2015,10 @@ def main() -> None:
         help="Resume from existing trace + fragments files, skip clustering and verification",
     )
     parser.add_argument(
+        "--retry-failed", action="store_true",
+        help="With --resume, reuse passed clusters and regenerate only failed clusters",
+    )
+    parser.add_argument(
         "--filler-ratio", type=float, default=2.5,
         help="Filler-to-meaningful token ratio (default 2.5)",
     )
@@ -1898,6 +2054,7 @@ def main() -> None:
             backend=backend,
             max_facts=args.max_facts,
             resume=args.resume,
+            retry_failed=args.retry_failed,
             filler_ratio=args.filler_ratio,
             target_context_tokens=args.target_context_tokens,
         )

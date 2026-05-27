@@ -235,11 +235,10 @@ OUTPUT FORMAT
 {
   "metadata": {
     "persona": "{Full Name}",
-    "participant_id": "{UUID from profile}",
+    "participant_id": "{participant_id from app logs if present, otherwise null}",
     "generation_date": "YYYY-MM-DD",
     "total_test_cases": N,
     "input_sources": {
-      "profile": "data_samples/input/{persona}_verification.json",
       "app_logs": "data_samples/input/{persona}_app_logs.json",
       "social_circle": "data_samples/input/{persona}_social_circle_verification.json"
     },
@@ -295,9 +294,9 @@ PROCESS
 ===============================================================================
 
 1. Read the app_logs.hidden_facts array completely.
-2. Read the app_logs.hidden_facts array and verify fact_ids match the profile.
-   If an app_log hidden_fact is missing from the profile, reject the run and
-   request a schema reconciliation from the Step 4 owner.
+2. Verify every cited fact_id resolves to exactly one entry in
+   app_logs.hidden_facts. If any fact_id is missing or duplicated, reject the
+   run and request a Step 4 schema reconciliation.
 3. Bucket hidden_facts by category (behavioral / categorical / temporal /
    relational / health) and by source_subcategory.
 4. Generate Type 1 cases first (one per easy-to-isolate HF), then Type 2

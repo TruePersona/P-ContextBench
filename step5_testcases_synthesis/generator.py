@@ -296,7 +296,7 @@ def main() -> None:
     parser.add_argument(
         "--codex-cmd",
         default=os.environ.get(
-            "CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex"
+            "CODEX_CMD", "codex"
         ),
     )
     parser.add_argument(
