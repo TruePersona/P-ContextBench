@@ -35,7 +35,7 @@ from llm import (
 )
 
 STEP_DIR = Path(__file__).parent
-PROMPT_V1_PATH = STEP_DIR / "prompt.txt"
+PROMPT_PATH = STEP_DIR / "prompt.txt"
 
 DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
@@ -45,7 +45,7 @@ DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
 
 def load_prompt_sections() -> dict[str, str]:
     """Split prompt into PASS 1 and PASS 2 sections on the big dividers."""
-    text = PROMPT_V1_PATH.read_text(encoding="utf-8")
+    text = PROMPT_PATH.read_text(encoding="utf-8")
     pass1_marker = "PASS 1 — ANSWERING"
     pass2_marker = "PASS 2 — SCORING"
     header_end = text.index(pass1_marker)
