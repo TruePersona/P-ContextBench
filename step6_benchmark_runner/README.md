@@ -28,6 +28,9 @@ The split prevents ground truth strings from appearing in the same context as th
 - `data_samples/output/{persona}_pass1_answers.json` — evaluator answers, one per test case
 - `data_samples/output/{persona}_benchmark_results.json` — final scored report with per-type accuracy, Type 5 breakdown, and per-case evaluations
 
+Pass^k summaries can also be generated with `passk.py` from repeated Step 6
+result JSONs aligned by `test_case_id`.
+
 ## Scoring
 
 **Types 1-4 (knowledge probes):**
@@ -113,6 +116,36 @@ python generator.py \
 ## Verifying a successful run
 
 Check overall accuracy and the capstone result in the benchmark results file. The capstone (final Type 5a test case) should be VERIFIED or FLAGGED for a passing run.
+
+## Pass^k reliability
+
+Pass^k measures repeated-run reliability. It is stricter than coding benchmark
+pass@k: a test case gets strict Pass^k credit only when every one of the k
+runs scores it as 1.0. The companion MinScore^k value is the minimum score for
+that case across the k runs.
+
+Use the same app log and same test cases for every input result file:
+
+```bash
+python passk.py \
+  data_samples/output/alicia_run1_benchmark_results.json \
+  data_samples/output/alicia_run2_benchmark_results.json \
+  data_samples/output/alicia_run3_benchmark_results.json \
+  data_samples/output/alicia_run4_benchmark_results.json \
+  --test-cases ../step5_testcases_synthesis/data_samples/output/alicia_gonzalez_test_cases.json \
+  --output data_samples/output/alicia_pass4_summary.json
+```
+
+The output reports `strict_pass_k`, `min_score_k`, average accuracy across
+runs, per-run accuracy, worst-run accuracy, by-type summaries, subtype
+summaries when test cases are provided, unstable cases, hard failures, and a
+`per_case` audit table. By default, all result files must contain the same
+`test_case_id` set. Use `--allow-missing` only when you want missing cases
+scored as 0.
+
+Pass^k unit tests live in `test_passk.py` and cover strict scoring, MinScore^k,
+type and subtype aggregation, alignment errors, missing-case handling, duplicate
+IDs, verdict score mapping, malformed scores, and CLI output.
 
 ## Targets
 
