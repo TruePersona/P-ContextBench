@@ -23,7 +23,7 @@ Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
 | [step3_social_circle](step3_social_circle) | Synthesize the five people with whom the persona most frequently exchanges personal text messages. |
 | [step4_app_log_synthesizer](step4_app_log_synthesizer) | Generate mobile app activity logs (messenger + calendar) that implicitly encode each hidden fact through behavioral signals distributed across multiple sources. |
 | [step5_testcases_synthesis](step5_testcases_synthesis) | Construct typed test cases (five types, including agent-behavior scenarios) grounded in the hidden_facts registry. |
-| [step6_benchmark_runner](step6_benchmark_runner) | Execute the benchmark against a frontier LLM using a two-pass design that prevents ground-truth leakage. |
+| [step6_benchmark_runner](step6_benchmark_runner) | Execute the benchmark against a frontier LLM using a two-pass design that prevents ground-truth leakage; includes Pass^k aggregation for repeated-run reliability. |
 
 ## Personas
 
