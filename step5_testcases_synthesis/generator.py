@@ -123,7 +123,6 @@ def extract_json(text: str) -> dict[str, Any]:
 def run_generation(
     client,
     model: str,
-    corrected_profile: dict[str, Any],
     app_logs: dict[str, Any],
     corrected_social_circle: dict[str, Any],
     gpt_reasoning: str,
@@ -132,9 +131,6 @@ def run_generation(
 ) -> dict[str, Any]:
     template = load_prompt(PROMPT_PATH)
     logs_for_prompt = strip_filler_for_step5(app_logs)
-    template = fill_json(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", corrected_profile
-    )
     template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     template = fill_json(
         template,
@@ -149,7 +145,6 @@ def run_verification(
     client,
     model: str,
     test_cases: dict[str, Any],
-    corrected_profile: dict[str, Any],
     app_logs: dict[str, Any],
     gpt_reasoning: str,
     provider: str = "anthropic",
@@ -202,7 +197,7 @@ def run_step(
     for attempt in range(1, max_iterations + 1):
         print(f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name}")
         test_cases = run_generation(
-            client, model, corrected_profile, app_logs, corrected_social_circle,
+            client, model, app_logs, corrected_social_circle,
             gpt_reasoning, provider=provider, backend=backend,
         )
         test_cases_out.write_text(
@@ -211,7 +206,7 @@ def run_step(
 
         print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}")
         verification = run_verification(
-            client, model, test_cases, corrected_profile, app_logs,
+            client, model, test_cases, app_logs,
             gpt_reasoning, provider=provider, backend=backend,
         )
         verification_out.write_text(
