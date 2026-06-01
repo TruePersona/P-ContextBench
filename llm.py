@@ -26,7 +26,7 @@ def call_llm(
     client,
     model: str,
     prompt: str,
-    gpt_reasoning: str | None = None,
+    gpt_reasoning: str | None = "high",
     provider: str = "anthropic",
     max_retries: int = 3,
 ) -> str:
@@ -58,6 +58,7 @@ def call_llm(
                     model=model,
                     temperature=0,
                     messages=[{"role": "user", "content": prompt}],
+                    reasoning_effort=gpt_reasoning
                 )
                 return response.choices[0].message.content
             raise ValueError(f"Unknown provider: {provider}")
@@ -86,10 +87,6 @@ def default_model_for_backend(backend: str, role: str = "generator") -> str:
     if backend in {"codex", "openai-api"}:
         if role == "evaluator":
             return "gpt-5.4-mini"
-        if role == "judge":
-            return "gpt-5.4"
-        if role == "verifier":
-            return "gpt-5"
         return "gpt-5.5"
     raise ValueError(f"Unsupported backend: {backend}")
 
@@ -188,7 +185,7 @@ def call_codex_cli(
 
     cmd_name = codex_cmd or os.environ.get("CODEX_CMD", "codex")
     reasoning_effort = reasoning_effort or os.environ.get(
-        "CODEX_REASONING_EFFORT", "medium"
+        "CODEX_REASONING_EFFORT", "high"
     )
     wrapped_prompt = (
         "You are being used as a pure inference backend for PersonaBench. "
