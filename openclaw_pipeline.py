@@ -48,6 +48,7 @@ from step4_app_log_synthesizer.generator import (
     run_step_from_dicts as run_step4_from_dicts,
     select_hidden_facts,
 )
+from step5_testcases_synthesis.generator import strip_filler_for_step5
 
 REPO_ROOT = Path(__file__).parent
 CLAUDE_CMD = os.environ.get(
@@ -280,7 +281,6 @@ def run_step4(
 # ----- step 5 ---------------------------------------------------------------
 
 def run_step5_gen(
-    profile: dict,
     app_logs: dict,
     corrected_social_circle: dict,
     output_dir: Path,
@@ -290,10 +290,8 @@ def run_step5_gen(
     model: str | None = None,
 ) -> Path:
     template = load_prompt(STEP5_DIR / "prompt.txt")
-    template = fill(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
-    )
-    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
+    logs_for_prompt = strip_filler_for_step5(app_logs)
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     template = fill(
         template,
         "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
@@ -307,7 +305,6 @@ def run_step5_gen(
 
 def run_step5_verify(
     test_cases: dict,
-    profile: dict,
     app_logs: dict,
     output_dir: Path,
     name: str,
@@ -317,10 +314,8 @@ def run_step5_verify(
 ) -> Path:
     template = load_prompt(STEP5_DIR / "verification_prompt.txt")
     template = fill(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
-    template = fill(
-        template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
-    )
-    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", app_logs)
+    logs_for_prompt = strip_filler_for_step5(app_logs)
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     verification = extract_json(caller.call(template, gpt_reasoning, model=model))
     out = output_dir / f"{base(name)}_test_cases_verification.json"
     out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -453,11 +448,11 @@ def run_pipeline(
         else:
             app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
             test_cases_path = run_step5_gen(
-                profile, app_logs, corrected_social_circle, step5_out, name,
+                app_logs, corrected_social_circle, step5_out, name,
                 caller, gpt_reasoning, model=model,
             )
             test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
-            run_step5_verify(test_cases, profile, app_logs, step5_out, name, caller, gpt_reasoning, model=model)
+            run_step5_verify(test_cases, app_logs, step5_out, name, caller, gpt_reasoning, model=model)
 
     test_cases_path = step5_out / f"{n}_test_cases.json"
 
