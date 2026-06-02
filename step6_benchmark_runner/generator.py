@@ -115,10 +115,13 @@ def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
 
 FIELDS_HIDDEN_FROM_PASS1 = {
     "ground_truth",
+    "evidence_type",
     "expected_evidence",
+    "is_capstone",
     "source_hidden_fact_ids",
     "source_subcategories",
     "risk_surface_score",
+    "subtype",
     "user_prompt_context",
     "expected_behavior",
     "expected_resolution_label",
