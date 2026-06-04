@@ -124,7 +124,26 @@ pass@k: a test case gets strict Pass^k credit only when every one of the k
 runs scores it as 1.0. The companion MinScore^k value is the minimum score for
 that case across the k runs.
 
-Use the same app log and same test cases for every input result file:
+To repeat Step 6 from the generator and summarize the results in one command:
+
+```bash
+python generator.py \
+  --app-logs data_samples/input/alicia_gonzalez_app_logs.json \
+  --test-cases data_samples/input/alicia_gonzalez_test_cases.json \
+  --output data_samples/output/ \
+  --backend claude \
+  --passk-runs 4 \
+  --passk-output data_samples/output/alicia_pass4_summary.json
+```
+
+Pass^k mode writes suffixed run artifacts such as
+`alicia_gonzalez_run01_pass1_answers.json` and
+`alicia_gonzalez_run01_benchmark_results.json`, then aggregates the
+`*_benchmark_results.json` files. `--skip-pass1` is not allowed with
+`--passk-runs` because reliability should repeat both answering and scoring.
+
+For already-completed repeated runs, use the same app log and same test cases
+for every input result file:
 
 ```bash
 python passk.py \

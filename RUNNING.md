@@ -41,6 +41,16 @@ python openclaw_pipeline.py --all --start 6 --stop 6 \
   --judge-model gpt-5.5
 ```
 
+To repeat Step 6 for reliability, add `--passk-runs`:
+
+```bash
+python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
+  --backend codex \
+  --model gpt-5.4-mini \
+  --judge-model gpt-5.5 \
+  --passk-runs 4
+```
+
 ## Generate a new persona end-to-end
 
 **Step 1: fetch a seed.** Pick a UUID from the NVIDIA Nemotron-Personas-USA dataset and fetch it:
