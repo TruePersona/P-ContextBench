@@ -1458,7 +1458,8 @@ def run_step_from_dicts(
         hf_map[fid] = hf
 
     # Output paths
-    app_log_out = output_dir / f"{name}_app_logs.json"
+    app_log_name = f"{name}_decoy{decoy_count}" if decoy_count > 0 else name
+    app_log_out = output_dir / f"{app_log_name}_app_logs.json"
     trace_out = output_dir / f"{name}_app_logs_trace.json"
     fragments_out = output_dir / f"{name}_verified_fragments.json"
     decoys_out = output_dir / f"{name}_verified_decoys.json"
