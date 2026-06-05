@@ -12,6 +12,9 @@ the LLM's understanding and behavior.
 
 This prompt is self-contained. All required data is inserted below.
 
+Do not return early due to estimated output size exceeding limits.
+You MUST return the specified amount of cases. Do NOT shorten.
+
 ===============================================================================
 INPUT DATA
 ===============================================================================
@@ -74,9 +77,47 @@ Type 3: DYNAMIC PREFERENCE TRACKING — 23% (hard)
   Goal: identify a temporal shift in the persona's routine, health, relationships,
   finances, or career across the log window.
   Evidence: two or more dated entries that show before/after state on the same topic.
-  Draw from hidden_facts where `category == "temporal"`.
   Framing: third-party. Example: "How did Alicia's exercise routine change
   between early March and late April? What prompted the shift?"
+
+  Type 3 categorizes the following dynamic patterns:
+    1. state_change:
+      Earlier and later states are both meaningful, and the later state supersedes the earlier one.
+      Example:
+        Earlier: the persona works remotely.
+        Later: the persona starts working in-office three days per week.
+
+    2. temporary_exception:
+      A baseline fact remains true, but there is a temporary deviation.
+      Example:
+        Normally: avoids dairy.
+        Temporary exception: eats dairy while traveling in Italy.
+
+    3. progress_update:
+      A status, project, goal, task, health condition, application, or process advances over time.
+      Example:
+        Earlier: applying for apartments.
+        Later: approved and preparing to move.
+
+    4. cancellation_or_expiry:
+      A fact is valid only until a date or event, then stops applying.
+      Example:
+        Earlier: has a temporary parking permit.
+        Later: the permit expires.
+
+    5. preference_shift:
+      The persona’s preference changes.
+      Example:
+        Earlier: prefers running outside.
+        Later: prefers treadmill workouts because of knee pain.
+
+    6. intensity_shift:
+      The same fact remains true, but its strength, frequency, quantity, or importance changes.
+      Example:
+        Earlier: occasionally cooks at home.
+        Later: cooks at home almost every night.
+
+  Each Type 3 case should be labeled with the closest aligned pattern.
 
 
 Type 4: REASONING — 28% (hard)
@@ -585,7 +626,8 @@ WRITING RULES
 3. Do reference specific dates, dollar amounts, place names, or contact names
    in `expected_evidence` so scoring has concrete anchors.
 4. Type 3 questions must ask "what changed" or "how did X evolve" — not static
-   "what is X" questions.
+   "what is X" questions. A proper response should identify the current behavior
+   despite the presence of a divergent original truth.
 5.  Type 4 questions must require three or more distinct sources AND a
    non-obvious inference across those sources. 
    The question must ask for a higher-level interpretation, such as a latent
@@ -656,9 +698,16 @@ OUTPUT FORMAT
       "evidence_type": "single_source | cross_source | temporal_comparison | multi_source_synthesis | agent_scenario",
       "expected_evidence": "Concrete description of which log entries support the answer, with dates or session anchors.",
       "is_capstone": false,
-      "risk_surface_score": 0
     }
   ]
+}
+
+For Type 3 entries, add these additional fields:
+
+{
+  "dynamic_pattern": "state_change | temporary_exception | progress_update | cancellation_or_expiry | preference_shift | intensity_shift"
+  "expected_current_state": "One sentence describing the proper answer after dynamic shifts",
+  "prior_state": "One sentence describing the truth prior to the changes"
 }
 
 For Type 4 entries, add these additional fields:
@@ -674,8 +723,6 @@ For Type 4 entries, add these additional fields:
 For each Type 4 case, assign reasoning roles only for the HFs cited in that
 case's `source_hidden_fact_ids`. Unused HFs from the full registry do not need
 roles.
-
-
 
 For Type 5 entries, add these additional fields:
 
