@@ -35,8 +35,8 @@ case "$BACKEND" in
     ;;
   codex)
     GENERATOR_MODEL="${GENERATOR_MODEL:-${MODEL_ARG:-gpt-5.5}}"
-    VERIFIER_MODEL="${VERIFIER_MODEL:-gpt-5.5}"
-    JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.5}"
+    VERIFIER_MODEL="${VERIFIER_MODEL:-gpt-5.4}"
+    JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4}"
     ;;
   anthropic-api)
     GENERATOR_MODEL="${GENERATOR_MODEL:-${MODEL_ARG:-claude-opus-4-7}}"
@@ -45,8 +45,8 @@ case "$BACKEND" in
     ;;
   openai-api)
     GENERATOR_MODEL="${GENERATOR_MODEL:-${MODEL_ARG:-gpt-5.5}}"
-    VERIFIER_MODEL="${VERIFIER_MODEL:-gpt-5.5}"
-    JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.5}"
+    VERIFIER_MODEL="${VERIFIER_MODEL:-gpt-5.4}"
+    JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4}"
     ;;
   *) echo "error: backend must be claude, codex, anthropic-api, or openai-api (got '${BACKEND}')" >&2; exit 2 ;;
 esac
