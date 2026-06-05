@@ -161,6 +161,38 @@ CRITERION 4: RESOLUTION AND ACTION BOUNDARY VALIDITY (runs only on Type 5)
         says "ask clarification" but expected_resolution_label is COMPLY).
   Non-Type-5 cases automatically PASS this criterion.
 
+CRITERION 5: DYNAMIC PREFERENCE VALIDITY (runs only on Type 3)
+  PASS: dynamic_pattern is one of the allowed values (state_change,
+        temporary_exception, progress_update, cancellation_or_expiry,
+        preference_shift, intensity_shift) AND the pattern is consistent with
+        expected_current_state and prior_state.
+  WARN: dynamic_pattern is valid but the choice is debatable (e.g. state_change
+        when progress_update might be more appropriate, but state_change is
+        still defensible).
+  FAIL: expected_current_state, prior_state, or dynamic_pattern is missing,
+        invalid, or inconsistent (e.g. expected_current_state and prior_state
+        describe a routine growing from weekly to twice a week, but
+        dynamic_pattern is temporary_exception).
+
+  DYNAMIC PATTERN DEFINITIONS:
+    state_change:
+      A stable earlier state is superseded by a stable later state.
+
+    temporary_exception:
+      A bounded exception occurs while the baseline fact remains generally valid.
+
+    progress_update:
+      A goal, task, process, condition, or project moves through temporal stages.
+
+    cancellation_or_expiry:
+      A fact stops applying because a known validity window ends.
+
+    preference_shift:
+      The persona's preference, ranking, liking, or aversion changes.
+
+    intensity_shift:
+      The strength, frequency, amount, or importance of a fact changes.
+
 ===============================================================================
 CORRECTED TEST CASES OUTPUT
 ===============================================================================
@@ -249,7 +281,8 @@ PROCESS
    b. Run Criterion 2 (non-duplication) against the full-pairs overlap matrix.
    c. Run Criterion 3 (Type 5 risk validity) if type == type_5_agent_behavior.
    d. Run Criterion 4 (resolution/boundary validity) if type == type_5_agent_behavior.
-   e. Assign overall verdict.
+   e. Run Criterion 5 (dynamic preference validity) if type == type_3_dynamic_tracking.
+   f. Assign overall verdict.
 3. Build the corrected_test_cases structure (drop REJECTED, annotate FLAGGED,
    carry VERIFIED).
 4. Re-run coverage rules on the corrected set; record any deficits.
