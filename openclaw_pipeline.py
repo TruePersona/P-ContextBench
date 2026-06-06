@@ -116,6 +116,11 @@ def base(name: str) -> str:
     return name.lower().replace(" ", "_")
 
 
+def app_log_base(name: str, decoy_count: int) -> str:
+    n = base(name)
+    return f"{n}_decoy{decoy_count}" if decoy_count > 0 else n
+
+
 def fill_seed_placeholders(template: str, seed: dict) -> str:
     mapping = {
         "{{participant_id}}": seed.get("uuid", ""),
@@ -274,7 +279,7 @@ def run_step4(
     )
     if rc != 0:
         raise RuntimeError("Step 4 failed final validation")
-    out = output_dir / f"{base(name)}_app_logs.json"
+    out = output_dir / f"{app_log_base(name, decoy_count)}_app_logs.json"
     return out
 
 
@@ -439,7 +444,7 @@ def run_pipeline(
             decoy_pool_size=decoy_pool_size,
         )
 
-    app_logs_path = step4_out / f"{n}_app_logs.json"
+    app_logs_path = step4_out / f"{app_log_base(name, decoy_count)}_app_logs.json"
 
     # Step 5
     if start <= 5 <= stop:

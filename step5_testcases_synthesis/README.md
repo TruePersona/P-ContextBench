@@ -21,7 +21,7 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 ## Inputs
 
 - `data_samples/input/{persona}_verification.json` — corrected extracted profile with `hidden_facts` registry (from `../step2_interview/data_samples/output/`)
-- `data_samples/input/{persona}_app_logs.json` — merged messenger + calendar logs with its own `hidden_facts` array (from `../step4_app_log_synthesizer/data_samples/output/`)
+- `data_samples/input/{persona}_app_logs.json` or `data_samples/input/{persona}_decoyN_app_logs.json` — merged messenger + calendar logs with its own `hidden_facts` array (from `../step4_app_log_synthesizer/data_samples/output/`). Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
 - `data_samples/input/{persona}_social_circle_verification.json` — corrected social circle (from `../step3_social_circle/data_samples/output/`)
 
 ## Outputs
@@ -68,6 +68,9 @@ python generator.py \
   --social-circle data_samples/input/{persona}_social_circle_verification.json \
   --output      data_samples/output/
 ```
+
+For decoy runs, pass the matching Step 4 file, for example
+`data_samples/input/{persona}_decoy12_app_logs.json`.
 
 ## Notes
 

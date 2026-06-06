@@ -274,7 +274,8 @@ def run_pipeline(
     social_circle_verification_path = (
         STEP3_DIR / "data_samples" / "output" / f"{base}_social_circle_verification.json"
     )
-    app_logs_path = STEP4_DIR / "data_samples" / "output" / f"{base}_app_logs.json"
+    app_logs_base = f"{base}_decoy{decoy_count}" if decoy_count > 0 else base
+    app_logs_path = STEP4_DIR / "data_samples" / "output" / f"{app_logs_base}_app_logs.json"
     test_cases_path = STEP5_DIR / "data_samples" / "output" / f"{base}_test_cases.json"
 
     if start <= 2 <= stop:
