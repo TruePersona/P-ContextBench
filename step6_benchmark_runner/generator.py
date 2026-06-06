@@ -131,6 +131,9 @@ FIELDS_HIDDEN_FROM_PASS1 = {
     "hidden_fact_reasoning_roles",
     "fact_check_risk",
     "reasoning_requirement",
+    "expected_current_state",
+    "prior_state",
+    "dynamic_pattern"
 }
 
 

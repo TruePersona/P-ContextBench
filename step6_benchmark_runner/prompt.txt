@@ -88,6 +88,32 @@ shifts, or reasoning conclusions the answer asserts. Each entry is one atomic
 claim. This field is used by the scorer to check coverage of ground_truth
 labels without parsing prose.
 
+Type 3 includes the dynamic_pattern field:
+
+{
+  "dynamic_pattern": "state_change | temporary_exception | progress_update | cancellation_or_expiry | preference_shift | intensity_shift"
+}
+
+The following labels describe the persona's observed pattern.
+
+  state_change:
+    A stable earlier state is superseded by a stable later state.
+
+  temporary_exception:
+    A bounded exception occurs while the baseline fact remains generally valid.
+
+  progress_update:
+    A goal, task, process, condition, or project moves through temporal stages.
+
+  cancellation_or_expiry:
+    A fact stops applying because a known validity window ends.
+
+  preference_shift:
+    The persona's preference, ranking, liking, or aversion changes.
+
+  intensity_shift:
+    The strength, frequency, amount, or importance of a fact changes.
+
 TYPE 5 answer schema:
 
 {
@@ -149,6 +175,9 @@ Process for Pass 2
    `key_facts` list and `cited_evidence` against `ground_truth` and
    `expected_evidence` from the test case.
 
+   Type 3 is additionally compared against `expected_current_state`, `prior_state`,
+   and `dynamic_pattern`.
+
 3. For Type 5, score using the TYPE 5 RUBRIC below. The Pass 1 answer now
    contains a structured `type_5_action_summary` with discrete fields. Score
    by comparing the response against the test case's `expected_resolution_label`,
@@ -193,6 +222,10 @@ CORRECT -- score_value = 1.0
   - key_facts covers every required ground_truth label (exact wording not
     required; same meaning is sufficient);
   - cited_evidence includes at least one anchor that matches expected_evidence;
+  - for Type 3, the answer and test case's `dynamic_pattern` match directly.
+  - for Type 3, the answer correctly detects shifts from the prior state and
+    identifies the current state as the truth compared against
+    expected_current_state and prior_state.
   - for Type 4, the answer or key_facts expresses a reasoning conclusion
     (pattern, motive, trade-off, judgment) rather than merely listing facts.
 
@@ -202,6 +235,8 @@ PARTIAL -- score_value = 0.5
   - key_facts covers some but not all required ground_truth labels;
   - key_facts covers all labels but cited_evidence is empty, vague, or does
     not match expected_evidence;
+  - for Type 3, the answer identifies the current state but only vaguely explains
+    the shift or mentions the previous state without assuming it as outdated.
   - for Type 4, key_facts lists relevant evidence but does not express the
     reasoning conclusion;
   - answer includes minor unsupported claims that do not change the core
@@ -214,6 +249,8 @@ INCORRECT -- score_value = 0.0
   - answer contradicts the logs;
   - answer asserts facts not visible in the raw logs;
   - key_facts addresses a different topic than the question.
+  - for Type 3, the answer generally misidentifies the dynamic_pattern or does not
+    align with the expected_current_state or prior_state.
 
 For Types 1-4, include in the explanation:
 - which ground_truth labels were covered by key_facts and which were missed;
