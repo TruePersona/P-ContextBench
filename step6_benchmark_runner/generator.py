@@ -33,6 +33,7 @@ from llm import (
     make_client,
     provider_for_backend,
 )
+from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
 PROMPT_PATH = STEP_DIR / "prompt.txt"
@@ -395,7 +396,7 @@ def recompute_benchmark_summary(
 
 # ----- entry point ---------------------------------------------------------
 
-def run_step(
+def run_step_once(
     app_logs_path: Path,
     test_cases_path: Path,
     output_dir: Path,
@@ -405,10 +406,11 @@ def run_step(
     provider: str,
     claude_cmd: str,
     codex_cmd: str,
+    run_index: int | None = None,
     skip_pass1: bool = False,
     reasoning_pass1: str = "low",
     reasoning_pass2: str = "high",
-) -> int:
+) -> Path:
     app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
     test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
 
@@ -442,9 +444,10 @@ def run_step(
     stripped = strip_ground_truth(test_cases)
 
     base_name = test_cases_path.stem.replace("_test_cases", "")
+    suffix = f"_run{run_index:02d}" if run_index is not None else ""
     output_dir.mkdir(parents=True, exist_ok=True)
-    pass1_out = output_dir / f"{base_name}_pass1_answers.json"
-    pass2_out = output_dir / f"{base_name}_benchmark_results.json"
+    pass1_out = output_dir / f"{base_name}{suffix}_pass1_answers.json"
+    pass2_out = output_dir / f"{base_name}{suffix}_benchmark_results.json"
     raw_logs_out = output_dir / f"{base_name}_app_logs_raw.txt"
     raw_logs_out.write_text(raw_logs, encoding="utf-8")
 
@@ -495,6 +498,95 @@ def run_step(
 
     accuracy = pass2.get("overall_accuracy", "unknown")
     print(f"[done] overall_accuracy={accuracy}")
+    return pass2_out
+
+
+def run_step(
+    app_logs_path: Path,
+    test_cases_path: Path,
+    output_dir: Path,
+    model_pass1: str,
+    model_pass2: str,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+    skip_pass1: bool = False,
+    reasoning_pass1: str = "low",
+    reasoning_pass2: str = "high",
+) -> int:
+    run_step_once(
+        app_logs_path,
+        test_cases_path,
+        output_dir,
+        model_pass1,
+        model_pass2,
+        backend,
+        provider,
+        claude_cmd,
+        codex_cmd,
+        skip_pass1=skip_pass1,
+        reasoning_pass1=reasoning_pass1,
+        reasoning_pass2=reasoning_pass2,
+    )
+    return 0
+
+
+def run_passk_step(
+    app_logs_path: Path,
+    test_cases_path: Path,
+    output_dir: Path,
+    model_pass1: str,
+    model_pass2: str,
+    backend: str,
+    provider: str,
+    claude_cmd: str,
+    codex_cmd: str,
+    runs: int,
+    passk_output: Path | None = None,
+    allow_missing: bool = False,
+    reasoning_pass1: str = "low",
+    reasoning_pass2: str = "high",
+) -> int:
+    if runs < 2:
+        raise ValueError("Pass^k mode requires at least two runs")
+
+    result_paths: list[Path] = []
+    for run_index in range(1, runs + 1):
+        print(f"[pass^k] run {run_index}/{runs}")
+        result_paths.append(
+            run_step_once(
+                app_logs_path,
+                test_cases_path,
+                output_dir,
+                model_pass1,
+                model_pass2,
+                backend,
+                provider,
+                claude_cmd,
+                codex_cmd,
+                run_index=run_index,
+                skip_pass1=False,
+                reasoning_pass1=reasoning_pass1,
+                reasoning_pass2=reasoning_pass2,
+            )
+        )
+
+    summary = aggregate_passk(
+        result_paths,
+        test_cases_path=test_cases_path,
+        allow_missing=allow_missing,
+    )
+    if passk_output is None:
+        base_name = test_cases_path.stem.replace("_test_cases", "")
+        passk_output = output_dir / f"{base_name}_pass{runs}_summary.json"
+
+    passk_output.parent.mkdir(parents=True, exist_ok=True)
+    passk_output.write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"[pass^k] wrote {passk_output}")
     return 0
 
 
@@ -548,7 +640,29 @@ def main() -> None:
         help="Skip Pass 1 and reuse existing pass1_answers.json. Useful when "
         "only the scoring prompt or judge model changed.",
     )
+    parser.add_argument(
+        "--passk-runs",
+        type=int,
+        default=1,
+        help="Run Step 6 this many times, then write a Pass^k reliability summary.",
+    )
+    parser.add_argument(
+        "--passk-output",
+        type=Path,
+        default=None,
+        help="Optional output path for the Pass^k summary JSON.",
+    )
+    parser.add_argument(
+        "--passk-allow-missing",
+        action="store_true",
+        help="Score missing cases as 0 when Pass^k run outputs have different ids.",
+    )
     args = parser.parse_args()
+    if args.passk_runs < 1:
+        parser.error("--passk-runs must be at least 1")
+    if args.passk_runs > 1 and args.skip_pass1:
+        parser.error("--skip-pass1 cannot be used with --passk-runs > 1")
+
     backend = "claude" if args.openclaw else args.backend
     provider = provider_for_backend(backend, args.provider or "anthropic") if backend in API_BACKENDS else (args.provider or "anthropic")
     if args.model_pass1 is None:
@@ -562,6 +676,26 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(2)
+
+    if args.passk_runs > 1:
+        sys.exit(
+            run_passk_step(
+                args.app_logs,
+                args.test_cases,
+                args.output,
+                args.model_pass1,
+                args.model_pass2,
+                backend,
+                provider,
+                args.claude_cmd,
+                args.codex_cmd,
+                runs=args.passk_runs,
+                passk_output=args.passk_output,
+                allow_missing=args.passk_allow_missing,
+                reasoning_pass1=args.reasoning_pass1,
+                reasoning_pass2=args.reasoning_pass2,
+            )
+        )
 
     sys.exit(
         run_step(

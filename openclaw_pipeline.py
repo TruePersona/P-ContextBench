@@ -336,6 +336,9 @@ def run_step6(
     reasoning_pass1: str,
     reasoning_pass2: str,
     model_pass1: str | None = None, model_pass2: str | None = None,
+    passk_runs: int = 1,
+    passk_output: Path | None = None,
+    passk_allow_missing: bool = False,
 ) -> int:
     """Delegate to step6_benchmark_runner/generator.py with the selected backend.
 
@@ -359,6 +362,12 @@ def run_step6(
         cmd += ["--model-pass1", model_pass1]
     if model_pass2:
         cmd += ["--model-pass2", model_pass2]
+    if passk_runs > 1:
+        cmd += ["--passk-runs", str(passk_runs)]
+    if passk_output:
+        cmd += ["--passk-output", str(passk_output)]
+    if passk_allow_missing:
+        cmd += ["--passk-allow-missing"]
     return subprocess.run(cmd, check=False).returncode
 
 
@@ -387,6 +396,9 @@ def run_pipeline(
     verified_decoys_path: Path | None = None,
     decoy_count: int = 0,
     decoy_pool_size: int = 40,
+    passk_runs: int = 1,
+    passk_output: Path | None = None,
+    passk_allow_missing: bool = False,
 ) -> None:
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
     name = extract_name(seed)
@@ -472,6 +484,9 @@ def run_pipeline(
                 gpt_reasoning,
                 model_pass1=model,
                 model_pass2=judge_model or model,
+                passk_runs=passk_runs,
+                passk_output=passk_output,
+                passk_allow_missing=passk_allow_missing,
             )
 
     print(f"=== Pipeline complete for {name} ===")
@@ -587,6 +602,23 @@ def main() -> None:
         "independent of the answerer.",
     )
     parser.add_argument(
+        "--passk-runs",
+        type=int,
+        default=1,
+        help="Run Step 6 this many times, then write a Pass^k reliability summary.",
+    )
+    parser.add_argument(
+        "--passk-output",
+        type=Path,
+        default=None,
+        help="Optional output path for the Step 6 Pass^k summary JSON.",
+    )
+    parser.add_argument(
+        "--passk-allow-missing",
+        action="store_true",
+        help="Score missing cases as 0 when Pass^k run outputs have different ids.",
+    )
+    parser.add_argument(
         "--gpt-reasoning",
         default="high",
         help="OpenAI model (openai-api, codex) generation/verification (Steps 2-5, Step 6 Pass 2) reasoning effort."
@@ -635,6 +667,8 @@ def main() -> None:
 
     if args.start > args.stop:
         parser.error("--start must be <= --stop")
+    if args.passk_runs < 1:
+        parser.error("--passk-runs must be at least 1")
 
     if args.backend in API_BACKENDS and not check_api_key(provider):
         parser.error(f"{provider.upper()}_API_KEY is not set")
@@ -668,6 +702,9 @@ def main() -> None:
                 verified_decoys_path=args.verified_decoys,
                 decoy_count=args.decoy_count,
                 decoy_pool_size=args.decoy_pool_size,
+                passk_runs=args.passk_runs,
+                passk_output=args.passk_output,
+                passk_allow_missing=args.passk_allow_missing,
             )
     elif args.seed:
         run_pipeline(
@@ -686,6 +723,9 @@ def main() -> None:
             verified_decoys_path=args.verified_decoys,
             decoy_count=args.decoy_count,
             decoy_pool_size=args.decoy_pool_size,
+            passk_runs=args.passk_runs,
+            passk_output=args.passk_output,
+            passk_allow_missing=args.passk_allow_missing,
         )
     else:
         parser.error("Provide --persona <name>, --seed <path>, or --all")

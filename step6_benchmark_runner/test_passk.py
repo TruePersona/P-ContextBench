@@ -6,18 +6,22 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from step6_benchmark_runner import generator  # noqa: E402
 from step6_benchmark_runner.passk import (  # noqa: E402
     aggregate_passk,
     load_evaluations,
     score_value,
 )
+import openclaw_pipeline  # noqa: E402
 
 
 PASSK_SCRIPT = REPO_ROOT / "step6_benchmark_runner" / "passk.py"
@@ -259,6 +263,162 @@ class PassKTests(unittest.TestCase):
 
         self.assertEqual(payload["metadata"]["metric"], "Pass^2")
         self.assertEqual(payload["overall"]["strict_pass_k_percent"], "100%")
+
+    def test_generator_passk_mode_writes_repeated_runs_and_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app_logs = root / "sample_app_logs.json"
+            test_cases = root / "sample_test_cases.json"
+            output_dir = root / "output"
+
+            write_json(
+                app_logs,
+                {
+                    "persona_name": "Sample Persona",
+                    "messenger": {
+                        "sessions": [
+                            {
+                                "date": "2026-03-01",
+                                "contact": "Dana",
+                                "messages": [
+                                    {
+                                        "time": "09:00",
+                                        "sender": "Sample Persona",
+                                        "text": "coffee before work",
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    "calendar": {"events": []},
+                },
+            )
+            write_json(
+                test_cases,
+                {
+                    "test_cases": [
+                        {
+                            "id": "TC-01",
+                            "question": "What was mentioned?",
+                            "type": "type_1_simple_fact_check",
+                        },
+                        {
+                            "id": "TC-02",
+                            "question": "What routine is implied?",
+                            "type": "type_4_reasoning",
+                        },
+                    ]
+                },
+            )
+
+            pass1_runs = [
+                {
+                    "answers": [
+                        {"test_case_id": "TC-01", "answer": "coffee"},
+                        {"test_case_id": "TC-02", "answer": "morning routine"},
+                    ]
+                },
+                {
+                    "answers": [
+                        {"test_case_id": "TC-01", "answer": "coffee"},
+                        {"test_case_id": "TC-02", "answer": "unclear"},
+                    ]
+                },
+            ]
+            pass2_runs = [
+                result_payload([
+                    evaluation("TC-01", 1.0, typ="type_1_simple_fact_check"),
+                    evaluation("TC-02", 1.0, typ="type_4_reasoning"),
+                ]),
+                result_payload([
+                    evaluation("TC-01", 1.0, typ="type_1_simple_fact_check"),
+                    evaluation("TC-02", 0.0, typ="type_4_reasoning"),
+                ]),
+            ]
+
+            with (
+                patch.object(generator, "run_pass_1", side_effect=pass1_runs) as pass1,
+                patch.object(generator, "run_pass_2", side_effect=pass2_runs) as pass2,
+            ):
+                rc = generator.run_passk_step(
+                    app_logs,
+                    test_cases,
+                    output_dir,
+                    "model-pass1",
+                    "model-pass2",
+                    "claude",
+                    "anthropic",
+                    "claude",
+                    "codex",
+                    runs=2,
+                    reasoning_pass1="low",
+                    reasoning_pass2="high",
+                )
+
+            summary_path = output_dir / "sample_pass2_summary.json"
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            pass1_calls = pass1.call_count
+            pass2_calls = pass2.call_count
+            run01_pass1_exists = (
+                output_dir / "sample_run01_pass1_answers.json"
+            ).exists()
+            run02_pass1_exists = (
+                output_dir / "sample_run02_pass1_answers.json"
+            ).exists()
+            run01_results_exists = (
+                output_dir / "sample_run01_benchmark_results.json"
+            ).exists()
+            run02_results_exists = (
+                output_dir / "sample_run02_benchmark_results.json"
+            ).exists()
+            unsuffixed_results_exists = (
+                output_dir / "sample_benchmark_results.json"
+            ).exists()
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(pass1_calls, 2)
+        self.assertEqual(pass2_calls, 2)
+        self.assertTrue(run01_pass1_exists)
+        self.assertTrue(run02_pass1_exists)
+        self.assertTrue(run01_results_exists)
+        self.assertTrue(run02_results_exists)
+        self.assertFalse(unsuffixed_results_exists)
+        self.assertEqual(summary["metadata"]["metric"], "Pass^2")
+        self.assertEqual(summary["overall"]["strict_pass_k_count"], 1)
+        self.assertEqual(summary["hard_failures"][0]["test_case_id"], "TC-02")
+
+    def test_openclaw_pipeline_forwards_passk_flags_to_step6(self) -> None:
+        with patch.object(
+            openclaw_pipeline.subprocess,
+            "run",
+            return_value=SimpleNamespace(returncode=0),
+        ) as proc:
+            rc = openclaw_pipeline.run_step6(
+                Path("app_logs.json"),
+                Path("test_cases.json"),
+                Path("output"),
+                "codex",
+                "openai",
+                "low",
+                "high",
+                model_pass1="gpt-5.4-mini",
+                model_pass2="gpt-5.5",
+                passk_runs=4,
+                passk_output=Path("output/pass4_summary.json"),
+                passk_allow_missing=True,
+            )
+
+        cmd = proc.call_args.args[0]
+        self.assertEqual(rc, 0)
+        self.assertIn("--passk-runs", cmd)
+        self.assertEqual(cmd[cmd.index("--passk-runs") + 1], "4")
+        self.assertIn("--passk-output", cmd)
+        self.assertEqual(
+            cmd[cmd.index("--passk-output") + 1],
+            "output\\pass4_summary.json" if sys.platform == "win32"
+            else "output/pass4_summary.json",
+        )
+        self.assertIn("--passk-allow-missing", cmd)
 
 
 if __name__ == "__main__":
