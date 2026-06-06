@@ -87,6 +87,10 @@ def default_model_for_backend(backend: str, role: str = "generator") -> str:
     if backend in {"codex", "openai-api"}:
         if role == "evaluator":
             return "gpt-5.4-mini"
+        if role == "judge":
+            return "gpt-5.4"
+        if role == "verifier":
+            return "gpt-5.4"
         return "gpt-5.5"
     raise ValueError(f"Unsupported backend: {backend}")
 

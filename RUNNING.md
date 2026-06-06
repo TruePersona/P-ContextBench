@@ -26,7 +26,7 @@ All 5 personas have complete data through Step 5. To benchmark a model, run Step
 python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
   --backend codex \
   --model gpt-5.4-mini \
-  --judge-model gpt-5.5
+  --judge-model gpt-5.4
 
 # Benchmark Opus 4.7 with Sonnet 4.6 as judge (Claude subscription)
 python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
@@ -38,7 +38,7 @@ python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
 python openclaw_pipeline.py --all --start 6 --stop 6 \
   --backend codex \
   --model gpt-5.4-mini \
-  --judge-model gpt-5.5
+  --judge-model gpt-5.4
 ```
 
 ## Generate a new persona end-to-end
@@ -59,7 +59,7 @@ python openclaw_pipeline.py \
   --start 2 --stop 5 \
   --backend codex \
   --model gpt-5.5 \
-  --verifier-model gpt-5.5
+  --verifier-model gpt-5.4
 ```
 
 **Step 6: benchmark.** Run separately to maintain evaluator independence:
@@ -69,7 +69,7 @@ python openclaw_pipeline.py \
   --persona alicia_gonzalez --start 6 --stop 6 \
   --backend codex \
   --model gpt-5.4-mini \
-  --judge-model gpt-5.5
+  --judge-model gpt-5.4
 ```
 
 Time estimate: 3-5 hours per persona (dominated by Step 4).
@@ -97,9 +97,9 @@ The pipeline uses four model roles. Three independence boundaries prevent system
 | Role | Claude | GPT | Flag |
 |---|---|---|---|
 | Generator | `claude-opus-4-7` | `gpt-5.5` | `--model` (Steps 2-5) |
-| Verifier | `claude-sonnet-4-6` | `gpt-5.5` | `--verifier-model` |
+| Verifier | `claude-sonnet-4-6` | `gpt-5.4` | `--verifier-model` |
 | Evaluator | (run Step 6 separately) | `gpt-5.4-mini` | `--model` (Step 6 only) |
-| Judge | `claude-sonnet-4-6` | `gpt-5.5` | `--judge-model` |
+| Judge | `claude-sonnet-4-6` | `gpt-5.4` | `--judge-model` |
 
 **OpenAI backend (openai-api, codex) reasoning defaults:**
 
