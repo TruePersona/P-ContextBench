@@ -354,12 +354,12 @@ def resolve_verified_decoy_pool(
     if resume and decoys_out.exists():
         existing_decoys = load_verified_decoys(decoys_out)
         existing_messenger = _selectable_messenger_count(existing_decoys)
-        if len(existing_decoys) >= target_count and existing_messenger >= decoy_count:
+        if existing_messenger >= target_count:
             return existing_decoys
         print(
             f"[step4] existing decoy pool has {len(existing_decoys)} candidates "
             f"and {existing_messenger} selectable messenger decoys; "
-            f"generating up to {target_count}"
+            f"generating up to {target_count} selectable messenger decoys"
         )
 
     print(f"[step4] generating {target_count} verified decoy candidates")
