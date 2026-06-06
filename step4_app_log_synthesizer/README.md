@@ -42,6 +42,7 @@ Fragments encode hidden facts through **behaviors and context**, never through c
 ## Outputs
 
 - `data_samples/output/{persona}_app_logs.json` — the final merged log with messenger sessions, calendar events, hidden_facts registry (mirrors Step 2 schema + adds verification + embedding_strategy blocks), cross_app_index, token_stats
+- `data_samples/output/{persona}_decoyN_app_logs.json` — the final merged log when `--decoy-count N` is greater than zero
 - `data_samples/output/{persona}_app_logs_trace.json` — per-cluster verification trace showing attempts made and whether every selected fact passed the gate
 - `data_samples/output/{persona}_verified_fragments.json` — verified fragment cache used by `--resume` and `--retry-failed`
 - `data_samples/output/{persona}_verified_decoys.json` — persona-specific decoy pool; when `--decoy-count` is set, Step 4 either loads this from `--verified-decoys` or generates it from `decoy_prompt.txt`
@@ -87,7 +88,8 @@ python generator.py \
 
 Optional: add persona-specific hard decoys. If `--verified-decoys` is omitted,
 Step 4 generates `{persona}_verified_decoys.json` from `decoy_prompt.txt`,
-then selects hard messenger decoys first:
+then selects hard messenger decoys first. Decoy runs write
+`{persona}_decoyN_app_logs.json`, where `N` is the `--decoy-count` value:
 
 ```bash
 python generator.py \

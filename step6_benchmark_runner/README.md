@@ -19,7 +19,7 @@ The split prevents ground truth strings from appearing in the same context as th
 
 ## Inputs
 
-- `data_samples/input/{persona}_app_logs.json` — merged messenger + calendar output (from `../step4_app_log_synthesizer/data_samples/output/`)
+- `data_samples/input/{persona}_app_logs.json` or `data_samples/input/{persona}_decoyN_app_logs.json` — merged messenger + calendar output (from `../step4_app_log_synthesizer/data_samples/output/`). Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
 - `data_samples/input/{persona}_test_cases.json` — typed test cases (from `../step5_testcases_synthesis/data_samples/output/`)
 
 ## Outputs
@@ -68,6 +68,9 @@ python generator.py \
   --test-cases data_samples/input/{persona}_test_cases.json \
   --output     data_samples/output/
 ```
+
+For decoy runs, pass the matching Step 4 file, for example
+`data_samples/input/{persona}_decoy12_app_logs.json`.
 
 OpenAI API mode:
 
