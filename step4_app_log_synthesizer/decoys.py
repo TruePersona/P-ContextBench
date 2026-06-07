@@ -282,7 +282,7 @@ def _generate_decoys_in_batches(
     decoys: list[dict[str, Any]] = _renumber_decoys(
         _dedupe_decoys([
             decoy for decoy in (seed_decoys or [])
-            if decoy.get("type") == "messenger"
+            if _is_selectable_messenger_decoy(decoy)
         ])
     )
     batch_count = max(1, (target_count + batch_size - 1) // batch_size)
@@ -347,11 +347,21 @@ def resolve_verified_decoy_pool(
     decoy_pool_size: int,
     resume: bool,
 ) -> list[dict[str, Any]]:
-    if explicit_pool or decoy_count <= 0:
+    if decoy_count <= 0:
         return explicit_pool
     target_count = max(decoy_count, decoy_pool_size)
     existing_decoys: list[dict[str, Any]] = []
-    if resume and decoys_out.exists():
+    if explicit_pool:
+        existing_decoys = explicit_pool
+        existing_messenger = _selectable_messenger_count(existing_decoys)
+        if existing_messenger >= target_count:
+            return existing_decoys
+        print(
+            f"[step4] explicit decoy pool has {len(existing_decoys)} candidates "
+            f"and {existing_messenger} selectable messenger decoys; "
+            f"generating up to {target_count} selectable messenger decoys"
+        )
+    elif resume and decoys_out.exists():
         existing_decoys = load_verified_decoys(decoys_out)
         existing_messenger = _selectable_messenger_count(existing_decoys)
         if existing_messenger >= target_count:
@@ -375,7 +385,7 @@ def resolve_verified_decoy_pool(
             log_end,
             contact_usage,
             target_count,
-            decoy_count,
+            target_count,
             seed_decoys=existing_decoys,
         )
     else:
