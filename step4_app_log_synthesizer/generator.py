@@ -1481,7 +1481,7 @@ def run_step_from_dicts(
         reuse_existing: bool,
     ) -> list[dict[str, Any]]:
         nonlocal decoy_prompt_cache, verified_decoy_pool
-        if decoy_count > 0 and not verified_decoy_pool and decoy_prompt_cache is None:
+        if decoy_count > 0 and decoy_prompt_cache is None:
             decoy_prompt_cache = load_prompt(DECOY_PROMPT_PATH)
 
         def call_decoy_model(prompt: str) -> str:

@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
+DECOY_GENERATION_BATCH_SIZE = 50
+
 
 def load_verified_decoys(decoys_path: Path | str | None) -> list[dict[str, Any]]:
     if not decoys_path:
@@ -178,6 +180,157 @@ def generate_verified_decoys(
     )
 
 
+def _is_selectable_messenger_decoy(decoy: dict[str, Any]) -> bool:
+    return (
+        decoy.get("type") == "messenger"
+        and bool(decoy.get("decoy_id"))
+        and decoy.get("overlap_check") != "unsafe_overlap"
+        and bool(decoy.get("messages"))
+    )
+
+
+def _selectable_messenger_count(decoys: list[dict[str, Any]]) -> int:
+    return sum(1 for decoy in decoys if _is_selectable_messenger_decoy(decoy))
+
+
+def _decoy_signature(decoy: dict[str, Any]) -> tuple[Any, ...]:
+    messages = tuple(
+        (
+            msg.get("sender", ""),
+            msg.get("text", ""),
+        )
+        for msg in decoy.get("messages", []) or []
+        if isinstance(msg, dict)
+    )
+    cal = decoy.get("calendar_event") or {}
+    calendar = tuple(
+        cal.get(field, "")
+        for field in ("title", "location", "notes")
+    )
+    return (
+        decoy.get("type", ""),
+        decoy.get("decoy_type", ""),
+        messages,
+        calendar,
+    )
+
+
+def _dedupe_decoys(decoys: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[Any, ...]] = set()
+    unique: list[dict[str, Any]] = []
+    for decoy in decoys:
+        signature = _decoy_signature(decoy)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        unique.append(decoy)
+    return unique
+
+
+def _renumber_decoys(decoys: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    renumbered: list[dict[str, Any]] = []
+    for idx, decoy in enumerate(decoys, 1):
+        item = dict(decoy)
+        item["decoy_id"] = f"D-{idx:03d}"
+        renumbered.append(item)
+    return renumbered
+
+
+def _batch_log_windows(
+    log_start: str,
+    log_end: str,
+    batch_count: int,
+) -> list[tuple[str, str]]:
+    if batch_count <= 1:
+        return [(log_start, log_end)]
+    try:
+        start = datetime.date.fromisoformat(log_start)
+        end = datetime.date.fromisoformat(log_end)
+    except ValueError:
+        return [(log_start, log_end)] * batch_count
+    if end < start:
+        return [(log_start, log_end)] * batch_count
+
+    total_days = (end - start).days + 1
+    windows: list[tuple[str, str]] = []
+    for i in range(batch_count):
+        start_offset = (i * total_days) // batch_count
+        end_offset = ((i + 1) * total_days) // batch_count - 1
+        if end_offset < start_offset:
+            end_offset = start_offset
+        win_start = start + datetime.timedelta(days=start_offset)
+        win_end = start + datetime.timedelta(days=end_offset)
+        windows.append((win_start.isoformat(), win_end.isoformat()))
+    return windows
+
+
+def _generate_decoys_in_batches(
+    call_model: Callable[[str], str],
+    decoy_prompt: str,
+    extract_json: Callable[[str], Any],
+    persona: dict[str, Any],
+    hidden_facts: list[dict[str, Any]],
+    social_circle: dict[str, Any],
+    log_start: str,
+    log_end: str,
+    contact_usage: dict[str, int],
+    target_count: int,
+    required_messenger_count: int,
+    batch_size: int = DECOY_GENERATION_BATCH_SIZE,
+    seed_decoys: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    decoys: list[dict[str, Any]] = _renumber_decoys(
+        _dedupe_decoys([
+            decoy for decoy in (seed_decoys or [])
+            if _is_selectable_messenger_decoy(decoy)
+        ])
+    )
+    batch_count = max(1, (target_count + batch_size - 1) // batch_size)
+    max_batches = max(batch_count * 4, batch_count + 4)
+    windows = _batch_log_windows(log_start, log_end, batch_count)
+
+    for batch_idx in range(max_batches):
+        remaining_total = max(target_count - len(decoys), 0)
+        remaining_messenger = max(
+            required_messenger_count - _selectable_messenger_count(decoys),
+            0,
+        )
+        if len(decoys) >= target_count and remaining_messenger == 0:
+            break
+
+        request_count = batch_size
+        batch_start, batch_end = windows[batch_idx % len(windows)]
+        print(
+            f"[step4] generating decoy batch {batch_idx + 1} "
+            f"({request_count} candidates, {batch_start} to {batch_end})"
+        )
+        batch = generate_verified_decoys(
+            call_model,
+            decoy_prompt,
+            extract_json,
+            persona,
+            hidden_facts,
+            social_circle,
+            batch_start,
+            batch_end,
+            contact_usage,
+            request_count,
+        )
+        messenger_batch = [
+            decoy for decoy in batch
+            if decoy.get("type") == "messenger"
+        ]
+        decoys = _renumber_decoys(_dedupe_decoys(decoys + messenger_batch))
+        print(
+            f"[step4] decoy batch {batch_idx + 1} kept "
+            f"{len(messenger_batch)} messenger decoys "
+            f"({len(decoys)} unique total, "
+            f"{_selectable_messenger_count(decoys)} selectable)"
+        )
+
+    return decoys
+
+
 def resolve_verified_decoy_pool(
     call_model: Callable[[str], str],
     decoy_prompt: str,
@@ -194,25 +347,60 @@ def resolve_verified_decoy_pool(
     decoy_pool_size: int,
     resume: bool,
 ) -> list[dict[str, Any]]:
-    if explicit_pool or decoy_count <= 0:
+    if decoy_count <= 0:
         return explicit_pool
-    if resume and decoys_out.exists():
-        return load_verified_decoys(decoys_out)
-
     target_count = max(decoy_count, decoy_pool_size)
+    existing_decoys: list[dict[str, Any]] = []
+    if explicit_pool:
+        existing_decoys = explicit_pool
+        existing_messenger = _selectable_messenger_count(existing_decoys)
+        if existing_messenger >= target_count:
+            return existing_decoys
+        print(
+            f"[step4] explicit decoy pool has {len(existing_decoys)} candidates "
+            f"and {existing_messenger} selectable messenger decoys; "
+            f"generating up to {target_count} selectable messenger decoys"
+        )
+    elif resume and decoys_out.exists():
+        existing_decoys = load_verified_decoys(decoys_out)
+        existing_messenger = _selectable_messenger_count(existing_decoys)
+        if existing_messenger >= target_count:
+            return existing_decoys
+        print(
+            f"[step4] existing decoy pool has {len(existing_decoys)} candidates "
+            f"and {existing_messenger} selectable messenger decoys; "
+            f"generating up to {target_count} selectable messenger decoys"
+        )
+
     print(f"[step4] generating {target_count} verified decoy candidates")
-    decoys = generate_verified_decoys(
-        call_model,
-        decoy_prompt,
-        extract_json,
-        persona,
-        hidden_facts,
-        social_circle,
-        log_start,
-        log_end,
-        contact_usage,
-        target_count,
-    )
+    if target_count > DECOY_GENERATION_BATCH_SIZE or existing_decoys:
+        decoys = _generate_decoys_in_batches(
+            call_model,
+            decoy_prompt,
+            extract_json,
+            persona,
+            hidden_facts,
+            social_circle,
+            log_start,
+            log_end,
+            contact_usage,
+            target_count,
+            target_count,
+            seed_decoys=existing_decoys,
+        )
+    else:
+        decoys = generate_verified_decoys(
+            call_model,
+            decoy_prompt,
+            extract_json,
+            persona,
+            hidden_facts,
+            social_circle,
+            log_start,
+            log_end,
+            contact_usage,
+            target_count,
+        )
     decoys_out.write_text(
         json.dumps(decoys, indent=2, ensure_ascii=False), encoding="utf-8"
     )
@@ -244,10 +432,7 @@ def select_verified_decoys(
     difficulty_rank = {"hard": 0, "medium": 1, "easy": 2}
     candidates = [
         d for d in verified_decoys
-        if d.get("type") == "messenger"
-        and d.get("decoy_id")
-        and d.get("overlap_check") != "unsafe_overlap"
-        and d.get("messages")
+        if _is_selectable_messenger_decoy(d)
     ]
     candidates.sort(
         key=lambda d: (
