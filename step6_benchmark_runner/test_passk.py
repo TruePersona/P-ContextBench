@@ -275,6 +275,12 @@ class PassKTests(unittest.TestCase):
                 app_logs,
                 {
                     "persona_name": "Sample Persona",
+                    "hidden_facts": [
+                        {"fact_id": "HF-001"},
+                        {"fact_id": "HF-002"},
+                    ],
+                    "token_stats": {"target_filler_ratio": "2.5:1"},
+                    "decoy_check": {"selected_decoy_count": 0},
                     "messenger": {
                         "sessions": [
                             {
@@ -360,19 +366,34 @@ class PassKTests(unittest.TestCase):
             pass1_calls = pass1.call_count
             pass2_calls = pass2.call_count
             run01_pass1_exists = (
-                output_dir / "sample_run01_pass1_answers.json"
+                output_dir / (
+                    "sample_persona_app_logs_pass1_answers_"
+                    "decoy0_filler2.5_hf2_run01.json"
+                )
             ).exists()
             run02_pass1_exists = (
-                output_dir / "sample_run02_pass1_answers.json"
+                output_dir / (
+                    "sample_persona_app_logs_pass1_answers_"
+                    "decoy0_filler2.5_hf2_run02.json"
+                )
             ).exists()
             run01_results_exists = (
-                output_dir / "sample_run01_benchmark_results.json"
+                output_dir / (
+                    "sample_persona_test_case_benchmark_results_"
+                    "decoy0_filler2.5_hf2_run01.json"
+                )
             ).exists()
             run02_results_exists = (
-                output_dir / "sample_run02_benchmark_results.json"
+                output_dir / (
+                    "sample_persona_test_case_benchmark_results_"
+                    "decoy0_filler2.5_hf2_run02.json"
+                )
             ).exists()
             unsuffixed_results_exists = (
-                output_dir / "sample_benchmark_results.json"
+                output_dir / (
+                    "sample_persona_test_case_benchmark_results_"
+                    "decoy0_filler2.5_hf2.json"
+                )
             ).exists()
 
         self.assertEqual(rc, 0)

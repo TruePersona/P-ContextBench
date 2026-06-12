@@ -31,6 +31,11 @@ from llm import (
     check_api_key, provider_for_backend, default_model_for_backend,
     SUPPORTED_PROVIDERS,
 )
+from output_naming import (
+    hidden_fact_count_from_app_logs,
+    step5_test_cases_filename,
+    step5_verification_filename,
+)
 
 STEP_DIR = Path(__file__).parent
 PROMPT_PATH = STEP_DIR / "prompt.txt"
@@ -191,8 +196,13 @@ def run_step(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     base_name = extract_base_name(profile_path)
-    test_cases_out = output_dir / f"{base_name}_test_cases.json"
-    verification_out = output_dir / f"{base_name}_test_cases_verification.json"
+    hidden_fact_count = hidden_fact_count_from_app_logs(app_logs)
+    test_cases_out = output_dir / step5_test_cases_filename(
+        base_name, hidden_fact_count
+    )
+    verification_out = output_dir / step5_verification_filename(
+        base_name, hidden_fact_count
+    )
 
     for attempt in range(1, max_iterations + 1):
         print(f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name}")
