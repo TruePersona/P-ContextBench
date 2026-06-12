@@ -27,7 +27,9 @@ This is the structural reason the benchmark is defensible: every fact in the ans
 
 Decoy pool generation, hard-first selection, and filler placement helpers live
 in `decoys.py`; `generator.py` owns the Step 4 orchestration and final
-validation.
+validation. `subset_verified_run.py` builds smaller no-LLM app logs by
+selecting whole verified clusters from an existing larger run. Its regression
+coverage lives in `test_subset_verified_run.py`.
 
 ## Behaviors, never labels
 
@@ -46,6 +48,11 @@ Fragments encode hidden facts through **behaviors and context**, never through c
 - `data_samples/output/{persona}_app_logs_trace.json` — per-cluster verification trace showing attempts made and whether every selected fact passed the gate
 - `data_samples/output/{persona}_verified_fragments.json` — verified fragment cache used by `--resume` and `--retry-failed`
 - `data_samples/output/{persona}_verified_decoys.json` — persona-specific decoy pool; when `--decoy-count` is set, Step 4 either loads this from `--verified-decoys` or generates it from `decoy_prompt.txt`
+
+- `data_samples/output/{persona}_c{N}_hf{M}_app_logs.json` - no-LLM app log subset built from `N` whole verified clusters and `M` realized hidden facts
+- `data_samples/output/{persona}_c{N}_hf{M}_app_logs_trace.json` - matching trace subset for the selected clusters
+- `data_samples/output/{persona}_c{N}_hf{M}_verified_fragments.json` - matching verified fragment subset for the selected clusters
+- `data_samples/output/{persona}_cluster_subsets_summary.json` - summary for one or more cluster subset sizes
 
 ## Rules baked into `prompt.txt`
 
@@ -110,6 +117,21 @@ python generator.py \
   --verifier-model   claude-sonnet-4-6 \
   --verified-decoys  data_samples/output/{persona}_verified_decoys.json \
   --decoy-count      12
+```
+
+Optional: build smaller app logs from an existing verified run without making
+new LLM calls. The subset keeps whole passed clusters, so no cluster is split
+and no fragment may reference a hidden fact outside the selected clusters:
+
+```bash
+python subset_verified_run.py \
+  --profile        ../step2_interview/data_samples/output/{persona}_verification.json \
+  --social-circle  ../step3_social_circle/data_samples/output/{persona}_social_circle_verification.json \
+  --trace          data_samples/output/{persona}_app_logs_trace.json \
+  --fragments      data_samples/output/{persona}_verified_fragments.json \
+  --output         data_samples/output/ \
+  --cluster-count  10 \
+  --cluster-count  all
 ```
 
 ## Failed-cluster retry
