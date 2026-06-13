@@ -12,6 +12,7 @@ from output_naming import (
     step5_test_cases_filename,
     step5_verification_filename,
     step6_output_names,
+    step6_passk_summary_filename,
     verification_path_for_test_cases,
 )
 
@@ -70,6 +71,10 @@ class OutputNamingTests(unittest.TestCase):
         self.assertEqual(
             names.pass1_answers,
             "alice_gonzalez_app_logs_pass1_answers_decoy0_filler2.5_hf100.json",
+        )
+        self.assertEqual(
+            step6_passk_summary_filename(app_logs, 3),
+            "alice_gonzalez_pass3_summary_decoy0_filler2.5_hf100.json",
         )
 
     def test_run_suffix_is_added_after_experiment_config(self) -> None:

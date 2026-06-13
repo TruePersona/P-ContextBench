@@ -33,7 +33,11 @@ from llm import (
     make_client,
     provider_for_backend,
 )
-from output_naming import step6_output_names, verification_path_for_test_cases
+from output_naming import (
+    step6_output_names,
+    step6_passk_summary_filename,
+    verification_path_for_test_cases,
+)
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
@@ -577,8 +581,10 @@ def run_passk_step(
         allow_missing=allow_missing,
     )
     if passk_output is None:
-        base_name = test_cases_path.stem.replace("_test_cases", "")
-        passk_output = output_dir / f"{base_name}_pass{runs}_summary.json"
+        app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
+        passk_output = output_dir / step6_passk_summary_filename(
+            app_logs, runs, app_logs_path
+        )
 
     passk_output.parent.mkdir(parents=True, exist_ok=True)
     passk_output.write_text(

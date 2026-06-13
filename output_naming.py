@@ -139,6 +139,20 @@ def step6_output_names(
     )
 
 
+def step6_passk_summary_filename(
+    app_logs: dict[str, Any],
+    runs: int,
+    app_logs_path: Path | None = None,
+) -> str:
+    base_name = persona_base_from_app_logs(app_logs, app_logs_path)
+    config = experiment_suffix(
+        decoy_count_from_app_logs(app_logs),
+        filler_ratio_from_app_logs(app_logs),
+        hidden_fact_count_from_app_logs(app_logs),
+    )
+    return f"{base_name}_pass{int(runs)}_summary_{config}.json"
+
+
 def verification_path_for_test_cases(test_cases_path: Path) -> Path:
     stem = test_cases_path.stem
     match = re.match(r"^(?P<base>.+)_test_cases_hf(?P<hf>\d+)$", stem)
