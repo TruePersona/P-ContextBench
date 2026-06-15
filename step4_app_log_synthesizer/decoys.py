@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import datetime
 import json
-import re
 from pathlib import Path
 from typing import Any, Callable
+
+try:
+    from .decoy_safety import validate_decoy_safety
+except ImportError:
+    from decoy_safety import validate_decoy_safety
 
 DECOY_GENERATION_BATCH_SIZE = 50
 
@@ -25,64 +29,6 @@ def load_verified_decoys(decoys_path: Path | str | None) -> list[dict[str, Any]]
     if not isinstance(decoys, list):
         raise ValueError(f"Verified decoys file must contain a list: {path}")
     return decoys
-
-
-def _decoy_tokens(decoy: dict[str, Any]) -> set[str]:
-    tokens: set[str] = set()
-    for msg in decoy.get("messages", []) or []:
-        text = (msg.get("text") or "").lower()
-        tokens.update(re.findall(r"[a-z]{3,}", text))
-    cal = decoy.get("calendar_event") or {}
-    for field in ("title", "notes", "location"):
-        val = (cal.get(field) or "").lower()
-        tokens.update(re.findall(r"[a-z]{3,}", val))
-    return tokens
-
-
-def _overlap_safe(
-    decoy: dict[str, Any],
-    hidden_facts: list[dict[str, Any]],
-    threshold: float = 0.25,
-) -> tuple[bool, list[str]]:
-    dtokens = _decoy_tokens(decoy)
-    if not dtokens:
-        return (True, [])
-
-    stopwords = {
-        "the", "and", "for", "not", "you", "that", "this", "with", "from",
-        "have", "was", "are", "but", "can", "had", "has", "her", "his",
-        "how", "its", "may", "she", "too", "use", "who", "did", "get",
-        "got", "let", "our", "out", "own", "say", "way", "all", "any",
-        "been", "each", "just", "like", "more", "some", "than", "them",
-        "then", "very", "when", "will", "about", "could", "into", "also",
-        "back", "come", "down", "even", "give", "here", "know", "look",
-        "make", "most", "much", "only", "over", "such", "take", "time",
-        "well", "what", "year",
-    }
-    dtokens_clean = dtokens - stopwords
-    if not dtokens_clean:
-        return (True, [])
-
-    overlapping_ids: list[str] = []
-    for hf in hidden_facts:
-        fact_tokens: set[str] = set()
-        for field in ("ground_truth_label", "claim"):
-            val = (hf.get(field) or "").lower()
-            fact_tokens.update(re.findall(r"[a-z]{3,}", val))
-        fact_tokens -= stopwords
-        if not fact_tokens:
-            continue
-
-        shared = dtokens_clean & fact_tokens
-        if not shared:
-            continue
-
-        decoy_overlap = len(shared) / len(dtokens_clean)
-        fact_overlap = len(shared) / len(fact_tokens)
-        if decoy_overlap >= threshold or fact_overlap >= threshold:
-            overlapping_ids.append(hf.get("fact_id", "?"))
-
-    return (len(overlapping_ids) == 0, overlapping_ids)
 
 
 def _fill(template: str, placeholder: str, payload: Any) -> str:
@@ -107,12 +53,11 @@ def normalize_verified_decoys(
     payload: Any,
     persona_name: str,
     hidden_facts: list[dict[str, Any]],
+    social_circle: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for idx, raw in enumerate(_decoys_from_payload(payload), 1):
         decoy = dict(raw)
-        if decoy.get("overlap_check") == "unsafe_overlap":
-            continue
         decoy.setdefault("decoy_id", f"D-{idx:03d}")
         decoy.setdefault("difficulty", "easy")
         decoy.setdefault("overlapping_hidden_fact_ids", [])
@@ -138,11 +83,17 @@ def normalize_verified_decoys(
         if decoy.get("type") == "calendar" and not decoy.get("calendar_event"):
             continue
 
-        safe, overlap_ids = _overlap_safe(decoy, hidden_facts)
-        if not safe and decoy.get("overlap_check") != "safe_other_person_owned":
+        safety = validate_decoy_safety(
+            decoy,
+            hidden_facts,
+            persona_name,
+            social_circle or {},
+        )
+        if not safety.passed:
             continue
-        if overlap_ids:
-            decoy["overlapping_hidden_fact_ids"] = overlap_ids
+        decoy["overlap_check"] = safety.verdict
+        decoy["overlapping_hidden_fact_ids"] = safety.overlapping_hidden_fact_ids
+        decoy["safety_reasons"] = safety.reasons
 
         normalized.append(decoy)
     return normalized
@@ -176,7 +127,10 @@ def generate_verified_decoys(
         prompt, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
     )
     return normalize_verified_decoys(
-        extract_json(call_model(prompt)), persona["name"], hidden_facts
+        extract_json(call_model(prompt)),
+        persona["name"],
+        hidden_facts,
+        social_circle,
     )
 
 
@@ -352,7 +306,12 @@ def resolve_verified_decoy_pool(
     target_count = max(decoy_count, decoy_pool_size)
     existing_decoys: list[dict[str, Any]] = []
     if explicit_pool:
-        existing_decoys = explicit_pool
+        existing_decoys = normalize_verified_decoys(
+            explicit_pool,
+            persona["name"],
+            hidden_facts,
+            social_circle,
+        )
         existing_messenger = _selectable_messenger_count(existing_decoys)
         if existing_messenger >= target_count:
             return existing_decoys
@@ -362,7 +321,12 @@ def resolve_verified_decoy_pool(
             f"generating up to {target_count} selectable messenger decoys"
         )
     elif resume and decoys_out.exists():
-        existing_decoys = load_verified_decoys(decoys_out)
+        existing_decoys = normalize_verified_decoys(
+            load_verified_decoys(decoys_out),
+            persona["name"],
+            hidden_facts,
+            social_circle,
+        )
         existing_messenger = _selectable_messenger_count(existing_decoys)
         if existing_messenger >= target_count:
             return existing_decoys

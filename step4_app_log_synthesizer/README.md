@@ -26,8 +26,10 @@ The gate is run against a **cold, independent verifier model** (different from t
 This is the structural reason the benchmark is defensible: every fact in the answer key has already been proven implicitly recoverable at the fragment level.
 
 Decoy pool generation, hard-first selection, and filler placement helpers live
-in `decoys.py`; `generator.py` owns the Step 4 orchestration and final
-validation.
+in `decoys.py`. Deterministic decoy ownership and overlap checks live in
+`decoy_safety.py`; `generator.py` owns the Step 4 orchestration and final
+validation. No-LLM unit coverage for decoy safety lives in
+`test_decoy_safety.py`.
 
 ## Behaviors, never labels
 
