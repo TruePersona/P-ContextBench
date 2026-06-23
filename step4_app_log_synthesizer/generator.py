@@ -232,20 +232,54 @@ def cluster_hidden_facts(
     raw = _call_llm(client, model, template, provider=provider, backend=backend)
     result = extract_json(raw)
 
+    fact_ids_expected = {
+        hf.get("fact_id", f"HF-{i:03d}") for i, hf in enumerate(hidden_facts, 1)
+    }
+    clusters = result.get("clusters", [])
+    seen_fact_ids: set[str] = set()
+    deduped_clusters: list[dict[str, Any]] = []
+    duplicate_ids: set[str] = set()
+    unknown_ids: set[str] = set()
+    for cluster in clusters:
+        clean_ids: list[str] = []
+        for fid in cluster.get("hidden_fact_ids", []):
+            if fid not in fact_ids_expected:
+                unknown_ids.add(fid)
+                continue
+            if fid in seen_fact_ids:
+                duplicate_ids.add(fid)
+                continue
+            seen_fact_ids.add(fid)
+            clean_ids.append(fid)
+        if clean_ids:
+            cluster["hidden_fact_ids"] = clean_ids
+            deduped_clusters.append(cluster)
+    result["clusters"] = deduped_clusters
+
     # Validate: every fact_id appears exactly once
     all_assigned: list[str] = []
     for cluster in result.get("clusters", []):
         all_assigned.extend(cluster.get("hidden_fact_ids", []))
-    fact_ids_expected = {
-        hf.get("fact_id", f"HF-{i:03d}") for i, hf in enumerate(hidden_facts, 1)
-    }
     assigned_set = set(all_assigned)
-    if len(all_assigned) != len(assigned_set):
-        dupes = [fid for fid in all_assigned if all_assigned.count(fid) > 1]
-        print(f"[step4] WARNING: duplicate fact_ids in clustering: {set(dupes)}")
+    if duplicate_ids:
+        print(f"[step4] WARNING: removed duplicate fact_ids in clustering: {duplicate_ids}")
+    if unknown_ids:
+        print(f"[step4] WARNING: removed unknown fact_ids in clustering: {unknown_ids}")
     missing = fact_ids_expected - assigned_set
     if missing:
         print(f"[step4] WARNING: {len(missing)} facts not assigned to any cluster")
+        clusters = result.setdefault("clusters", [])
+        next_cluster = len(clusters) + 1
+        for fid in sorted(missing):
+            clusters.append({
+                "cluster_id": f"C{next_cluster}",
+                "cluster_status": "singleton_missing_assignment",
+                "hidden_fact_ids": [fid],
+                "cluster_reason": (
+                    "Added deterministically because clustering omitted this fact_id."
+                ),
+            })
+            next_cluster += 1
 
     return result
 
@@ -1518,16 +1552,24 @@ def run_step_from_dicts(
         frag_fact_ids = set()
         for f in existing_frags:
             frag_fact_ids.update(f.get("source_fact_ids", []))
+        missing_trace_fact_ids = current_fact_ids - all_trace_fact_ids
+        extra_trace_fact_ids = all_trace_fact_ids - current_fact_ids
+        unique_fragment_ids = (
+            len(set(f.get("fragment_id", "") for f in existing_frags))
+            == len(existing_frags)
+        )
         compatible = (
-            all_trace_fact_ids == current_fact_ids
+            not extra_trace_fact_ids
             and existing_frags
-            and len(set(f.get("fragment_id", "") for f in existing_frags)) == len(existing_frags)
+            and unique_fragment_ids
+            and (not missing_trace_fact_ids or retry_failed)
         )
         if compatible:
             failed_trace = [t for t in existing_trace if not t.get("passed")]
-            if retry_failed and failed_trace:
+            if retry_failed and (failed_trace or missing_trace_fact_ids):
                 print(
                     f"[step4] retrying {len(failed_trace)} failed clusters "
+                    f"and {len(missing_trace_fact_ids)} missing facts "
                     f"from existing trace"
                 )
                 clusters = [
@@ -1538,6 +1580,14 @@ def run_step_from_dicts(
                     }
                     for i, t in enumerate(failed_trace, 1)
                 ]
+                clusters.extend(
+                    {
+                        "cluster_id": f"retry-missing-{i}",
+                        "cluster_status": "singleton_missing_assignment",
+                        "hidden_fact_ids": [fid],
+                    }
+                    for i, fid in enumerate(sorted(missing_trace_fact_ids), 1)
+                )
                 trace = existing_trace
                 verified_fragments = existing_frags
                 for frag in verified_fragments:
