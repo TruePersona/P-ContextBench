@@ -33,6 +33,11 @@ from llm import (
     make_client,
     provider_for_backend,
 )
+from output_naming import (
+    step6_output_names,
+    step6_passk_summary_filename,
+    verification_path_for_test_cases,
+)
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
@@ -415,9 +420,7 @@ def run_step_once(
     test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
 
     # Filter out REJECTED test cases from Step 5 verification
-    verification_path = test_cases_path.parent / test_cases_path.name.replace(
-        "_test_cases.json", "_test_cases_verification.json"
-    )
+    verification_path = verification_path_for_test_cases(test_cases_path)
     if verification_path.exists():
         verification = json.loads(verification_path.read_text(encoding="utf-8"))
         rejected_ids: set[str] = set()
@@ -443,12 +446,12 @@ def run_step_once(
     raw_logs = strip_to_raw_logs(app_logs)
     stripped = strip_ground_truth(test_cases)
 
-    base_name = test_cases_path.stem.replace("_test_cases", "")
-    suffix = f"_run{run_index:02d}" if run_index is not None else ""
+    output_names = step6_output_names(app_logs, app_logs_path, run_index=run_index)
+    base_name = app_logs.get("persona_name") or test_cases_path.stem.replace("_test_cases", "")
     output_dir.mkdir(parents=True, exist_ok=True)
-    pass1_out = output_dir / f"{base_name}{suffix}_pass1_answers.json"
-    pass2_out = output_dir / f"{base_name}{suffix}_benchmark_results.json"
-    raw_logs_out = output_dir / f"{base_name}_app_logs_raw.txt"
+    pass1_out = output_dir / output_names.pass1_answers
+    pass2_out = output_dir / output_names.benchmark_results
+    raw_logs_out = output_dir / output_names.raw_logs
     raw_logs_out.write_text(raw_logs, encoding="utf-8")
 
     client = None
@@ -578,8 +581,10 @@ def run_passk_step(
         allow_missing=allow_missing,
     )
     if passk_output is None:
-        base_name = test_cases_path.stem.replace("_test_cases", "")
-        passk_output = output_dir / f"{base_name}_pass{runs}_summary.json"
+        app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
+        passk_output = output_dir / step6_passk_summary_filename(
+            app_logs, runs, app_logs_path
+        )
 
     passk_output.parent.mkdir(parents=True, exist_ok=True)
     passk_output.write_text(

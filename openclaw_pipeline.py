@@ -44,6 +44,12 @@ from llm import (
     make_client,
     provider_for_backend,
 )
+from output_naming import (
+    hidden_fact_count_from_app_logs,
+    step4_app_logs_filename,
+    step5_test_cases_filename,
+    step5_verification_filename,
+)
 from step4_app_log_synthesizer.generator import (
     run_step_from_dicts as run_step4_from_dicts,
     select_hidden_facts,
@@ -116,9 +122,15 @@ def base(name: str) -> str:
     return name.lower().replace(" ", "_")
 
 
-def app_log_base(name: str, decoy_count: int) -> str:
-    n = base(name)
-    return f"{n}_decoy{decoy_count}" if decoy_count > 0 else n
+def app_log_base(
+    name: str,
+    decoy_count: int,
+    filler_ratio: float = 2.5,
+    hidden_fact_count: int = 100,
+) -> str:
+    return step4_app_logs_filename(
+        name, decoy_count, filler_ratio, hidden_fact_count
+    ).removesuffix("_app_logs.json")
 
 
 def fill_seed_placeholders(template: str, seed: dict) -> str:
@@ -256,6 +268,7 @@ def run_step4(
         raise ValueError("Step 4 requires explicit generator and verifier models")
 
     hidden_facts = select_hidden_facts(profile["hidden_facts"], max_facts)
+    hidden_fact_count = len(hidden_facts)
     rc = run_step4_from_dicts(
         profile,
         corrected_social_circle,
@@ -279,7 +292,9 @@ def run_step4(
     )
     if rc != 0:
         raise RuntimeError("Step 4 failed final validation")
-    out = output_dir / f"{app_log_base(name, decoy_count)}_app_logs.json"
+    out = output_dir / step4_app_logs_filename(
+        name, decoy_count, filler_ratio, hidden_fact_count
+    )
     return out
 
 
@@ -303,7 +318,8 @@ def run_step5_gen(
         corrected_social_circle,
     )
     cases = extract_json(caller.call(template, gpt_reasoning, model=model))
-    out = output_dir / f"{base(name)}_test_cases.json"
+    hidden_fact_count = hidden_fact_count_from_app_logs(app_logs)
+    out = output_dir / step5_test_cases_filename(name, hidden_fact_count)
     out.write_text(json.dumps(cases, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
@@ -322,7 +338,8 @@ def run_step5_verify(
     logs_for_prompt = strip_filler_for_step5(app_logs)
     template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     verification = extract_json(caller.call(template, gpt_reasoning, model=model))
-    out = output_dir / f"{base(name)}_test_cases_verification.json"
+    hidden_fact_count = hidden_fact_count_from_app_logs(app_logs)
+    out = output_dir / step5_verification_filename(name, hidden_fact_count)
     out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
     return out
 
@@ -425,6 +442,8 @@ def run_pipeline(
 
     profile = verification.get("corrected_extracted_profile", verification)
     transcript = interview.get("transcript", interview)
+    selected_hidden_facts = select_hidden_facts(profile["hidden_facts"], max_facts)
+    hidden_fact_count = len(selected_hidden_facts)
 
     # Step 3
     if start <= 3 <= stop:
@@ -456,7 +475,9 @@ def run_pipeline(
             decoy_pool_size=decoy_pool_size,
         )
 
-    app_logs_path = step4_out / f"{app_log_base(name, decoy_count)}_app_logs.json"
+    app_logs_path = step4_out / step4_app_logs_filename(
+        name, decoy_count, filler_ratio, hidden_fact_count
+    )
 
     # Step 5
     if start <= 5 <= stop:
@@ -471,7 +492,7 @@ def run_pipeline(
             test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
             run_step5_verify(test_cases, app_logs, step5_out, name, caller, gpt_reasoning, model=model)
 
-    test_cases_path = step5_out / f"{n}_test_cases.json"
+    test_cases_path = step5_out / step5_test_cases_filename(name, hidden_fact_count)
 
     # Step 6
     if start <= 6 <= stop:

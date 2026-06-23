@@ -38,6 +38,11 @@ from llm import (
     make_client,
     provider_for_backend,
 )
+from output_naming import (
+    step4_app_logs_filename,
+    step4_fragments_filename,
+    step4_trace_filename,
+)
 try:
     from .decoys import (
         build_decoy_filler_sessions,
@@ -1492,10 +1497,14 @@ def run_step_from_dicts(
         hf_map[fid] = hf
 
     # Output paths
-    app_log_name = f"{name}_decoy{decoy_count}" if decoy_count > 0 else name
-    app_log_out = output_dir / f"{app_log_name}_app_logs.json"
-    trace_out = output_dir / f"{name}_app_logs_trace.json"
-    fragments_out = output_dir / f"{name}_verified_fragments.json"
+    hidden_fact_count = len(hidden_facts)
+    app_log_out = output_dir / step4_app_logs_filename(
+        name, decoy_count, filler_ratio, hidden_fact_count
+    )
+    trace_out = output_dir / step4_trace_filename(name, hidden_fact_count)
+    fragments_out = output_dir / step4_fragments_filename(name, hidden_fact_count)
+    legacy_trace_out = output_dir / f"{name}_app_logs_trace.json"
+    legacy_fragments_out = output_dir / f"{name}_verified_fragments.json"
     decoys_out = output_dir / f"{name}_verified_decoys.json"
 
     clusters: list[dict[str, Any]] | None = None
@@ -1541,10 +1550,13 @@ def run_step_from_dicts(
         )
         return verified_decoy_pool
 
-    # Resume check: if trace + fragments exist and --resume is set, skip to assembly
-    if resume and trace_out.exists() and fragments_out.exists():
-        existing_trace = json.loads(trace_out.read_text(encoding="utf-8"))
-        existing_frags = json.loads(fragments_out.read_text(encoding="utf-8"))
+    # Resume check: if trace + fragments exist and --resume is set, skip to assembly.
+    # Prefer config-aware names, but allow old caches to seed the new files.
+    trace_in = trace_out if trace_out.exists() else legacy_trace_out
+    fragments_in = fragments_out if fragments_out.exists() else legacy_fragments_out
+    if resume and trace_in.exists() and fragments_in.exists():
+        existing_trace = json.loads(trace_in.read_text(encoding="utf-8"))
+        existing_frags = json.loads(fragments_in.read_text(encoding="utf-8"))
         all_trace_fact_ids = set()
         for t in existing_trace:
             all_trace_fact_ids.update(t.get("hidden_fact_ids", []))
@@ -1605,6 +1617,16 @@ def run_step_from_dicts(
                 )
                 trace = existing_trace
                 verified_fragments = existing_frags
+                if trace_in != trace_out:
+                    trace_out.write_text(
+                        json.dumps(trace, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                if fragments_in != fragments_out:
+                    fragments_out.write_text(
+                        json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
                 # Jump to assembly phases
                 passed_fact_ids_set: set[str] = set()
                 for t in trace:
