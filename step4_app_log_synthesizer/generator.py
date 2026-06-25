@@ -498,6 +498,80 @@ def cluster_passed(
     return (True, best_pairs)
 
 
+def _cluster_id_from_fragment_id(fragment_id: str) -> str:
+    if "-F" in fragment_id:
+        return fragment_id.split("-F", 1)[0]
+    return fragment_id.rsplit("-", 1)[0] if "-" in fragment_id else fragment_id
+
+
+def ensure_fragment_fact_coverage(
+    verified_fragments: list[dict[str, Any]],
+    trace: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Backfill fragment fact metadata from verifier-accepted clusters."""
+    passed_facts_by_cluster: dict[str, set[str]] = {
+        str(item.get("cluster_id", "")): set(item.get("hidden_fact_ids", []))
+        for item in trace
+        if item.get("passed")
+    }
+    if not passed_facts_by_cluster:
+        return verified_fragments
+
+    fragments_by_cluster: dict[str, list[dict[str, Any]]] = {}
+    for frag in verified_fragments:
+        cluster_id = _cluster_id_from_fragment_id(str(frag.get("fragment_id", "")))
+        if cluster_id not in passed_facts_by_cluster:
+            continue
+        fragments_by_cluster.setdefault(cluster_id, []).append(frag)
+
+        source_ids = set(frag.get("source_fact_ids") or [])
+        support_ids = {
+            support.get("hidden_fact_id", "")
+            for support in frag.get("supports_hidden_facts", []) or []
+        }
+        support_ids.discard("")
+        merged = source_ids | support_ids
+        if merged != source_ids:
+            frag["source_fact_ids"] = sorted(merged)
+
+    for cluster_id, fact_ids in passed_facts_by_cluster.items():
+        fragments = fragments_by_cluster.get(cluster_id, [])
+        if not fragments:
+            continue
+
+        present: set[str] = set()
+        for frag in fragments:
+            present.update(frag.get("source_fact_ids") or [])
+        missing = sorted(fact_ids - present)
+        if not missing:
+            continue
+
+        target = min(
+            fragments,
+            key=lambda frag: len(frag.get("source_fact_ids") or []),
+        )
+        source_ids = set(target.get("source_fact_ids") or [])
+        source_ids.update(missing)
+        target["source_fact_ids"] = sorted(source_ids)
+
+        supports = list(target.get("supports_hidden_facts") or [])
+        support_ids = {
+            support.get("hidden_fact_id", "")
+            for support in supports
+        }
+        for fact_id in missing:
+            if fact_id in support_ids:
+                continue
+            supports.append({
+                "hidden_fact_id": fact_id,
+                "signal_strength": "secondary",
+                "evidence_type": "cluster-level verifier recovery",
+            })
+        target["supports_hidden_facts"] = supports
+
+    return verified_fragments
+
+
 # ---------------------------------------------------------------------------
 # Phase 5: Deterministic assembly
 # ---------------------------------------------------------------------------
@@ -1565,7 +1639,19 @@ def run_step_from_dicts(
             and (not missing_trace_fact_ids or retry_failed)
         )
         if compatible:
-            failed_trace = [t for t in existing_trace if not t.get("passed")]
+            fragment_cluster_ids = {
+                _cluster_id_from_fragment_id(str(f.get("fragment_id", "")))
+                for f in existing_frags
+            }
+            missing_fragment_trace = [
+                t for t in existing_trace
+                if t.get("passed")
+                and str(t.get("cluster_id", "")) not in fragment_cluster_ids
+            ]
+            failed_trace = [
+                t for t in existing_trace
+                if not t.get("passed")
+            ] + missing_fragment_trace
             if retry_failed and (failed_trace or missing_trace_fact_ids):
                 print(
                     f"[step4] retrying {len(failed_trace)} failed clusters "
@@ -1589,7 +1675,13 @@ def run_step_from_dicts(
                     for i, fid in enumerate(sorted(missing_trace_fact_ids), 1)
                 )
                 trace = existing_trace
-                verified_fragments = existing_frags
+                verified_fragments = ensure_fragment_fact_coverage(
+                    existing_frags, trace,
+                )
+                fragments_out.write_text(
+                    json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
                 for frag in verified_fragments:
                     src = frag.get("source", {})
                     if src.get("type") == "contact":
@@ -1604,7 +1696,13 @@ def run_step_from_dicts(
                     f"{len(existing_trace)} clusters, {len(existing_frags)} fragments"
                 )
                 trace = existing_trace
-                verified_fragments = existing_frags
+                verified_fragments = ensure_fragment_fact_coverage(
+                    existing_frags, trace,
+                )
+                fragments_out.write_text(
+                    json.dumps(verified_fragments, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
                 # Jump to assembly phases
                 passed_fact_ids_set: set[str] = set()
                 for t in trace:
@@ -1781,6 +1879,8 @@ def run_step_from_dicts(
                     for s in frag.get("supports_hidden_facts", [])
                 ]
                 verified_fragments.append({**frag, "source_fact_ids": sfids})
+
+    verified_fragments = ensure_fragment_fact_coverage(verified_fragments, trace)
 
     # Save verified fragments
     fragments_out.write_text(
