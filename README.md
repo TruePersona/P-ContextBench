@@ -57,9 +57,8 @@ This output batch adds 40 new personas through Step 4:
 
 ## Scope
 
-The tracked sample set now covers **102 personas** through Step 3 and **99
-personas** through Step 4 app logs. Step 5 test cases and Step 6 benchmark
-runs are generated and reviewed separately.
+This batch is scoped to 40 new personas through Step 4 app logs. Step 5 test
+cases and Step 6 benchmark runs are generated and reviewed separately.
 
 ## Getting started
 
