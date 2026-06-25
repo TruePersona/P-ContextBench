@@ -39,7 +39,7 @@ Generated persona artifacts are tracked under each step's
 - `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json`
 - `step4_app_log_synthesizer/data_samples/output/{persona}_verified_fragments.json`
 
-This output batch adds 40 personas through Step 4:
+This output batch adds 40 new personas through Step 4:
 
 `alicia_mosquera`, `alina_acosta`, `andrew_black`,
 `angel_diaz`, `antonio_gonzalez`, `baljinder_simmons`,
@@ -57,8 +57,9 @@ This output batch adds 40 personas through Step 4:
 
 ## Scope
 
-The tracked Step 4 app-log sample set now covers **100 personas**. Step 5
-test cases and Step 6 benchmark runs are generated and reviewed separately.
+The tracked sample set now covers **102 personas** through Step 3 and **99
+personas** through Step 4 app logs. Step 5 test cases and Step 6 benchmark
+runs are generated and reviewed separately.
 
 ## Getting started
 
