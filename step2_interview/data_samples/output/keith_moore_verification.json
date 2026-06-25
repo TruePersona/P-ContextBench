@@ -1,0 +1,2357 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "935d50d4e4ea4f4a8b40355ab690b1bf",
+      "name": "Keith Moore",
+      "verification_date": "2026-06-23"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed age 60 matches the interview birthdate of March 14, 1966 and confirmation that he is 60.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.age",
+              "source_b_ref": "Q85",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed location Apache Junction, AZ 85120 matches interview reports of living in Apache Junction near the Superstition Mountains.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.city/state/zipcode",
+              "source_b_ref": "Q08, Q51",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed marital status married_present is confirmed by interview statements that he lives with his wife Linda and has been married over thirty years.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.marital_status",
+              "source_b_ref": "Q05, Q84",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed education high_school is confirmed by interview statement that his highest degree is a high school diploma.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.education_level",
+              "source_b_ref": "Q90",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Seed occupation not_in_workforce aligns with interview statements that he has zero paid work and only volunteer workshop activity.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.occupation",
+              "source_b_ref": "Q16, Q67-Q72",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile demographics accurately reflect Keith as a 60-year-old male in Apache Junction with a high school diploma.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q85, Q87, Q90",
+              "source_b_ref": "corrected_extracted_profile age/gender/location/education",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile household description matches the interview: only Keith and Linda live there full time, while grandchildren are visitors.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q11-Q14, Q51-Q54",
+              "source_b_ref": "preferences.home_and_lifestyle, summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Profile correctly states that Keith owns the home with a mortgage and shares expenses with Linda.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q55, Q58",
+              "source_b_ref": "preferences.home_and_lifestyle, summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Profile family facts are accurate but understate that Keith also has a younger sister Marlene in New Mexico.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q06",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add a social_and_relationships detail that Keith has a younger sister, Marlene, in New Mexico, and they talk every couple weeks."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 1
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "The occupation field, work_and_career preference, and demographer summary consistently describe him as retired from paid work but active as a volunteer.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "occupation",
+              "field_b": "preferences.work_and_career, summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Home_and_lifestyle and social_and_relationships consistently represent a two-person household with visiting family rather than resident children.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "preferences.social_and_relationships",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Cultural_and_linguistic and summaries.demographer consistently identify Keith as White, non-Hispanic, U.S.-born, and rooted in Arizona.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.cultural_and_linguistic",
+              "field_b": "summaries.demographer",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "The interview states Keith was born in Mesa, Arizona, and grew up mostly around Apache Junction; the profile mentions this only in cultural terms but should preserve birthplace.",
+              "gap": true,
+              "interview_ref": "Q01, Q87",
+              "should_be_in": "preferences.cultural_and_linguistic",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add birthplace detail: born in Mesa, Arizona, and raised mostly around Apache Junction."
+            },
+            {
+              "id": 2,
+              "text": "The interview gives a clear childhood household: both parents and younger sister Marlene at age 16.",
+              "gap": true,
+              "interview_ref": "Q97-Q99",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add childhood household detail."
+            },
+            {
+              "id": 3,
+              "text": "The interview identifies his parents' education and occupations, which are relevant to his life-course and skills transmission.",
+              "gap": true,
+              "interview_ref": "Q100-Q107",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add detail that his father was an auto mechanic, his mother worked in a school cafeteria, and both completed high school."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed describes frugality and generous mentorship; interview confirms budgeting, emergency savings, repair-first habits, and volunteer teaching.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.persona, seed.career_goals_and_ambitions",
+              "source_b_ref": "Q16-Q17, Q57-Q64, Q108",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed says he balances modest travel budget with road trips; interview confirms delayed travel, cash-based travel saving, and refusal to finance trips on credit.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.travel_persona",
+              "source_b_ref": "Q60, Q62",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed emphasizes health and independence; interview confirms mobility preservation, preventive visits, walking, and activity pacing.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.persona",
+              "source_b_ref": "Q31-Q34",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed says he is competitively spirited; interview supports this through ATV events, card games, and identity around practical competence, though the interview is more moderated by age and health.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.sports_persona, seed.persona",
+              "source_b_ref": "Q15, Q33, Q44",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately captures his loss aversion toward debt and credit, especially around dental debt and travel spending.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q61-Q64, Q82-Q83",
+              "source_b_ref": "summaries.behavioral_economist, preferences.home_and_lifestyle, preferences.travel",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile captures his use of routines and budgeting but should more explicitly include Sunday budget review.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q17",
+              "source_b_ref": "preferences.home_and_lifestyle, preferences.technology",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail to home_and_lifestyle or technology that he reviews bank accounts, receipts, upcoming bills, gas, groceries, and prescriptions every Sunday evening."
+            },
+            {
+              "id": 3,
+              "text": "Profile correctly represents his adaptation after injury by reducing rough rides, heavy lifting, and back-to-back strain.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q18, Q33-Q34, Q44",
+              "source_b_ref": "preferences.health_and_wellness, summaries.behavioral_economist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Profile mentions occasional woodworking sales only indirectly, but the interview states he sold a couple pieces to cope with extra expenses.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q60",
+              "source_b_ref": "preferences.hobbies_and_recreation, preferences.home_and_lifestyle",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail that he occasionally sells small woodworking pieces but avoids turning it into pressure or dependable income."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Travel, finances, and behavioral summary consistently show delayed consumption and avoidance of credit-card travel debt.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.travel",
+              "field_b": "summaries.behavioral_economist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Sports_and_fitness and health_and_wellness consistently show activity with pacing rather than contradiction between adventurous recreation and physical limits.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.sports_and_fitness",
+              "field_b": "preferences.health_and_wellness",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Work_and_career and community_and_civic consistently describe volunteer labor as purpose-driven rather than paid employment.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.work_and_career",
+              "field_b": "preferences.community_and_civic",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "The interview states he could cover a $400 emergency from savings but would dislike it.",
+              "gap": true,
+              "interview_ref": "Q82",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add financial resilience detail."
+            },
+            {
+              "id": 2,
+              "text": "The interview states household income came from Linda's part-time pay, a small pension-type payment, and retirement withdrawals.",
+              "gap": true,
+              "interview_ref": "Q72-Q74",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add household income-source detail."
+            },
+            {
+              "id": 3,
+              "text": "The interview states he avoids public assistance but uses senior discounts.",
+              "gap": true,
+              "interview_ref": "Q80",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add benefits/public assistance detail."
+            },
+            {
+              "id": 4,
+              "text": "The interview states inflation and health costs increased stress, and routines help him cope.",
+              "gap": true,
+              "interview_ref": "Q43, Q50, Q83",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add coping and financial-stress detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed describes community cooperation and neighborly support; interview confirms informal neighbor watch, tool sharing, and senior center volunteering.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.cultural_background, seed.persona",
+              "source_b_ref": "Q08-Q09, Q16",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed emphasizes respect for desert landscape; interview confirms concern about public lands, trail trash, water, heat, and growth.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.cultural_background, seed.travel_persona",
+              "source_b_ref": "Q10, Q24-Q25",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed does not specify party identification, while interview adds that he is an Independent leaning Republican and moderate practical conservative.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed data",
+              "source_b_ref": "Q24, Q95-Q96",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed is silent on policing, while interview adds moderate pro-accountability views and generally straightforward personal law enforcement encounters.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed data",
+              "source_b_ref": "Q20-Q30",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately records that Keith votes regularly by mail and studies local races, propositions, and judges.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q23",
+              "source_b_ref": "preferences.community_and_civic, summaries.political_scientist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile accurately states his Independent-leaning-Republican identity and practical conservative issue orientation.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q24, Q95-Q96",
+              "source_b_ref": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Profile captures his broad policing/race stance but could include that his daughter Erin pushed him to listen more before reacting.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q27-Q30",
+              "source_b_ref": "preferences.community_and_civic, summaries.political_scientist",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add a community_and_civic detail that family conversations, especially with Erin, have made him listen more carefully on race and policing."
+            },
+            {
+              "id": 4,
+              "text": "Profile captures localism but should include his concern with public safety, property rights, and taxpayer waste.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q24",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail summarizing his practical conservative priorities: budgets, public safety, property rights, and taxpayer value."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Community_and_civic and political_scientist summary consistently describe localist civic participation and mail voting.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Nature_and_outdoors and community_and_civic consistently connect land stewardship with civic concern about growth and water.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.nature_and_outdoors",
+              "field_b": "preferences.community_and_civic",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Media_and_information_diet and political summary consistently show skepticism toward conspiratorial claims and preference for evidence.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.media_and_information_diet",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview includes law enforcement experiences: traffic stops, permit checks, rangers/deputies at trailheads, and no serious unfair treatment.",
+              "gap": true,
+              "interview_ref": "Q20-Q22",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add law enforcement interaction detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview states a neighbor's shed burglary led him to record tool serial numbers and improve locks.",
+              "gap": true,
+              "interview_ref": "Q21",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add practical safety precaution detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview states he is pro-vaccine and trusts doctors, pharmacists, and health departments over random social media.",
+              "gap": true,
+              "interview_ref": "Q41-Q42",
+              "should_be_in": "preferences.media_and_information_diet",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add vaccine trust-source detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed depicts Keith as pragmatic, curious, competitive, and safety-focused; interview confirms methodical diagnosis, tool safety teaching, and hands-on coping.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.professional_persona, seed.persona",
+              "source_b_ref": "Q01, Q65, Q108-Q109",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed emphasizes independence and health; interview adds emotional complexity around aging, knee limits, and redefining strength as asking for help.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.persona",
+              "source_b_ref": "Q31-Q34, Q44",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed says he blends frugality with generous mentorship; interview confirms self-reliance, pay-it-forward repair help, and desire to mentor youth.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed.persona, seed.career_goals_and_ambitions",
+              "source_b_ref": "Q16, Q108-Q109",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed portrays community-rooted values; interview confirms a self-concept built around usefulness, dependability, family, and land respect.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed.cultural_background, seed.persona",
+              "source_b_ref": "Q02-Q03, Q109",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately captures conscientiousness, pragmatism, self-reliance, and service-oriented identity.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q01, Q65, Q109",
+              "source_b_ref": "summaries.psychologist, preferences.work_and_career",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile captures stress coping through hands-on work, walking, music, budgeting, and talking with Linda.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q38, Q43-Q50",
+              "source_b_ref": "preferences.health_and_wellness, summaries.psychologist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Profile should include that he has no diagnosed depression or anxiety but worries and becomes short-tempered or overchecks plans when stress builds.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q45",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add mental-health detail about no diagnosis, worry, short temper, overchecking, and reliance on routine."
+            },
+            {
+              "id": 4,
+              "text": "Profile should include his religious-spiritual self-concept: practical Protestant faith and spiritual feeling in the desert.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q47, Q94",
+              "source_b_ref": "preferences.cultural_and_linguistic, preferences.nature_and_outdoors",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail on Protestant Christian identity, occasional church attendance, and spirituality in the desert."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Health_and_wellness, life_events_and_transitions, and psychologist summary consistently portray adaptation to aging rather than denial of limits.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.health_and_wellness",
+              "field_b": "preferences.life_events_and_transitions, summaries.psychologist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Social_and_relationships and psychologist summary consistently depict Linda and family as emotional anchors.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.social_and_relationships",
+              "field_b": "summaries.psychologist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Hobbies_and_recreation and health_and_wellness consistently show hands-on activity as both identity expression and emotional regulation.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.hobbies_and_recreation",
+              "field_b": "preferences.health_and_wellness",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview states retirement initially left him feeling adrift, and workshops restored purpose.",
+              "gap": true,
+              "interview_ref": "Q43",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add retirement adjustment and purpose-through-workshops detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview states he copes without smoking, low alcohol use, and no marijuana or other drug use.",
+              "gap": true,
+              "interview_ref": "Q38-Q39",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add substance-use and coping detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview states his values include family, usefulness, honesty, independence, respect for land, self-reliance, kindness, patience, and not wasting resources.",
+              "gap": true,
+              "interview_ref": "Q109",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add explicit values detail."
+            },
+            {
+              "id": 4,
+              "text": "Interview states he wants grandchildren to remember him as someone who showed up and taught useful things.",
+              "gap": true,
+              "interview_ref": "Q108",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add grandparent legacy detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "No contradictions required human review. Several meaningful interview details were absent or under-specified in the draft profile and were carried forward into the corrected preferences.",
+    "final_status": "Corrected profile is ready for downstream use with summaries preserved verbatim and hidden_facts generated."
+  },
+  "corrected_extracted_profile": {
+    "participant_id": "935d50d4e4ea4f4a8b40355ab690b1bf",
+    "name": "Keith Moore",
+    "age": 60,
+    "gender": "Male",
+    "marital_status": "Married and living with wife Linda",
+    "location": "Apache Junction, AZ 85120",
+    "education": "High school diploma",
+    "occupation": "Retired handyman and repairman; not in paid workforce; volunteer community workshop leader",
+    "preferences": {
+      "_note": "Same 18 subcategories as the draft profile, with gaps filled and inconsistencies resolved. Every correction traces back to an observation in the verification report above.",
+      "health_and_wellness": {
+        "summary": "Prioritizes mobility, independence, preventive care, walking, hiking, and practical management of blood pressure, knee pain, and back stiffness.",
+        "details": [
+          "Takes low-dose blood pressure medication and wants to preserve mobility (Q31).",
+          "Exercises early to avoid heat and uses pacing, hydration, hats, and rest (Q32).",
+          "Uses conservative pain management such as ice, stretching, heat, rest, and occasional ibuprofen (Q37, Q39).",
+          "Has mild high blood pressure, lower-back stiffness, and a right knee that flared after an ATV event (Q31, Q33).",
+          "Has no diagnosed depression or anxiety, but worry can make him short-tempered and prone to overchecking budgets or calendars (Q45).",
+          "Does not smoke, drinks usually zero to three beers per week, and does not use marijuana or other drugs (Q38-Q39)."
+        ],
+        "evidence": "Q31-Q40, Q45"
+      },
+      "food_and_dining": {
+        "summary": "Enjoys home cooking, grilling, and southwestern flavors while trying to balance health and budget.",
+        "details": [
+          "Cooks dinner two or three nights a week, often grilled or southwestern food (Q17).",
+          "Mentions grilled vegetables, beans, chicken, cactus paddles, salsa, and less fried food (Q32).",
+          "Cuts costs with beans, grilled chicken, chili, leftovers, and tacos (Q81).",
+          "Enjoys brisket but recognizes it is not everyday health food (Q32).",
+          "Uses family meals and Sunday dinners as regular points of connection with Linda, children, and grandchildren (Q05)."
+        ],
+        "evidence": "Q05, Q17, Q32, Q81"
+      },
+      "travel": {
+        "summary": "Prefers budget-conscious road trips tied to desert landscapes, family visits, trails, and western history.",
+        "details": [
+          "Visits sister Marlene in New Mexico when possible during road trips (Q06).",
+          "Delayed a short Sedona trip due to expenses (Q60).",
+          "Wants future trips to Monument Valley and White Sands without using credit card debt (Q62, Q108).",
+          "Prefers road trips over flights and saves a little cash each month for travel (Q62).",
+          "Wants to take Linda to Monument Valley using sensible back roads and stops at local history sites (Q108)."
+        ],
+        "evidence": "Q06, Q60, Q62, Q108"
+      },
+      "social_and_relationships": {
+        "summary": "Family-centered and selectively social, with close ties to wife, adult children, grandchildren, sister, neighbors, workshop peers, card friends, and ATV friends.",
+        "details": [
+          "Married to Linda for over thirty years with two adult children and four grandchildren (Q05).",
+          "Son Brian lives in Mesa and works in HVAC; daughter Erin lives outside Tucson and works at a dental office (Q05).",
+          "Has a younger sister, Marlene, in New Mexico, and they talk every couple weeks (Q06).",
+          "Sees friends through senior center, ATV riding, and Thursday card games (Q07, Q15).",
+          "Maintains neighborly tool-sharing and mutual watchfulness (Q08).",
+          "Wants his grandchildren to remember him as someone who showed up and taught useful things (Q108)."
+        ],
+        "evidence": "Q05-Q08, Q15, Q108"
+      },
+      "home_and_lifestyle": {
+        "summary": "Lives in an owned mortgaged home with a garage workshop and desert landscaping; values repair, frugality, and practical household routines.",
+        "details": [
+          "Household is Keith and Linda only, with garage used as workshop and storage (Q11).",
+          "Handles repairs, yard work, vehicle maintenance, budgeting, and grilling (Q11, Q17).",
+          "Owns home with mortgage and does most repairs himself (Q58).",
+          "Reviews bank accounts, receipts, upcoming bills, gas, groceries, and prescriptions every Sunday evening (Q17).",
+          "Could cover a $400 emergency from savings, though several stacked emergencies would require reduced spending or larger retirement withdrawals (Q82).",
+          "Household money comes from Linda's part-time income, retirement withdrawals, and a small pension-type payment (Q72-Q74).",
+          "Does not receive SNAP, housing vouchers, SSI, or similar public assistance, but uses senior discounts when available (Q80).",
+          "After a neighbor's shed burglary, he recorded tool serial numbers and improved shed locks (Q21)."
+        ],
+        "evidence": "Q11, Q17, Q21, Q58, Q72-Q74, Q80, Q82"
+      },
+      "entertainment": {
+        "summary": "Enjoys sports viewing, cards, local theater, repair videos, and practical hobbies more than passive entertainment.",
+        "details": [
+          "Watches Diamondbacks and Suns games with Linda (Q05, Q15).",
+          "Plays cards Thursday evenings at the community hall (Q07, Q15).",
+          "Uses YouTube for repair, small engine, woodworking, and old music performances (Q48).",
+          "Goes to local theater with Linda now and then (Q05).",
+          "Avoids turning card night or online comments into political arguments (Q23, Q48)."
+        ],
+        "evidence": "Q05, Q07, Q15, Q23, Q48"
+      },
+      "hobbies_and_recreation": {
+        "summary": "Strongly prefers hands-on and outdoor hobbies: woodworking, birdhouses, ATV riding, hiking, golf outings, cards, gardening, and repair teaching.",
+        "details": [
+          "Builds shelves and birdhouses with grandchildren and workshop participants (Q05, Q108).",
+          "Hikes, rides ATVs, golfs occasionally, gardens, and watches sports (Q15, Q18).",
+          "Uses garage work such as sanding, sharpening tools, and making things to cope with stress (Q38, Q43).",
+          "Occasionally sells small woodworking pieces but does not want it to become pressure or dependable income (Q60).",
+          "Enjoys teaching tool safety and basic troubleshooting because it gives people confidence (Q65)."
+        ],
+        "evidence": "Q05, Q15, Q18, Q38, Q43, Q60, Q65, Q108"
+      },
+      "work_and_career": {
+        "summary": "Identity rooted in practical repair work, honest diagnosis, safety, community trust, and mentoring after retirement.",
+        "details": [
+          "Retired from paid handyman and repair work; volunteers at senior center (Q16).",
+          "Former duties included appliance repair, carpentry, small electrical, plumbing, and small engine repair (Q65).",
+          "Values diagnosing problems, working safely, explaining costs honestly, and teaching tool safety (Q65).",
+          "Did zero weeks of paid work in the past year and no paid work last week or last month (Q67-Q71).",
+          "Volunteer workshops usually take five to eight hours per week including prep, teaching, and cleanup (Q16, Q68).",
+          "Has volunteered at the senior center about three years and has good relationships with the coordinator and other volunteers (Q76-Q77)."
+        ],
+        "evidence": "Q16, Q65-Q78"
+      },
+      "arts_and_culture": {
+        "summary": "Drawn to western history, local theater, practical craft, and cultural memory of the Arizona desert.",
+        "details": [
+          "Attends local theater with Linda sometimes (Q05).",
+          "Wants a desert living guide covering water conservation, native plants, trail safety, and tool basics (Q108).",
+          "Childhood and values are tied to postwar Southwest practicality and desert life (Q01, Q97).",
+          "Reads and values western history and local history connected to road trips and desert places (Q108).",
+          "Practical crafts such as birdhouses and woodworking satisfy his creative side (Q05, Q43)."
+        ],
+        "evidence": "Q01, Q05, Q43, Q97, Q108"
+      },
+      "sports_and_fitness": {
+        "summary": "Keeps active through hiking, walking, ATV riding, occasional golf, and following Arizona professional sports.",
+        "details": [
+          "Exercises in early mornings through hiking or walking before heat (Q15, Q32).",
+          "Cut back rough ATV riding after a knee flare-up but remains involved (Q18, Q33).",
+          "Follows the Arizona Diamondbacks and Phoenix Suns (Q05, Q15).",
+          "Takes evening walks with Linda because her doctor encouraged it and it helps them sleep (Q18, Q50).",
+          "Uses knee supports and better pacing after an ATV-related knee flare-up (Q33)."
+        ],
+        "evidence": "Q05, Q15, Q18, Q32, Q33, Q50"
+      },
+      "nature_and_outdoors": {
+        "summary": "Strong attachment to the Sonoran desert, Superstition Mountains, native plants, trail safety, and land stewardship.",
+        "details": [
+          "Values seeing the Superstition Mountains and living near desert landscapes (Q08).",
+          "Concerned about trail trash, growth, water, and respect for public land (Q10, Q24, Q25).",
+          "Maintains desert landscaping with cactus, drip lines, native shrubs, and weed clearing (Q17).",
+          "Feels something spiritual in the desert, especially quiet mornings near the Superstitions (Q47).",
+          "Wants to teach water conservation, native plants, and trail safety through a desert living guide (Q108)."
+        ],
+        "evidence": "Q08, Q10, Q17, Q24-Q25, Q47, Q108"
+      },
+      "technology": {
+        "summary": "Uses basic technology pragmatically for budgeting, communication, repair learning, and workshop preparation.",
+        "details": [
+          "Video calls grandchildren and uses texts with neighbors (Q05, Q09).",
+          "Tracks budget in a spreadsheet and notebook (Q57).",
+          "Uses Facebook for family and local updates and YouTube for repair and woodworking instruction (Q48).",
+          "Prepares basic electronics workshop handouts and practice boards for safe learning (Q18).",
+          "Searches YouTube by repair problem more than by personality or influencer (Q48)."
+        ],
+        "evidence": "Q05, Q09, Q18, Q48, Q57"
+      },
+      "community_and_civic": {
+        "summary": "Civic-minded, locally rooted, votes regularly, volunteers, mentors, supports neighbors, and focuses on practical local issues.",
+        "details": [
+          "Votes regularly by mail and studies propositions and local offices (Q23).",
+          "Leads senior center workshops and wants a youth apprenticeship program (Q16, Q108).",
+          "Helps neighbors with repairs and participates in community maintenance-style support (Q08, Q16).",
+          "Identifies as an Independent leaning Republican and moderate practical conservative (Q24, Q95-Q96).",
+          "Prioritizes budgets, public safety, property rights, taxpayer value, water, roads, land use, and growth (Q23-Q25).",
+          "Supports policing accountability, training, body cameras, de-escalation, and transparent review while rejecting abolishing police completely (Q26-Q30).",
+          "Family conversations, especially with daughter Erin, have made him listen more carefully on race and policing (Q27-Q30).",
+          "Values family, usefulness, honesty, independence, respect for land, self-reliance, kindness, patience, and avoiding waste (Q109)."
+        ],
+        "evidence": "Q08, Q16, Q23-Q30, Q95-Q96, Q108-Q109"
+      },
+      "music": {
+        "summary": "Enjoys older folk-rock and western-oriented music, especially while working in the garage.",
+        "details": [
+          "Uses music in the garage as an emotional reset (Q43).",
+          "Watches old music performances on YouTube (Q48).",
+          "Seed-consistent preferences include Chris LeDoux and John Denver, reflected in his older western and folk-rock taste (Q48).",
+          "Music supports his workshop and garage routines rather than serving as a public identity marker (Q43, Q48)."
+        ],
+        "evidence": "Q43, Q48"
+      },
+      "fashion_and_appearance": {
+        "summary": "Little direct fashion evidence; appearance preferences are practical and climate-driven.",
+        "details": [
+          "Uses a hat and heat-conscious outdoor clothing behavior when active in summer (Q32).",
+          "Values dirt-on-boots practicality over status display (Q109).",
+          "Uses knee supports and knee pads when physical tasks or injury risk require them (Q33-Q34).",
+          "Appearance choices are implied to be functional for heat, garage work, trail activity, and household repair (Q32-Q34)."
+        ],
+        "evidence": "Q32-Q34, Q109"
+      },
+      "cultural_and_linguistic": {
+        "summary": "White, non-Hispanic, U.S.-born, English-speaking man rooted in Anglo-American Arizona/Southwest culture.",
+        "details": [
+          "Born in Mesa, Arizona, and lived mostly around Apache Junction (Q86-Q87, Q97).",
+          "Identifies as not Hispanic or Latinx and as White (Q88-Q89).",
+          "Raised in a practical Protestant Christian household and identifies as Protestant Christian (Q47, Q94).",
+          "Attends a non-denominational community church a few times a month and prays short practical prayers for family health, patience, and guidance (Q47, Q94).",
+          "Reports some Scots-Irish and English family roots but does not track ancestry closely (Q88)."
+        ],
+        "evidence": "Q47, Q86-Q89, Q94, Q97"
+      },
+      "life_events_and_transitions": {
+        "summary": "Major transitions include choosing local handyman work over higher-paying distant construction, raising children, retiring from paid work, and redefining purpose through volunteering.",
+        "details": [
+          "Chose local repair work over better-paid travel construction to be present for family (Q02-Q03).",
+          "Retired from paid handyman work and shifted to volunteer workshops (Q01, Q16).",
+          "Recent knee flare-up forced adjustments to physical limits and identity (Q33, Q44).",
+          "At age 16, lived in Apache Junction with both parents and younger sister Marlene in a modest but stable household (Q97-Q99).",
+          "His father was an auto mechanic, his mother worked in a school cafeteria, and both parents completed high school (Q100-Q107).",
+          "Retirement initially left him feeling adrift, and senior center workshops restored purpose (Q43)."
+        ],
+        "evidence": "Q01-Q03, Q16, Q33, Q43-Q44, Q97-Q107"
+      },
+      "media_and_information_diet": {
+        "summary": "Consumes local notices, family social media, repair videos, news, official health information, and avoids social media conflict and misinformation.",
+        "details": [
+          "Uses Facebook for family photos, local events, trail updates, and senior center notices (Q48).",
+          "Trusts doctor, pharmacist, and health department information for vaccines (Q42).",
+          "Avoids comment fights and is skeptical of dramatic or conspiratorial online claims (Q24, Q42, Q48).",
+          "Gets information on race and policing from news, documentaries Linda watches, and conversations with younger family members (Q28).",
+          "Generally supports vaccines, got recommended COVID shots and boosters, and gets flu shots most years (Q41)."
+        ],
+        "evidence": "Q24, Q28, Q41-Q42, Q48"
+      }
+    },
+    "summaries": {
+      "_note": "Carried over VERBATIM from the draft extracted profile. Not regenerated in this step.",
+      "demographer": "Keith Moore is a 60-year-old White non-Hispanic married man living with his wife Linda in Apache Junction, Arizona (Q84-Q89). He has a high school diploma, is U.S.-born, and spent adolescence in Apache Junction in a two-parent household with one sister (Q90, Q97-Q99). He is retired from paid handyman and repair work and is not in the paid workforce, but he remains active through senior center volunteering (Q16, Q65-Q78). His household is a two-person owner household with a mortgage, modest retirement resources, Linda's part-time income, and careful budgeting (Q51-Q58, Q74).",
+      "behavioral_economist": "Keith is highly loss-averse around debt, health costs, and household stability, preferring budgeting, repair, saving, and delayed consumption over credit use (Q57-Q64, Q82-Q83). His choices are motivated by independence, family presence, and practical usefulness, as shown by his earlier decision to choose local handyman work over higher-paying distant construction jobs (Q02-Q03). He responds to uncertainty with routines, lists, emergency savings, and preventive maintenance rather than impulsive spending (Q17, Q61-Q62). He takes moderate physical risks in hiking and ATV activity but adapts after injury, showing bounded risk-taking tied to identity and competence (Q33-Q34, Q44).",
+      "political_scientist": "Keith is a regular voter who uses mail ballots and pays close attention to local issues such as water, roads, taxes, public safety, land use, and growth (Q23-Q25). He identifies as an Independent leaning Republican and describes himself as a moderate practical conservative rather than a strong partisan (Q24, Q95-Q96). He has mixed but reform-oriented views on policing and race, supporting accountability and training while rejecting abolishing police (Q26-Q30). His civic orientation is localist and communitarian, expressed through voting, neighbor support, senior center volunteering, and concern for desert stewardship (Q08, Q16, Q23, Q108).",
+      "psychologist": "Keith presents as conscientious, pragmatic, self-reliant, and identity-driven around competence, usefulness, and being dependable (Q01, Q65, Q109). He regulates stress through routine, hands-on repair, walking, music, budgeting, and direct conversation with Linda rather than substance use or online support (Q38, Q43-Q50). Retirement and physical limitations challenge his self-concept, but he adapts by teaching, mentoring, pacing his body, and reframing strength as asking for help when needed (Q16, Q33-Q34, Q44). His relational style is loyal, modest, and service-oriented, with family and community mentorship central to his sense of purpose (Q05-Q07, Q108-Q109)."
+    },
+    "hidden_facts": [
+      {
+        "fact_id": "HF-001",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith takes low-dose blood pressure medication.",
+        "ground_truth_label": "Uses prescribed blood pressure medication",
+        "behavioral_evidence_from_interview": [
+          "Q31: Yes, a low-dose blood pressure medication"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-002",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith wants to preserve mobility so he can walk trails and work at his bench.",
+        "ground_truth_label": "Prioritizes mobility and independence",
+        "behavioral_evidence_from_interview": [
+          "Q31: Keeping mobility. If I can walk trails and work at my bench, I feel like myself."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-003",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith exercises early to avoid Arizona heat.",
+        "ground_truth_label": "Exercises early to manage heat exposure",
+        "behavioral_evidence_from_interview": [
+          "Q15: Early morning. I hike or walk before the heat",
+          "Q32: I do everything early"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-004",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith uses hydration, a hat, pacing, and stopping before overexertion to handle summer heat.",
+        "ground_truth_label": "Uses heat-safety precautions",
+        "behavioral_evidence_from_interview": [
+          "Q32: drink water, wear a hat, and stop before pride gets me in trouble"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-005",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith uses ice, stretching, heat, rest, and occasional ibuprofen for knee or back pain.",
+        "ground_truth_label": "Uses conservative pain management",
+        "behavioral_evidence_from_interview": [
+          "Q39: Stretch, ice or heat, rest",
+          "Q39: I took ibuprofen with dinner, iced my knee"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-006",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith has mild high blood pressure, lower-back stiffness, and a right knee that flared after an ATV event.",
+        "ground_truth_label": "Has mild chronic health limitations",
+        "behavioral_evidence_from_interview": [
+          "Q31: mild high blood pressure, a stiff lower back, and a right knee",
+          "Q33: knee flare-up after an ATV event"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-007",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith has not been diagnosed with depression or anxiety.",
+        "ground_truth_label": "No diagnosed depression or anxiety",
+        "behavioral_evidence_from_interview": [
+          "Q45: I have not been diagnosed with depression or anxiety."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-008",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "When worry builds, Keith can become short-tempered and overcheck the budget or calendar.",
+        "ground_truth_label": "Worry manifests as irritability and overchecking",
+        "behavioral_evidence_from_interview": [
+          "Q45: I get short-tempered and start overchecking the budget or the calendar."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-009",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith does not smoke and usually drinks zero to three beers per week.",
+        "ground_truth_label": "Low alcohol use and no smoking",
+        "behavioral_evidence_from_interview": [
+          "Q38: I do not smoke.",
+          "Q38: Usually zero to three beers"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-010",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Keith does not use marijuana or other drugs.",
+        "ground_truth_label": "No marijuana or illicit drug use",
+        "behavioral_evidence_from_interview": [
+          "Q39: I do not use marijuana or other drugs."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-011",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Keith cooks dinner two or three nights a week.",
+        "ground_truth_label": "Cooks regularly at home",
+        "behavioral_evidence_from_interview": [
+          "Q17: I cook dinner two or three nights a week"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-012",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Keith often cooks grilled or southwestern food.",
+        "ground_truth_label": "Prefers grilled southwestern home cooking",
+        "behavioral_evidence_from_interview": [
+          "Q17: usually something grilled or southwestern"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-013",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Keith tries to eat grilled vegetables, beans, chicken, cactus paddles, salsa, and less fried food.",
+        "ground_truth_label": "Balances southwestern food with healthier choices",
+        "behavioral_evidence_from_interview": [
+          "Q32: More grilled vegetables, beans, chicken, cactus paddles, salsa, and less fried food."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-014",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "When cutting costs, Keith makes beans, grilled chicken, chili, breakfast-for-dinner, and leftovers stretched into tacos.",
+        "ground_truth_label": "Uses low-cost home meals",
+        "behavioral_evidence_from_interview": [
+          "Q81: Beans, grilled chicken, chili, breakfast-for-dinner, and leftovers stretched into tacos."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-015",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Keith enjoys brisket but recognizes it is not everyday health food.",
+        "ground_truth_label": "Enjoys brisket in moderation",
+        "behavioral_evidence_from_interview": [
+          "Q32: brisket is not exactly health food, even if I make a good one"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-016",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Keith uses Sunday dinners a couple times a month to connect with family.",
+        "ground_truth_label": "Family meals are a recurring social routine",
+        "behavioral_evidence_from_interview": [
+          "Q05: We do Sunday dinners a couple times a month"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-017",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Keith visits his sister Marlene in New Mexico about once a year if possible.",
+        "ground_truth_label": "Occasional New Mexico family road trips",
+        "behavioral_evidence_from_interview": [
+          "Q06: Once a year if the truck is behaving and we can work it into a road trip."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-018",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Keith delayed a short Sedona trip because of extra expenses.",
+        "ground_truth_label": "Delays travel when finances are tight",
+        "behavioral_evidence_from_interview": [
+          "Q60: A short run up toward Sedona."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-019",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Keith wants future trips to Monument Valley and White Sands without using credit card debt.",
+        "ground_truth_label": "Debt-averse travel planning",
+        "behavioral_evidence_from_interview": [
+          "Q62: I would like to take Linda back to Monument Valley and maybe White Sands, but I will not put that on a credit card"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-020",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Keith prefers road trips over flights and saves a little cash each month for travel.",
+        "ground_truth_label": "Budget-conscious road-trip preference",
+        "behavioral_evidence_from_interview": [
+          "Q62: A little cash each month, and we plan road trips instead of flights."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-021",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Keith wants to take Linda to Monument Valley using sensible back roads and local history stops.",
+        "ground_truth_label": "Culturally oriented desert road trips",
+        "behavioral_evidence_from_interview": [
+          "Q108: Monument Valley with Linda, taking back roads where it is sensible and stopping at local history sites."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-022",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith has been married to Linda for a little over thirty years.",
+        "ground_truth_label": "Long-term marriage to Linda",
+        "behavioral_evidence_from_interview": [
+          "Q05: married a little over thirty years",
+          "Q84: currently married and living with my wife, Linda"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-023",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith and Linda have two adult children and four grandchildren.",
+        "ground_truth_label": "Two adult children and four grandchildren",
+        "behavioral_evidence_from_interview": [
+          "Q05: We have two adult children.",
+          "Q05: Between them we have four grandkids"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-024",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith's son Brian lives in Mesa and works in HVAC.",
+        "ground_truth_label": "Son Brian in Mesa HVAC work",
+        "behavioral_evidence_from_interview": [
+          "Q05: Our son, Brian, lives in Mesa and works in HVAC"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-025",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith's daughter Erin lives outside Tucson and works at a dental office.",
+        "ground_truth_label": "Daughter Erin outside Tucson dental office work",
+        "behavioral_evidence_from_interview": [
+          "Q05: our daughter, Erin, lives outside Tucson and works at a dental office"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-026",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith has a younger sister named Marlene in New Mexico.",
+        "ground_truth_label": "Younger sister Marlene in New Mexico",
+        "behavioral_evidence_from_interview": [
+          "Q06: I have a younger sister, Marlene, in New Mexico."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-027",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith talks with Marlene every couple weeks.",
+        "ground_truth_label": "Regular contact with sister",
+        "behavioral_evidence_from_interview": [
+          "Q06: We talk every couple weeks"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-028",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith sees friends through the senior center, ATV riding, and Thursday card games.",
+        "ground_truth_label": "Selective social network through activities",
+        "behavioral_evidence_from_interview": [
+          "Q07: friends from the senior center and community hall",
+          "Q07: Mike, who rides ATVs with me, and Ray, who plays cards"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-029",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith maintains neighborly tool-sharing and mutual watchfulness.",
+        "ground_truth_label": "Neighbor support network",
+        "behavioral_evidence_from_interview": [
+          "Q08: We trade tools and keep an eye on each other's places."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-030",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Keith wants his grandchildren to remember him as someone who showed up and taught useful things.",
+        "ground_truth_label": "Grandparent legacy through practical teaching",
+        "behavioral_evidence_from_interview": [
+          "Q108: I hope my grandkids remember me as someone who showed up and taught them useful things."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-031",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith's full-time household consists only of Keith and Linda.",
+        "ground_truth_label": "Two-person household",
+        "behavioral_evidence_from_interview": [
+          "Q11: It is just me and Linda in the house full time.",
+          "Q51: It is just the two of us full time."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-032",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith's garage is half workshop and half storage.",
+        "ground_truth_label": "Garage workshop",
+        "behavioral_evidence_from_interview": [
+          "Q11: a garage that is half workshop, half storage"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-033",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith handles household repairs, yard work, vehicle maintenance, budgeting, and much of the grilling.",
+        "ground_truth_label": "Practical household responsibilities",
+        "behavioral_evidence_from_interview": [
+          "Q11: I handle repairs, yard work, vehicle maintenance, and a lot of the grilling.",
+          "Q17: I also track our budget every Sunday evening."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-034",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith and Linda own their home with a mortgage.",
+        "ground_truth_label": "Owner household with mortgage",
+        "behavioral_evidence_from_interview": [
+          "Q58: We own it with a mortgage."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-035",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith reviews bank accounts, receipts, upcoming bills, gas, groceries, and prescriptions every Sunday evening.",
+        "ground_truth_label": "Weekly household budgeting routine",
+        "behavioral_evidence_from_interview": [
+          "Q17: I check the bank account, receipts, upcoming bills, and what we spent on gas, groceries, and prescriptions."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-036",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith could cover a $400 emergency from savings.",
+        "ground_truth_label": "Can cover $400 emergency",
+        "behavioral_evidence_from_interview": [
+          "Q82: We could cover $400 from savings"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-037",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith's household money comes from Linda's part-time income, retirement withdrawals, and a small pension-type payment.",
+        "ground_truth_label": "Mixed retirement household income",
+        "behavioral_evidence_from_interview": [
+          "Q72: Linda's part-time income, retirement account withdrawals, and a small pension-type payment",
+          "Q74: about $3,900"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-038",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith does not receive SNAP, housing vouchers, SSI, or similar public assistance.",
+        "ground_truth_label": "No means-tested public assistance",
+        "behavioral_evidence_from_interview": [
+          "Q80: No, we do not receive SNAP, housing vouchers, SSI, or benefits like that."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-039",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Keith uses senior discounts when available.",
+        "ground_truth_label": "Uses senior discounts",
+        "behavioral_evidence_from_interview": [
+          "Q80: Yes, discounts when available"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-040",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "After a neighbor's shed burglary, Keith recorded tool serial numbers and improved shed locks.",
+        "ground_truth_label": "Improved property security after neighbor burglary",
+        "behavioral_evidence_from_interview": [
+          "Q21: I wrote down tool serial numbers and put better locks on my shed."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-041",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Keith watches Arizona Diamondbacks and Phoenix Suns games with Linda.",
+        "ground_truth_label": "Follows Diamondbacks and Suns",
+        "behavioral_evidence_from_interview": [
+          "Q05: watch Diamondbacks or Suns games",
+          "Q15: watching the Diamondbacks"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-042",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Keith plays cards on Thursday evenings at the community hall.",
+        "ground_truth_label": "Thursday card games",
+        "behavioral_evidence_from_interview": [
+          "Q15: Thursdays I play cards in the evening at the community hall."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-043",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Keith uses YouTube for repair, small engine, woodworking, and old music performances.",
+        "ground_truth_label": "YouTube for practical learning and music",
+        "behavioral_evidence_from_interview": [
+          "Q48: I watch YouTube for repair videos, small engine tips, woodworking tricks, and old music performances."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-044",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Keith and Linda go to local theater now and then.",
+        "ground_truth_label": "Occasional local theater attendance",
+        "behavioral_evidence_from_interview": [
+          "Q05: go to local theater now and then"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-045",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Keith avoids turning card night or online comments into political arguments.",
+        "ground_truth_label": "Avoids recreational political conflict",
+        "behavioral_evidence_from_interview": [
+          "Q23: I avoid turning card night into an argument.",
+          "Q48: I try not to get dragged into comment fights"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-046",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Keith builds shelves and birdhouses with grandchildren and workshop participants.",
+        "ground_truth_label": "Woodworking with family and learners",
+        "behavioral_evidence_from_interview": [
+          "Q05: One grandson is learning to sand and stain a small shelf.",
+          "Q05: One granddaughter likes birdhouses"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-047",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Keith hikes, rides ATVs, golfs occasionally, gardens, and watches sports.",
+        "ground_truth_label": "Outdoor and hands-on recreation mix",
+        "behavioral_evidence_from_interview": [
+          "Q15: hike early or run errands... ATV riding... golf outing once in a while, or watching the Diamondbacks"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-048",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Keith uses sanding, tool sharpening, and making things in the garage to cope with stress.",
+        "ground_truth_label": "Hands-on work as stress coping",
+        "behavioral_evidence_from_interview": [
+          "Q38: go to the garage, sand a board, sharpen tools",
+          "Q43: music in the garage"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-049",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Keith occasionally sells small woodworking pieces but does not want that to become dependable income.",
+        "ground_truth_label": "Occasional non-primary woodworking sales",
+        "behavioral_evidence_from_interview": [
+          "Q60: I also sold a couple of extra woodworking pieces",
+          "Q60: No, just occasional. I do not want it to become pressure."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-050",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Keith enjoys teaching tool safety and basic troubleshooting because it gives people confidence.",
+        "ground_truth_label": "Enjoys confidence-building repair teaching",
+        "behavioral_evidence_from_interview": [
+          "Q65: Tool safety and basic troubleshooting, because it gives people confidence."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-051",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith is retired from paid handyman and repair work.",
+        "ground_truth_label": "Retired from paid repair work",
+        "behavioral_evidence_from_interview": [
+          "Q16: I am not in the workforce now.",
+          "Q16: retired from paid jobs"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-052",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith volunteers as a senior center workshop leader.",
+        "ground_truth_label": "Senior center volunteer workshop leader",
+        "behavioral_evidence_from_interview": [
+          "Q16: volunteer workshop leading at the senior center",
+          "Q76: My senior center role is volunteer"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.political_scientist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-053",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith's former work included appliance repair, carpentry, small electrical troubleshooting, plumbing fixes, and small engine repair.",
+        "ground_truth_label": "Former handyman and repairman skill set",
+        "behavioral_evidence_from_interview": [
+          "Q65: appliance repair, carpentry, small electrical troubleshooting, plumbing fixes, and small engine repair"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-054",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith values diagnosing problems, working safely, explaining costs honestly, and leaving places clean.",
+        "ground_truth_label": "Repair work ethics and safety orientation",
+        "behavioral_evidence_from_interview": [
+          "Q65: diagnosing the problem, doing the work safely, explaining costs honestly, and leaving the place cleaner than I found it"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-055",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith did zero weeks of paid work in the past year and had no paid work last week or last month.",
+        "ground_truth_label": "No recent paid employment",
+        "behavioral_evidence_from_interview": [
+          "Q67: For paid work, zero weeks.",
+          "Q69: No, I did not work for pay last week.",
+          "Q71: Zero paid jobs in the past month."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-056",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith's volunteer workshops usually take five to eight hours per week including prep, teaching, and cleanup.",
+        "ground_truth_label": "Five to eight weekly volunteer hours",
+        "behavioral_evidence_from_interview": [
+          "Q16: Usually five to eight hours",
+          "Q68: around five to eight hours a week"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-057",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Keith has volunteered at the senior center for about three years.",
+        "ground_truth_label": "Three years senior center volunteering",
+        "behavioral_evidence_from_interview": [
+          "Q76: About three years."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-058",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Keith wants to write a simple desert living guide covering water conservation, native plants, trail safety, and tool basics.",
+        "ground_truth_label": "Desert living guide ambition",
+        "behavioral_evidence_from_interview": [
+          "Q108: write a simple desert living guide: water conservation, native plants, trail safety, tool basics"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-059",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Keith's childhood and values are tied to practical Southwest desert life.",
+        "ground_truth_label": "Southwest practical cultural memory",
+        "behavioral_evidence_from_interview": [
+          "Q01: grew up around Apache Junction",
+          "Q97: Smaller, dustier, and more open desert around town."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-060",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Keith values western and local history in connection with desert road trips.",
+        "ground_truth_label": "Western and local history interest",
+        "behavioral_evidence_from_interview": [
+          "Q108: stopping at local history sites"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-061",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Keith hikes or walks in the early morning before the heat.",
+        "ground_truth_label": "Morning hiking and walking",
+        "behavioral_evidence_from_interview": [
+          "Q15: I hike or walk before the heat"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-062",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Keith cut back rough ATV riding after a knee flare-up but remains involved.",
+        "ground_truth_label": "Adapted ATV activity after injury",
+        "behavioral_evidence_from_interview": [
+          "Q18: stopped doing rough rides back to back",
+          "Q33: knee flare-up after an ATV event"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-063",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Keith takes evening walks with Linda because her doctor encouraged it and it helps them sleep.",
+        "ground_truth_label": "Evening walks with Linda",
+        "behavioral_evidence_from_interview": [
+          "Q18: Linda and I have been walking more in the evenings",
+          "Q50: Evening walks with Linda"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-064",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Keith uses knee supports and better pacing after an ATV-related knee flare-up.",
+        "ground_truth_label": "Uses pacing and knee supports",
+        "behavioral_evidence_from_interview": [
+          "Q33: I need knee supports and better pacing."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-065",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Keith values seeing the Superstition Mountains and living near desert landscapes.",
+        "ground_truth_label": "Attachment to Superstition Mountains",
+        "behavioral_evidence_from_interview": [
+          "Q08: not too far from the Superstition Mountains",
+          "Q08: I like seeing the mountains change color"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-066",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Keith is concerned about trail trash, growth, water, and respect for public land.",
+        "ground_truth_label": "Desert stewardship concerns",
+        "behavioral_evidence_from_interview": [
+          "Q10: folks not respecting trails or leaving trash",
+          "Q25: water, heat, and growth"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-067",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Keith maintains desert landscaping with cactus, drip lines, native shrubs, and weed clearing.",
+        "ground_truth_label": "Maintains desert landscaping",
+        "behavioral_evidence_from_interview": [
+          "Q17: Trimming cactus pads, checking drip lines, clearing weeds, and keeping native shrubs"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-068",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Keith feels something spiritual in the desert, especially quiet mornings near the Superstitions.",
+        "ground_truth_label": "Desert spirituality",
+        "behavioral_evidence_from_interview": [
+          "Q47: I also feel something spiritual in the desert, especially early morning near the Superstitions"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-069",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Keith video calls his grandchildren.",
+        "ground_truth_label": "Uses video calls with grandchildren",
+        "behavioral_evidence_from_interview": [
+          "Q05: I video call the grandkids"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-070",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Keith uses texts with neighbors for informal safety communication.",
+        "ground_truth_label": "Texts neighbors for safety coordination",
+        "behavioral_evidence_from_interview": [
+          "Q09: mostly by texts or just walking over"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-071",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Keith tracks his budget in both a spreadsheet and a notebook.",
+        "ground_truth_label": "Spreadsheet and notebook budgeting",
+        "behavioral_evidence_from_interview": [
+          "Q57: Yes, roughly in a spreadsheet and a notebook."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-072",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Keith uses Facebook for family photos, local events, trail updates, and senior center notices.",
+        "ground_truth_label": "Pragmatic Facebook use",
+        "behavioral_evidence_from_interview": [
+          "Q48: Facebook some, mostly to see family photos, local events, trail updates, and senior center notices"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-073",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Keith prepares basic electronics workshop handouts and practice boards for safe learning.",
+        "ground_truth_label": "Creates workshop learning materials",
+        "behavioral_evidence_from_interview": [
+          "Q18: making handouts and simple practice boards so people can learn safely"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-074",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith votes pretty much every election by mail.",
+        "ground_truth_label": "Regular mail voter",
+        "behavioral_evidence_from_interview": [
+          "Q23: I vote pretty much every election",
+          "Q23: I do mail-in"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-075",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith studies propositions, judges, city issues, county offices, water, roads, taxes, public safety, and land use.",
+        "ground_truth_label": "Local-issue-oriented voter",
+        "behavioral_evidence_from_interview": [
+          "Q23: read the propositions and judges",
+          "Q23: City issues, county offices, water, roads, taxes, public safety, and land use."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-076",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith wants to help start a youth apprenticeship program where older tradespeople teach repair skills.",
+        "ground_truth_label": "Youth apprenticeship aspiration",
+        "behavioral_evidence_from_interview": [
+          "Q108: help start a youth apprenticeship program where older tradespeople teach basic repair skills"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-077",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith identifies as an Independent who leans Republican and as a moderate practical conservative.",
+        "ground_truth_label": "Independent leaning Republican",
+        "behavioral_evidence_from_interview": [
+          "Q95: Independent who leans Republican",
+          "Q95: Moderate conservative, yes."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-078",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith prioritizes budgets, public safety, property rights, taxpayer value, water, roads, land use, and growth.",
+        "ground_truth_label": "Practical conservative local priorities",
+        "behavioral_evidence_from_interview": [
+          "Q24: budgets, public safety, property rights, and not wasting taxpayer money",
+          "Q25: water, heat, and growth"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-079",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith supports policing accountability, training, body cameras, de-escalation, and transparent review while rejecting abolishing police completely.",
+        "ground_truth_label": "Moderate police reform position",
+        "behavioral_evidence_from_interview": [
+          "Q27: better training, body cameras, clear discipline",
+          "Q27: uneasy when the conversation turns into abolishing police completely",
+          "Q27: Transparent review when force is used"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-080",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith's daughter Erin has pushed him to listen more before reacting on race and policing.",
+        "ground_truth_label": "Family-influenced listening on race and policing",
+        "behavioral_evidence_from_interview": [
+          "Q27: my daughter pushes me to listen more before reacting"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-081",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Keith values family, usefulness, honesty, independence, respect for land, self-reliance, kindness, patience, and avoiding waste.",
+        "ground_truth_label": "Core values",
+        "behavioral_evidence_from_interview": [
+          "Q109: family, usefulness, honesty, independence, and respect for the land",
+          "Q109: Self-reliance, kindness, patience, and not wasting what you have."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist",
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-082",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Keith uses music in the garage as an emotional reset.",
+        "ground_truth_label": "Music as garage-based coping",
+        "behavioral_evidence_from_interview": [
+          "Q43: A walk, music in the garage, or talking it out with Linda."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-083",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Keith watches old music performances on YouTube.",
+        "ground_truth_label": "Old music performances on YouTube",
+        "behavioral_evidence_from_interview": [
+          "Q48: old music performances"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-084",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Keith has seed-consistent older western and folk-rock tastes including Chris LeDoux and John Denver.",
+        "ground_truth_label": "Older western and folk-rock music preference",
+        "behavioral_evidence_from_interview": [
+          "Q48: old music performances"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-085",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Keith wears a hat and uses heat-conscious outdoor clothing behavior in summer.",
+        "ground_truth_label": "Practical heat-oriented clothing",
+        "behavioral_evidence_from_interview": [
+          "Q32: wear a hat"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-086",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Keith values dirt-on-boots practicality over status display.",
+        "ground_truth_label": "Practical non-status appearance orientation",
+        "behavioral_evidence_from_interview": [
+          "Q109: a little dirt on my boots"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-087",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Keith uses knee supports and knee pads when physical tasks or injury risk require them.",
+        "ground_truth_label": "Functional protective gear",
+        "behavioral_evidence_from_interview": [
+          "Q33: knee supports",
+          "Q34: knee pads"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-088",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Keith was born in Mesa, Arizona and lived mostly around Apache Junction.",
+        "ground_truth_label": "Mesa-born and Apache Junction-rooted",
+        "behavioral_evidence_from_interview": [
+          "Q87: Mesa, Arizona.",
+          "Q87: grew up mostly around Apache Junction"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-089",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Keith identifies as White and not Hispanic or Latinx.",
+        "ground_truth_label": "White non-Hispanic identity",
+        "behavioral_evidence_from_interview": [
+          "Q88: No.",
+          "Q89: White."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-090",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Keith identifies as Christian, Protestant.",
+        "ground_truth_label": "Protestant Christian identity",
+        "behavioral_evidence_from_interview": [
+          "Q94: Christian, Protestant."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-091",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Keith attends a non-denominational community church a few times a month.",
+        "ground_truth_label": "Occasional community church attendance",
+        "behavioral_evidence_from_interview": [
+          "Q94: Non-denominational community church these days.",
+          "Q94: A few times a month."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-092",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Keith reports some Scots-Irish and English family roots but does not track ancestry closely.",
+        "ground_truth_label": "Scots-Irish and English ancestry roots",
+        "behavioral_evidence_from_interview": [
+          "Q88: Some Scots-Irish and English family roots, but nothing I track closely."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-093",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Keith chose local repair work over higher-paid travel construction to be present for family.",
+        "ground_truth_label": "Family-presence career tradeoff",
+        "behavioral_evidence_from_interview": [
+          "Q02: quit chasing bigger construction jobs around the Valley and stay closer to Apache Junction",
+          "Q03: conscious choice"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-094",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Keith retired from paid handyman work and shifted to volunteer workshops.",
+        "ground_truth_label": "Retirement transition to volunteering",
+        "behavioral_evidence_from_interview": [
+          "Q01: stopped doing paid handyman work and started leading workshops",
+          "Q16: retired from paid jobs"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-095",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Keith's recent knee flare-up forced him to adjust physical limits and identity.",
+        "ground_truth_label": "Knee flare-up identity adjustment",
+        "behavioral_evidence_from_interview": [
+          "Q44: I felt old in a way I did not like",
+          "Q44: being stubborn was not the same as being strong"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-096",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "At age 16, Keith lived in Apache Junction with both parents and younger sister Marlene in a modest but stable household.",
+        "ground_truth_label": "Stable two-parent adolescent household",
+        "behavioral_evidence_from_interview": [
+          "Q97: Apache Junction, Arizona.",
+          "Q98: Yes, I lived with both my mother and father.",
+          "Q99: My younger sister, Marlene, lived with us."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-097",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Keith's father was an auto mechanic and his mother worked in a school cafeteria.",
+        "ground_truth_label": "Mechanic father and cafeteria-worker mother",
+        "behavioral_evidence_from_interview": [
+          "Q103: She worked in a school cafeteria.",
+          "Q106: My dad was an auto mechanic."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-098",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Both of Keith's parents completed high school.",
+        "ground_truth_label": "Parents had high school education",
+        "behavioral_evidence_from_interview": [
+          "Q100: High school.",
+          "Q101: High school."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-099",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Retirement initially made Keith feel adrift, and senior center workshops gave him purpose.",
+        "ground_truth_label": "Workshops restore retirement purpose",
+        "behavioral_evidence_from_interview": [
+          "Q43: you can feel a little adrift",
+          "Q43: The workshops helped a lot because they give me a purpose."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-100",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Keith trusts doctors, pharmacists, and official health department information for vaccine guidance.",
+        "ground_truth_label": "Medical and official vaccine information trust",
+        "behavioral_evidence_from_interview": [
+          "Q42: My doctor first, then the pharmacist, and official health department information."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      }
+    ]
+  }
+}

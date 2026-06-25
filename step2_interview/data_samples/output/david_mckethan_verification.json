@@ -1,0 +1,2249 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "d1407440dc15455a870dbc3e5605979b",
+      "name": "David Mckethan",
+      "verification_date": "2026-06-23"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed age 46 and male sex match David's reported date of birth, confirmed age, and male-presenting family role.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed age, sex",
+              "source_b_ref": "Q85, Q84",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed marital status married_present is consistent with being married to Tonya and living with her.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed marital_status",
+              "source_b_ref": "Q05, Q51, Q84",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed Angier, NC 27501 residence matches the interview's repeated statement that Angier is home.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed city/state/zipcode/country",
+              "source_b_ref": "Q01, Q08, Q51",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed some_college education is consistent with high school plus community college coursework and current part-time enrollment.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed education_level",
+              "source_b_ref": "Q90-Q92",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 5,
+              "text": "Seed occupation cashier is consistent with the interview, which enriches the role as retail cashier at a local convenience/general retail store.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed occupation",
+              "source_b_ref": "Q16, Q65",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 5
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile age, gender, marital status, location, education, and occupation faithfully reflect the interview.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q84-Q91, Q16, Q65",
+              "source_b_ref": "top-level extracted_profile fields",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Profile household description correctly lists David, Tonya, Maya, and Caleb, and excludes his nearby mother.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q11, Q51-Q55",
+              "source_b_ref": "preferences.home_and_lifestyle, summaries.demographer",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Profile records renting but omits that the household has rented the same home for about seven years.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q58",
+              "source_b_ref": "preferences.home_and_lifestyle",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail to preferences.home_and_lifestyle: 'Rents his home and has lived there about seven years.'"
+            },
+            {
+              "id": 4,
+              "text": "Profile captures education status but omits that classes are mostly online with some evening requirements.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q17, Q91",
+              "source_b_ref": "education, preferences.work_and_career",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail to preferences.work_and_career or technology noting mostly online community college coursework with some evening requirements."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Top-level education, demographer summary, and life_events_and_transitions all agree that David has some college and is pursuing an associate degree.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "education",
+              "field_b": "summaries.demographer, preferences.life_events_and_transitions",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Home_and_lifestyle and demographer summary consistently describe a rented, modest, working-family household.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "summaries.demographer",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Social_and_relationships, cultural_and_linguistic, and summaries consistently place David in a Black Southern Baptist family and church context.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.social_and_relationships, preferences.cultural_and_linguistic",
+              "field_b": "summaries.demographer, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview gives specific children names and ages, Maya 15 and Caleb 10, which should be more explicit in the profile.",
+              "gap": true,
+              "interview_ref": "Q05, Q52",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add detail naming Maya as 15 and Caleb as 10."
+            },
+            {
+              "id": 2,
+              "text": "Interview states David was born in Raleigh and raised mostly around Angier.",
+              "gap": true,
+              "interview_ref": "Q01, Q87",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add birthplace and raised-in-Angier detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview records that no one in the household is temporary, away, a lodger, boarder, or employee.",
+              "gap": true,
+              "interview_ref": "Q12-Q14, Q53-Q54",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add concise household permanence detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed describes a practical cashier seeking advancement; interview confirms a calculated return to school for better promotion prospects.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "professional_persona, career_goals_and_ambitions",
+              "source_b_ref": "Q02, Q65, Q108",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed worry-prone financial discipline is confirmed by budgeting, savings envelopes, and late-night bill worry.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "persona",
+              "source_b_ref": "Q17, Q43-Q45, Q61",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed community-centric store aspiration matches interview descriptions of a future neighborhood store or coffee kiosk.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "professional_persona, career_goals_and_ambitions",
+              "source_b_ref": "Q62, Q108",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed modest-budget travel and practical spending are consistent with delayed trips, budget cuts, and emergency savings behavior.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "travel_persona, persona",
+              "source_b_ref": "Q60-Q64, Q82-Q83",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 4
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately represents David as budget-conscious and stretched but not in crisis.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q56-Q64, Q82-Q83",
+              "source_b_ref": "summaries.behavioral_economist, preferences.home_and_lifestyle",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Profile mentions budgeting but omits specific household income, spending, and emergency capacity that structure his financial behavior.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q57, Q72-Q74, Q82",
+              "source_b_ref": "preferences.home_and_lifestyle",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add financial details: usual spending $3,700-$3,900, last month $4,200 with car repair, household take-home about $4,600-$4,700, and $400 emergency is coverable but painful."
+            },
+            {
+              "id": 3,
+              "text": "Profile captures savings behavior but omits that goals are emergency stability first, then house and small business.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q61-Q62, Q83",
+              "source_b_ref": "preferences.home_and_lifestyle, preferences.work_and_career",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add emergency fund, house, and small business savings priority."
+            },
+            {
+              "id": 4,
+              "text": "Profile captures avoidance of risky coping but omits no smoking, moderate alcohol, no marijuana, and OTC-only pain medicine.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q38-Q39",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add substance-use and coping details to health_and_wellness."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Work_and_career ambition and home_and_lifestyle budgeting are internally consistent with cautious upward mobility.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.work_and_career",
+              "field_b": "preferences.home_and_lifestyle, summaries.behavioral_economist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Food_and_dining love of heavy barbecue is consistent with health_and_wellness portion-control struggles, not contradictory.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.food_and_dining",
+              "field_b": "preferences.health_and_wellness",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Travel preference for modest trips aligns with overall financial caution and rootedness.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.travel",
+              "field_b": "preferences.home_and_lifestyle, summaries.behavioral_economist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview gives debt details: credit card debt, school payment plan, no car loan, and no family debt.",
+              "gap": true,
+              "interview_ref": "Q63",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add current debt composition and avoidance of owing family/friends."
+            },
+            {
+              "id": 2,
+              "text": "Interview describes tax filing behavior and typical refund use.",
+              "gap": true,
+              "interview_ref": "Q75",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add W-2/receipt organization, tax software use, and refund use for bills/savings/needed item."
+            },
+            {
+              "id": 3,
+              "text": "Interview records that David does not currently receive SNAP, housing vouchers, SSI, or similar benefits, though the family received help when the kids were young.",
+              "gap": true,
+              "interview_ref": "Q80",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add current no-benefits status and past openness/use when needed."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed Black Southern community identity is strongly confirmed by interview discussion of church, history, family, and rural North Carolina roots.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "cultural_background",
+              "source_b_ref": "Q01, Q28, Q88-Q89",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed community-centered orientation matches interview voting motivations around schools, policing, roads, and small business.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "persona, cultural_background",
+              "source_b_ref": "Q23-Q25",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed does not specify party identity; interview enriches this with moderate/practical Democratic identification.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona fields",
+              "source_b_ref": "Q95-Q96",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed emphasis on church and community gatherings is consistent with interview's practical civic activity through church, family, and local networks.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "cultural_background, arts_persona",
+              "source_b_ref": "Q26-Q30, Q47",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 4
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately represents David as a moderate Democrat who votes most of the time and attends more to local politics now.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q23-Q25, Q95-Q96",
+              "source_b_ref": "summaries.political_scientist, preferences.community_and_civic",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Profile captures fair policing but omits the concrete mixed law-enforcement experiences and traffic-stop caution.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q20-Q22",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail about mixed law-enforcement experiences, no arrest history, cautious traffic-stop behavior, and cousin's arrest shaping views on reentry."
+            },
+            {
+              "id": 3,
+              "text": "Profile captures BLM support but omits that he attended one peaceful local prayer/community gathering.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q26, Q29",
+              "source_b_ref": "preferences.community_and_civic, summaries.political_scientist",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add one peaceful local gathering and primary response through conversations and teaching his children."
+            },
+            {
+              "id": 4,
+              "text": "Profile mentions trusted sources generally but omits local health department, pharmacists, and church medical professionals as vaccine information sources.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q42",
+              "source_b_ref": "preferences.media_and_information_diet",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add local health department, pharmacists, and church medical professionals to trusted health information sources."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Community_and_civic and cultural_and_linguistic consistently connect civic outlook to Black Southern Baptist community life.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "preferences.cultural_and_linguistic",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Media_and_information_diet's avoidance of online arguments is consistent with political_scientist summary describing engagement through conversation rather than sustained protest.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.media_and_information_diet",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Political moderation and support for BLM concerns are presented as compatible, not contradictory, because he supports core concerns while avoiding loud partisan conflict.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview includes explicit policy priorities: affordable health care, wages, public schools, fair policing, small business, roads, zoning, and development.",
+              "gap": true,
+              "interview_ref": "Q23-Q25",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add fuller list of civic issue priorities."
+            },
+            {
+              "id": 2,
+              "text": "Interview gives nuanced institutional trust: will call police for danger, prefers neighbors/church for smaller disputes.",
+              "gap": true,
+              "interview_ref": "Q20",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add conditional police-calling preference."
+            },
+            {
+              "id": 3,
+              "text": "Interview says his close circle mostly understands racism/policing concerns, while some online acquaintances create conflict.",
+              "gap": true,
+              "interview_ref": "Q30",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add social-circle response and conflict-avoidance detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed practical mindset and balanced curiosity are confirmed by hands-on learning, retail competence, school return, and interest in improving store efficiency.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "professional_persona, skills_and_expertise",
+              "source_b_ref": "Q01-Q04, Q16, Q65",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed worry-prone streak is confirmed by late-night rumination, bill worry, sleep disruption, and overchecking the bank app.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "persona, career_goals_and_ambitions",
+              "source_b_ref": "Q43-Q45, Q50",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed community and hospitality orientation is confirmed through cookouts, choir, church, neighbor support, and family gatherings.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "persona, cultural_background, culinary_persona",
+              "source_b_ref": "Q01, Q07-Q08, Q47, Q109",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed disciplined financial steps are confirmed by written budgets, envelopes, savings deposits, and payment prioritization with Tonya.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "persona",
+              "source_b_ref": "Q17, Q44, Q61",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 4
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile accurately represents David as conscientious, relational, future-oriented, and worried under pressure.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q43-Q45, Q108-Q109",
+              "source_b_ref": "summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Profile captures coping tools but omits that he would consider counseling if worry worsened and sees prayer and counseling as compatible.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q45",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add counseling openness if worry worsens and compatibility with prayer."
+            },
+            {
+              "id": 3,
+              "text": "Profile mentions family support but omits Denise's specific role in calming his overthinking.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q06, Q44",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add Denise as older sister in Raleigh who talks weekly and helps calm overthinking."
+            },
+            {
+              "id": 4,
+              "text": "Profile reflects values but could more directly include his self-definition of success as making people feel better, safer, or seen.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q109",
+              "source_b_ref": "preferences.cultural_and_linguistic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add values statement to cultural_and_linguistic or social_and_relationships."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Health_and_wellness worry, home_and_lifestyle budgeting, and psychologist summary align around rumination moderated by planning.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.health_and_wellness, preferences.home_and_lifestyle",
+              "field_b": "summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Music, arts_and_culture, and health_and_wellness consistently portray music as identity, spirituality, and emotional regulation.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.music, preferences.arts_and_culture",
+              "field_b": "preferences.health_and_wellness, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Work ambition and cautious risk profile are consistent: he seeks advancement through credentials and incremental responsibility rather than dramatic risk.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.work_and_career",
+              "field_b": "summaries.behavioral_economist, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview states stress signs: getting quiet, checking the bank app too much, and waking before the alarm.",
+              "gap": true,
+              "interview_ref": "Q45",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add stress-sign detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview describes family stress spillover: Tonya notices his quietness, Maya feels school pressure, and Caleb picks up tension.",
+              "gap": true,
+              "interview_ref": "Q46",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add family emotional-dynamics detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview gives concrete value inheritance: integrity, treating people right, and not forgetting where one came from.",
+              "gap": true,
+              "interview_ref": "Q109",
+              "should_be_in": "preferences.cultural_and_linguistic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add values he wants children to inherit."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "No contradictions required human review, but multiple interview-supported gaps were added to the corrected profile.",
+    "final_status": "Corrected profile is ready for downstream use with revisions and a hidden_facts registry."
+  },
+  "corrected_extracted_profile": {
+    "participant_id": "d1407440dc15455a870dbc3e5605979b",
+    "name": "David Mckethan",
+    "age": 46,
+    "gender": "Male",
+    "marital_status": "Married and living with wife Tonya",
+    "location": "Angier, NC 27501",
+    "education": "High school diploma plus some college; currently enrolled part time in community college for an associate degree in business administration",
+    "occupation": "Retail cashier at a local convenience/general retail store",
+    "preferences": {
+      "_note": "Same 18 subcategories as the draft profile, with gaps filled and inconsistencies resolved. Every correction traces back to an observation in the verification report.",
+      "health_and_wellness": {
+        "summary": "David values practical health habits but struggles with stress, sleep, blood pressure, extra weight, and knee soreness.",
+        "details": [
+          "Plays basketball for exercise but has knee pain after games (Q31, Q33).",
+          "Trying to drink more water, reduce soda, control portions, and monitor blood pressure (Q31, Q32).",
+          "Uses prayer, breathing, music, exercise, and talking with Tonya to manage worry (Q38, Q45, Q50).",
+          "Does not smoke, drinks moderately a couple times a month, does not use marijuana or other drugs, and uses OTC ibuprofen only occasionally for knee pain or headaches (Q38, Q39).",
+          "Has no current blood pressure medication or regular prescriptions for himself and delayed some dental/routine care because of cost (Q31, Q36, Q39).",
+          "Would consider counseling if worry worsened and believes prayer and counseling can both help (Q45).",
+          "Stress signs include getting quiet, checking the bank app too much, waking before the alarm, and losing sleep over bills or school deadlines (Q43-Q45, Q50).",
+          "His mother's diabetes and arthritis are ongoing family health concerns that he helps manage with rides, prescriptions, groceries, repairs, and check-ins (Q35)."
+        ],
+        "evidence": "Q31-Q39, Q43-Q45, Q50"
+      },
+      "food_and_dining": {
+        "summary": "He loves Southern soul food and community cooking, especially barbecue, ribs, collards, cornbread, and budget home meals.",
+        "details": [
+          "Enjoys smoking ribs, grilling, and weekend cookouts (Q01, Q07, Q109).",
+          "Cuts costs with beans, rice, baked chicken, collards, spaghetti, and cornbread (Q81).",
+          "Trying not to make every weekend heavy barbecue and macaroni-and-cheese eating (Q31).",
+          "Associates childhood and family memories with grilling, fish fries, church picnics, homecomings, and older relatives talking in the kitchen (Q01)."
+        ],
+        "evidence": "Q01, Q07, Q31, Q81, Q109"
+      },
+      "travel": {
+        "summary": "David prefers modest weekend road trips rather than expensive travel.",
+        "details": [
+          "Mentions trying craft beer on occasional trips to Asheville (Q38).",
+          "Cancelled or delayed a planned weekend trip during a tight financial month (Q64).",
+          "Prefers staying rooted near Angier even if moving someday (Q10, Q58).",
+          "Likes flexible road-trip style travel that fits family budget and local Southern destinations rather than expensive vacations (Q38, Q64)."
+        ],
+        "evidence": "Q10, Q38, Q58, Q64"
+      },
+      "social_and_relationships": {
+        "summary": "His social life centers on wife, children, mother, sister, church, coworkers, neighbors, and basketball friends.",
+        "details": [
+          "Married to Tonya with two children, Maya age 15 and Caleb age 10 (Q05, Q51, Q52).",
+          "Checks on his mother Evelyn two or three times a week; she lives nearby rather than in his home (Q05, Q51).",
+          "Older sister Denise lives in Raleigh, talks with him weekly, visits about monthly, and helps calm his overthinking (Q06, Q44).",
+          "Close to friends Marcus, Andre, Sister Janice, and younger coworker Luis (Q07).",
+          "Family stress affects the household: Tonya notices when he gets quiet, Maya feels school pressure, and Caleb picks up on tension (Q46).",
+          "Family evenings include dinner, homework, school activities, basketball, choir, and trying to put phones down during meals (Q05, Q19, Q46)."
+        ],
+        "evidence": "Q05-Q07, Q19, Q44, Q46, Q51-Q52"
+      },
+      "home_and_lifestyle": {
+        "summary": "David lives a modest, family-centered rented-home lifestyle in Angier, with routines built around work, school, church, kids, and budgeting.",
+        "details": [
+          "Rents his home and has lived there about seven years (Q58).",
+          "Household includes David, Tonya, Maya, and Caleb, all permanent household members with no lodgers, boarders, employees, or usual members away (Q11-Q14, Q51-Q54).",
+          "Tonya and David share household expenses; no one outside the home helps regularly and the children do not contribute financially (Q55).",
+          "Uses written budgeting, phone reminders, Sunday planning, bank-app checks, and cash envelopes for groceries, gas, and special events (Q17, Q18, Q45, Q61).",
+          "Usual monthly spending is about $3,700-$3,900, while a car repair pushed one month to about $4,200 (Q57).",
+          "Household monthly take-home income is usually about $4,600-$4,700, with David earning about $2,200 take-home from his cashier job (Q72-Q74).",
+          "Has some credit card debt, a school payment plan, no car loan, and avoids owing family or friends unless absolutely necessary (Q63).",
+          "Could probably cover a $400 emergency through savings, shifted bills, or a credit card, but it would hurt (Q82).",
+          "Does not currently receive SNAP, housing vouchers, SSI, or similar benefits, though the family received help years ago when the children were young (Q80).",
+          "Files taxes with software, keeps W-2s and receipts in a folder, and usually uses a modest refund for bills, savings, or a needed household item (Q75)."
+        ],
+        "evidence": "Q11-Q18, Q45, Q55-Q64, Q72-Q75, Q80-Q83"
+      },
+      "entertainment": {
+        "summary": "Entertainment is home-based and community-oriented: music, movies, sports, cookouts, and social media clips.",
+        "details": [
+          "Enjoys movie nights and family time (Q46).",
+          "Uses Instagram for barbecue videos, car restoration pages, basketball clips, and music posts (Q48).",
+          "Watches games with Caleb and follows basketball socially (Q15, Q47).",
+          "Prefers cookouts, Hornets games, standing by the grill, and local community events over costly entertainment (Q07, Q48, Q64)."
+        ],
+        "evidence": "Q07, Q15, Q46, Q48, Q64"
+      },
+      "hobbies_and_recreation": {
+        "summary": "His hobbies include pickup basketball, choir, grilling, social cookouts, old car interests, and practical repair.",
+        "details": [
+          "Usually plays pickup basketball weekly and sometimes in a community center league (Q31).",
+          "Helps lead church choir and attends Thursday rehearsals (Q47).",
+          "Looks at used grills, car parts, and furniture on Facebook Marketplace (Q48).",
+          "Does yard work, grilling, small repairs for his mother, and occasional hands-on tinkering rather than formal hobbies with high costs (Q15, Q17, Q48)."
+        ],
+        "evidence": "Q15, Q17, Q31, Q47, Q48"
+      },
+      "work_and_career": {
+        "summary": "David is an experienced cashier aiming for shift lead, assistant manager, and eventually a community-centered small store.",
+        "details": [
+          "Skilled at POS, cash handling, training, inventory, and customer de-escalation (Q16, Q65).",
+          "Wants shift lead and assistant manager roles (Q65, Q108).",
+          "Long-term dream is a small convenience store or coffee kiosk (Q62, Q108).",
+          "Works one paid job, usually 38-40 hours per week, sometimes over 40 when short-staffed, and has worked all year with no long unpaid gaps (Q67-Q71).",
+          "Has worked at his current job about nine years; benefits are limited and include some paid time off, basic sick time, and costly health coverage options (Q76).",
+          "Job is not union, though he would listen to a practical worker association that protected people (Q66).",
+          "His schedule is somewhat predictable one or two weeks ahead but changes when coworkers call out, complicating school, kids' activities, and choir (Q78).",
+          "Community college classes are part time, mostly online, with some evening requirements; he usually takes one or two classes at a time (Q17, Q91-Q92)."
+        ],
+        "evidence": "Q16, Q17, Q62, Q65-Q78, Q91-Q92, Q108"
+      },
+      "arts_and_culture": {
+        "summary": "David's arts and cultural life is rooted in Black Southern church music, gospel, soul, jazz, family storytelling, and community gatherings.",
+        "details": [
+          "Black Southern church life shaped him from childhood (Q01, Q47).",
+          "Feels spiritually connected through gospel choir (Q47).",
+          "Names Aretha Franklin, Marvin Gaye, and John Coltrane as meaningful music (Q47).",
+          "Values family storytelling, older people's civil-rights memories, and resilience passed through Black rural North Carolina communities (Q01, Q28, Q30, Q109)."
+        ],
+        "evidence": "Q01, Q28, Q30, Q47, Q109"
+      },
+      "sports_and_fitness": {
+        "summary": "Basketball is David's main sport and fitness outlet, combining movement, friendship, and family bonding.",
+        "details": [
+          "Plays pickup basketball most Saturdays and sometimes league games (Q15, Q31).",
+          "Watches games with son Caleb (Q15).",
+          "Experiences knee soreness after basketball but continues playing (Q31, Q33).",
+          "Basketball friendships include Marcus and a weekly group, and Caleb also plays basketball practices after school (Q07, Q19)."
+        ],
+        "evidence": "Q07, Q15, Q19, Q31, Q33"
+      },
+      "nature_and_outdoors": {
+        "summary": "Outdoor preferences appear mainly through yard work, grilling, neighborhood life, festivals, and basketball rather than wilderness recreation.",
+        "details": [
+          "Saturday routines include pickup basketball, yard work, and grilling when weather permits (Q15).",
+          "Enjoys community festivals and movement-based outdoor social activities (Q32).",
+          "Values porch, yard, and neighborhood culture in Angier (Q08).",
+          "His neighborhood safety model relies on familiar cars, neighbors watching out, kids checking in, and people recognizing who belongs (Q08-Q09)."
+        ],
+        "evidence": "Q08-Q09, Q15, Q32"
+      },
+      "technology": {
+        "summary": "David uses practical technology for work, school, budgeting, scheduling, and social connection.",
+        "details": [
+          "Experienced with POS systems and training new employees on store technology (Q16, Q65).",
+          "Uses phone reminders and shared household planning tools (Q18).",
+          "Uses Facebook, Instagram, Facebook Marketplace, bank apps, and online community college classes (Q45, Q48, Q91).",
+          "Uses direct deposit and budgets by paycheck, assigning bills to each pay period (Q73)."
+        ],
+        "evidence": "Q16, Q18, Q45, Q48, Q65, Q73, Q91"
+      },
+      "community_and_civic": {
+        "summary": "He is deeply community-oriented, attached to Angier, active in church, and usually votes, especially when local issues affect family life.",
+        "details": [
+          "Community life includes church events, cookouts, school games, and neighborhood gatherings (Q07, Q08).",
+          "Votes most of the time and increasingly follows local politics (Q23, Q25).",
+          "Supports fair policing, public schools, health care, wages, roads, small business opportunity, and working families (Q23-Q27).",
+          "Identifies as a moderate or practical Democrat and is closer to the Democratic Party, though he still evaluates local candidates individually (Q95-Q96).",
+          "Has mixed law-enforcement experiences, has never been arrested, stays extra calm during traffic stops, and teaches his children to keep hands visible and call parents (Q20-Q22).",
+          "Would call police in danger but prefers neighbors or church contacts first for smaller disputes when possible (Q20).",
+          "Supports Black Lives Matter's core concerns, attended one local peaceful prayer/community gathering, and mostly responds through family, church, and coworker conversations (Q26-Q30).",
+          "Believes accountability should include clear consequences, body camera transparency, better training, and listening before harm occurs (Q27)."
+        ],
+        "evidence": "Q07-Q08, Q20-Q30, Q95-Q96"
+      },
+      "music": {
+        "summary": "Music is central to David's identity, spirituality, stress relief, and social life.",
+        "details": [
+          "Helps lead a Baptist church choir (Q47).",
+          "Finds meaning in gospel, Aretha Franklin, Marvin Gaye, and John Coltrane (Q47).",
+          "Uses music in the car after work to calm down (Q50).",
+          "Choir work includes Thursday rehearsals, choosing songs with Sister Janice, helping parts, and keeping the spirit right (Q47)."
+        ],
+        "evidence": "Q47, Q50"
+      },
+      "fashion_and_appearance": {
+        "summary": "There is limited direct evidence about fashion; appearance choices are practical and budget-conscious.",
+        "details": [
+          "Delayed buying clothes for himself during tight financial periods (Q60, Q64).",
+          "Bought better shoes to reduce basketball-related knee pain (Q33).",
+          "Appearance spending is treated as deferrable compared with rent, car costs, school costs, and family needs (Q56-Q64)."
+        ],
+        "evidence": "Q33, Q56-Q64"
+      },
+      "cultural_and_linguistic": {
+        "summary": "David identifies as Black/African American, non-Hispanic, Southern, Christian Baptist, and rooted in rural North Carolina Black church culture.",
+        "details": [
+          "Identifies as Black or African American and not Hispanic (Q88, Q89).",
+          "Identifies as Christian Baptist (Q94).",
+          "His identity is shaped by Black Southern family, church, food, music, and resilience (Q01, Q47, Q109).",
+          "Was born in the United States, born in Raleigh, raised mostly around Angier, and has not lived outside North Carolina for any long period (Q86-Q87, Q97).",
+          "Tries to teach his children Black history and pride without bitterness, celebrating Black music, family stories, and confidence (Q28).",
+          "Wants his children to inherit integrity: doing what they say, treating people right, and not forgetting where they came from (Q109).",
+          "Defines success partly by whether people feel better, safer, or more seen when they are around him (Q109)."
+        ],
+        "evidence": "Q01, Q28, Q47, Q86-Q89, Q94, Q97, Q109"
+      },
+      "life_events_and_transitions": {
+        "summary": "Key transitions include leaving college for work, marriage, fatherhood, losing his father, returning to school, and pursuing advancement.",
+        "details": [
+          "Dropped out of community college earlier to work more hours and help with adult responsibilities (Q02).",
+          "Married Tonya and became father to Maya and Caleb (Q05, Q84).",
+          "Returned to school in his forties for business administration (Q02, Q91, Q108).",
+          "Was born in Raleigh and raised mostly around Angier, which remains home (Q01, Q87).",
+          "Losing his father a few years ago and his father's earlier illness changed how he thinks about money, repair, responsibility, and not delaying medical care (Q01, Q35).",
+          "Becoming a father made him more careful with money and time, shifting attention from weekly wants to household needs months ahead (Q01)."
+        ],
+        "evidence": "Q01-Q02, Q05, Q35, Q84, Q87, Q91, Q108"
+      },
+      "media_and_information_diet": {
+        "summary": "David gets information from Facebook, local networks, family, church, medical professionals, and official health sources, while avoiding online arguments.",
+        "details": [
+          "Uses Facebook for church events, birthdays, local news, school announcements, and family pictures (Q48).",
+          "Trusts doctors, Tonya's medical office experience, health departments, pharmacists, CDC information, and church medical professionals on vaccines (Q42).",
+          "Avoids Facebook arguments and random scare posts (Q42, Q48).",
+          "Uses social media to follow road closures, school reminders, church announcements, festivals, crime alerts, barbecue videos, car restoration pages, basketball clips, and music posts (Q48).",
+          "May ask for prayer or share community fundraisers online but keeps private family financial stress mostly offline (Q49)."
+        ],
+        "evidence": "Q42, Q48-Q49"
+      }
+    },
+    "summaries": {
+      "_note": "Carried over VERBATIM from the draft extracted profile. Not regenerated in this step.",
+      "demographer": "David Mckethan is a 46-year-old married Black man living in Angier, North Carolina, with his wife Tonya and two children, Maya and Caleb (Q05, Q51, Q89). He has a high school diploma and some college, and he is currently enrolled part time in community college for business administration (Q90-Q92). His household rents, relies on two hourly incomes, and occupies a modest working-family position with stable employment but limited financial cushion (Q56-Q58, Q72-Q74, Q83). His life course reflects strong local rootedness, intergenerational family ties, church involvement, and gradual upward-mobility efforts (Q01, Q47, Q108).",
+      "behavioral_economist": "David is loss-averse and budget-conscious, using notebooks, phone reminders, envelopes, and paycheck-based planning to manage uncertainty (Q17, Q18, Q61). He is willing to delay gratification by returning to school while working full time, but immediate family needs often take priority over long-term goals (Q02, Q62, Q108). His decisions are strongly shaped by household stability, peer respect, church norms, and his identity as a reliable provider (Q05, Q47, Q83). He avoids high-risk coping strategies, prefers small practical adjustments, and treats emergencies like car repairs as threats to family equilibrium (Q38-Q40, Q82).",
+      "political_scientist": "David is a moderate but fairly consistent Democrat who votes most of the time and has become more attentive to local politics as a parent and longtime Angier resident (Q23-Q25, Q95-Q96). His civic orientation emphasizes public schools, health care, wages, fair policing, small business opportunity, and respect for rural Black communities (Q24, Q27, Q108). He supports Black Lives Matter's core concerns while engaging mainly through family, church, and community conversation rather than sustained protest activity (Q26-Q30). His institutional trust is mixed: he values voting and community institutions but is cautious about policing and politicians who appear only during campaign season (Q20, Q23, Q24).",
+      "psychologist": "David presents as conscientious, relational, practical, and community-oriented, with a strong provider identity and a tendency toward worry under financial and scheduling pressure (Q43-Q45, Q83). He regulates emotion through prayer, music, basketball, planning, and talking with his wife or sister, though he still struggles with late-night rumination (Q44, Q45, Q50). His self-concept is built around dignity in work, family reliability, Black Southern cultural pride, and service to others (Q01, Q47, Q109). He is future-oriented but cautious, motivated by incremental progress rather than dramatic risk-taking (Q62, Q65, Q108)."
+    },
+    "hidden_facts": [
+      {
+        "fact_id": "HF-001",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David plays basketball for exercise but experiences knee pain after games.",
+        "ground_truth_label": "basketball exercise with knee soreness",
+        "behavioral_evidence_from_interview": [
+          "Q31: 'I play basketball... My knees remind me I am not twenty-five anymore after pickup games.'",
+          "Q33: 'I also had some knee pain after a basketball league game last winter.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-002",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David is trying to drink more water, reduce soda, control portions, and monitor blood pressure.",
+        "ground_truth_label": "practical preventive health habits",
+        "behavioral_evidence_from_interview": [
+          "Q31: 'I am trying to drink more water, eat smaller portions.'",
+          "Q32: 'Keeping water with me at work and cutting back on sodas.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-003",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David uses prayer, breathing, music, exercise, and talking with Tonya to manage worry.",
+        "ground_truth_label": "non-substance emotional coping",
+        "behavioral_evidence_from_interview": [
+          "Q45: 'I am trying to use breathing, prayer, and exercise.'",
+          "Q38: 'Music, prayer, basketball, or talking with Tonya.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-004",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David does not smoke, drinks moderately a couple times a month, does not use marijuana or other drugs, and uses OTC ibuprofen occasionally.",
+        "ground_truth_label": "low-risk substance profile",
+        "behavioral_evidence_from_interview": [
+          "Q38: 'I do not smoke... Maybe a couple times a month.'",
+          "Q39: 'I do not use marijuana or other drugs. I take over-the-counter ibuprofen sometimes.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-005",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David has no current blood pressure medication or regular prescriptions for himself and has delayed dental or routine care because of cost.",
+        "ground_truth_label": "limited medical treatment and delayed care",
+        "behavioral_evidence_from_interview": [
+          "Q31: 'Not right now. The doctor told me to monitor it.'",
+          "Q36: 'There have been times I delayed a dental visit or a checkup.'",
+          "Q39: 'No regular prescriptions for myself right now.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-006",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David would consider counseling if worry worsened and believes prayer and counseling can both help.",
+        "ground_truth_label": "conditional openness to counseling",
+        "behavioral_evidence_from_interview": [
+          "Q45: 'If it got worse, I would consider counseling.'",
+          "Q45: 'I think prayer and counseling can both help.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-007",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David's stress signs include getting quiet, checking the bank app too much, waking before the alarm, and losing sleep over bills or school deadlines.",
+        "ground_truth_label": "worry and rumination symptoms",
+        "behavioral_evidence_from_interview": [
+          "Q45: 'I get quiet, check the bank app too much, and wake up before the alarm.'",
+          "Q43: 'I do carry worry in my shoulders and in my sleep.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-008",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "David helps manage his mother's diabetes and arthritis through rides, prescriptions, groceries, repairs, and check-ins.",
+        "ground_truth_label": "caregiving for mother's health",
+        "behavioral_evidence_from_interview": [
+          "Q35: 'She has diabetes and some arthritis.'",
+          "Q35: 'Rides sometimes, help picking up prescriptions, small repairs.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-009",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "David enjoys smoking ribs, grilling, and weekend cookouts.",
+        "ground_truth_label": "barbecue and grilling preference",
+        "behavioral_evidence_from_interview": [
+          "Q07: 'cookouts... standing by the grill.'",
+          "Q109: 'At the grill with family around.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-010",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "David cuts costs with beans, rice, baked chicken, collards, spaghetti, and cornbread.",
+        "ground_truth_label": "budget home meals",
+        "behavioral_evidence_from_interview": [
+          "Q81: 'Beans, rice, baked chicken, collards, spaghetti, and cornbread.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-011",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "David is trying not to make every weekend a heavy ribs and macaroni-and-cheese event.",
+        "ground_truth_label": "portion-control effort around soul food",
+        "behavioral_evidence_from_interview": [
+          "Q31: 'not make every weekend a rib-and-mac-and-cheese event.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-012",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "David associates family and childhood memories with grilling, fish fries, church picnics, homecomings, and kitchen storytelling.",
+        "ground_truth_label": "food as family and community memory",
+        "behavioral_evidence_from_interview": [
+          "Q01: 'choir rehearsals, homecomings, fish fries.'",
+          "Q01 follow-up: 'county fair, church picnics, and older folks telling stories.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-013",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "David occasionally tries craft beer during weekend trips to Asheville.",
+        "ground_truth_label": "occasional Asheville craft beer travel",
+        "behavioral_evidence_from_interview": [
+          "Q38: 'trying a craft beer if we take a weekend trip to Asheville.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-014",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "David delayed or cancelled a planned weekend trip during a tight financial month.",
+        "ground_truth_label": "travel cut during financial stress",
+        "behavioral_evidence_from_interview": [
+          "Q64: 'a planned weekend trip' was skipped."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-015",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "David prefers staying rooted near Angier even if he moves someday.",
+        "ground_truth_label": "geographic rootedness",
+        "behavioral_evidence_from_interview": [
+          "Q10: 'our roots are here.'",
+          "Q58: 'somewhere around Angier or nearby.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-016",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "David prefers modest flexible road-trip style travel that fits the family budget.",
+        "ground_truth_label": "budget road-trip preference",
+        "behavioral_evidence_from_interview": [
+          "Q38: 'weekend trip to Asheville.'",
+          "Q64: 'planned weekend trip' was cut when money was tight."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-017",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "David is married to Tonya and has two children, Maya age 15 and Caleb age 10.",
+        "ground_truth_label": "married with two children",
+        "behavioral_evidence_from_interview": [
+          "Q05: 'We have two children at home: Maya, who is fifteen, and Caleb, who is ten.'",
+          "Q84: 'I am currently married and living with my wife, Tonya.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-018",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "David checks on his mother Evelyn two or three times a week, and she lives nearby rather than in his home.",
+        "ground_truth_label": "nearby mother check-ins",
+        "behavioral_evidence_from_interview": [
+          "Q05: 'My mother, Evelyn, lives not too far away.'",
+          "Q05 follow-up: 'Usually two or three times a week.'",
+          "Q51: 'No, she lives nearby.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-019",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "David's older sister Denise lives in Raleigh, talks with him weekly, visits about monthly, and helps calm his overthinking.",
+        "ground_truth_label": "supportive older sister Denise",
+        "behavioral_evidence_from_interview": [
+          "Q06: 'I have an older sister, Denise, in Raleigh. We talk every week or so.'",
+          "Q44: 'I told my sister a little, mostly because she can calm me down.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-020",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "David is close to Marcus, Andre, Sister Janice, and younger coworker Luis.",
+        "ground_truth_label": "named friend and support network",
+        "behavioral_evidence_from_interview": [
+          "Q07: 'There is Marcus... Andre... Sister Janice... Luis.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-021",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Family stress affects David's household, with Tonya noticing his quietness, Maya feeling school pressure, and Caleb picking up tension.",
+        "ground_truth_label": "family stress spillover",
+        "behavioral_evidence_from_interview": [
+          "Q46: 'Tonya carries a lot, Maya feels school pressure, and Caleb picks up on tension.'",
+          "Q46 follow-up: 'Tonya. She can tell from how quiet I get.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-022",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "David's family evenings involve dinner, homework, school activities, basketball, choir, and reduced phone use during meals.",
+        "ground_truth_label": "family-centered evening routine",
+        "behavioral_evidence_from_interview": [
+          "Q05 follow-up: 'help with dinner or homework.'",
+          "Q46 follow-up: 'trying to put phones down during meals.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-023",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David rents his home and has lived there about seven years.",
+        "ground_truth_label": "rents home for seven years",
+        "behavioral_evidence_from_interview": [
+          "Q58: 'We rent our home.'",
+          "Q58 follow-up: 'About seven years.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-024",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David's household consists permanently of David, Tonya, Maya, and Caleb, with no lodgers, boarders, employees, or usual members away.",
+        "ground_truth_label": "four-person permanent household",
+        "behavioral_evidence_from_interview": [
+          "Q11: 'Right now it is me, my wife Tonya, our daughter Maya, and our son Caleb.'",
+          "Q54: 'No, none.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-025",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David and Tonya share household expenses without regular outside help, and the children do not contribute financially.",
+        "ground_truth_label": "shared spousal expense responsibility",
+        "behavioral_evidence_from_interview": [
+          "Q55: 'Tonya and I share the household expenses.'",
+          "Q55 follow-up: 'No, not regularly.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-026",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David uses written budgeting, phone reminders, Sunday planning, bank-app checks, and cash envelopes for budgeting.",
+        "ground_truth_label": "multi-tool budgeting routine",
+        "behavioral_evidence_from_interview": [
+          "Q17: 'partly in a notebook and partly on my phone.'",
+          "Q18: 'Phone reminders... Sunday night planning.'",
+          "Q61: 'save cash in envelopes.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-027",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David's household usually spends about $3,700-$3,900 per month, with a recent car repair pushing one month to about $4,200.",
+        "ground_truth_label": "monthly spending range and car repair spike",
+        "behavioral_evidence_from_interview": [
+          "Q57: 'Last month... around $4,200.'",
+          "Q57: 'A more usual month is closer to $3,700 to $3,900.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-028",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David's household monthly take-home income is about $4,600-$4,700, including about $2,200 take-home from his cashier job.",
+        "ground_truth_label": "household take-home income",
+        "behavioral_evidence_from_interview": [
+          "Q72: 'Take-home was closer to $2,200.'",
+          "Q74: 'Take-home was closer to $4,600 or $4,700.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-029",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David has some credit card debt, a school payment plan, no car loan, and avoids owing family or friends.",
+        "ground_truth_label": "manageable debt profile",
+        "behavioral_evidence_from_interview": [
+          "Q63: 'some credit card debt... payment plan for school costs... not a car loan.'",
+          "Q63 follow-up: 'No, I try to avoid that unless it is an emergency.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-030",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David could probably cover a $400 emergency through savings, bill shifting, or credit card use, but it would hurt.",
+        "ground_truth_label": "fragile $400 emergency capacity",
+        "behavioral_evidence_from_interview": [
+          "Q82: 'We could probably cover $400, but it would hurt.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-031",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David's family does not currently receive SNAP, housing vouchers, SSI, or similar benefits, though they received help when the children were young.",
+        "ground_truth_label": "no current public benefits",
+        "behavioral_evidence_from_interview": [
+          "Q80: 'No, we do not currently receive SNAP, housing vouchers, SSI.'",
+          "Q80 follow-up: 'We received some help years ago.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-032",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "David files taxes with software, keeps W-2s and receipts in a folder, and usually uses a modest refund for bills, savings, or a needed household item.",
+        "ground_truth_label": "organized tax filing and refund use",
+        "behavioral_evidence_from_interview": [
+          "Q75: 'We usually use tax software, and I keep W-2s and receipts in a folder.'",
+          "Q75 follow-up: 'Pay bills, put some in savings.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-033",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "David enjoys movie nights and family time.",
+        "ground_truth_label": "home-based family entertainment",
+        "behavioral_evidence_from_interview": [
+          "Q46 follow-up: 'Sunday dinner, movie nights.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-034",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "David uses Instagram for barbecue videos, car restoration pages, basketball clips, and music posts.",
+        "ground_truth_label": "Instagram hobby browsing",
+        "behavioral_evidence_from_interview": [
+          "Q48: 'barbecue videos, old car restoration pages, basketball clips, and music posts.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-035",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "David watches basketball games with Caleb and follows basketball socially.",
+        "ground_truth_label": "basketball viewing with son",
+        "behavioral_evidence_from_interview": [
+          "Q15: 'watch a game with Caleb.'",
+          "Q07: 'watching Hornets games.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-036",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "David usually plays pickup basketball weekly and sometimes plays in a community center league.",
+        "ground_truth_label": "weekly pickup basketball",
+        "behavioral_evidence_from_interview": [
+          "Q31: 'Usually once a week, sometimes twice if the community center league has a game.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-037",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "David helps lead church choir and attends Thursday rehearsals.",
+        "ground_truth_label": "church choir leadership",
+        "behavioral_evidence_from_interview": [
+          "Q47: 'I help lead the choir.'",
+          "Q47 follow-up: 'Most Sundays and most Thursday rehearsals.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.music",
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-038",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "David looks at used grills, car parts, and furniture on Facebook Marketplace.",
+        "ground_truth_label": "Facebook Marketplace browsing",
+        "behavioral_evidence_from_interview": [
+          "Q48 follow-up: 'used grills, car parts, or furniture.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-039",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "David does yard work, grilling, small repairs for his mother, and hands-on tinkering rather than costly formal hobbies.",
+        "ground_truth_label": "practical hands-on hobbies",
+        "behavioral_evidence_from_interview": [
+          "Q15: 'yard work or grilling.'",
+          "Q17: 'help with small repairs at her place.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-040",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David is skilled at POS systems, cash handling, training, inventory, and customer de-escalation.",
+        "ground_truth_label": "experienced retail cashier skills",
+        "behavioral_evidence_from_interview": [
+          "Q16: 'running the register, handling cash... checking inventory, and training newer staff.'",
+          "Q65: 'accuracy, patience, speed.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-041",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David wants to become a shift lead and then assistant manager.",
+        "ground_truth_label": "retail advancement goal",
+        "behavioral_evidence_from_interview": [
+          "Q65 follow-up: 'Shift lead first, then assistant manager.'",
+          "Q108: 'moved into a shift lead or assistant manager role.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-042",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David's long-term dream is a small convenience store or coffee kiosk that serves as a neighborhood spot.",
+        "ground_truth_label": "community-centered small business ambition",
+        "behavioral_evidence_from_interview": [
+          "Q62: 'opening a convenience store or coffee kiosk.'",
+          "Q108: 'feels like a community spot.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-043",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David works one paid job, usually 38-40 hours per week, sometimes more when short-staffed, and worked all year without long unpaid gaps.",
+        "ground_truth_label": "stable full-time hourly work",
+        "behavioral_evidence_from_interview": [
+          "Q67: 'I worked all year, about 52 weeks.'",
+          "Q68: 'Usually 38 to 40 hours a week.'",
+          "Q70: 'No, I have one paid job.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-044",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David has worked at his current job about nine years and has limited benefits.",
+        "ground_truth_label": "long-tenure retail job with limited benefits",
+        "behavioral_evidence_from_interview": [
+          "Q76: 'about nine years. Benefits are limited.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-045",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David's job is not union, but he would listen to a practical worker association that protected people.",
+        "ground_truth_label": "nonunion job with conditional worker-association openness",
+        "behavioral_evidence_from_interview": [
+          "Q66: 'No, my job is not union.'",
+          "Q66 follow-up: 'If it was practical and protected people, I would listen.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-046",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David's retail schedule is somewhat predictable but changes can complicate school, children's activities, and choir.",
+        "ground_truth_label": "variable retail schedule constraints",
+        "behavioral_evidence_from_interview": [
+          "Q78: 'somewhat predictable but not perfect.'",
+          "Q78: 'makes school, kids' activities, and church harder to plan.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-047",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "David takes part-time business administration classes at community college, mostly online with some evening requirements.",
+        "ground_truth_label": "part-time business administration student",
+        "behavioral_evidence_from_interview": [
+          "Q17: 'business administration classes part time... mostly online with some evening requirements.'",
+          "Q91: 'part time at a community college.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-048",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Black Southern church life shaped David from childhood.",
+        "ground_truth_label": "Black Southern church cultural formation",
+        "behavioral_evidence_from_interview": [
+          "Q01: 'I grew up in a Black Southern family where church, food, music...'",
+          "Q47: 'the Black church shaped me from childhood.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.cultural_and_linguistic",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-049",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "David feels spiritually connected through gospel choir.",
+        "ground_truth_label": "gospel choir spirituality",
+        "behavioral_evidence_from_interview": [
+          "Q47: 'music is one of the main ways I feel connected to God and community.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.music"
+        ]
+      },
+      {
+        "fact_id": "HF-050",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "David names Aretha Franklin, Marvin Gaye, and John Coltrane as meaningful music.",
+        "ground_truth_label": "soul and jazz music taste",
+        "behavioral_evidence_from_interview": [
+          "Q47 follow-up: 'Aretha Franklin, Marvin Gaye, and John Coltrane.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.music"
+        ]
+      },
+      {
+        "fact_id": "HF-051",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "David values family storytelling, civil-rights memories from elders, and resilience in Black rural North Carolina communities.",
+        "ground_truth_label": "Black Southern historical memory",
+        "behavioral_evidence_from_interview": [
+          "Q28: 'we are still carrying history.'",
+          "Q30: 'church elders connect it to civil rights stories.'",
+          "Q109: 'resilience... older Black folks in my community.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-052",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "David's basketball life includes weekly friends, community center league games, and his son Caleb's basketball practices.",
+        "ground_truth_label": "basketball as social and family activity",
+        "behavioral_evidence_from_interview": [
+          "Q07: 'Marcus and the basketball group are usually weekly.'",
+          "Q19: 'Caleb... basketball practice a couple days a week.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-053",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "David's outdoor routine includes Saturday basketball, yard work, grilling, festivals, porches, yards, and neighborhood life.",
+        "ground_truth_label": "social neighborhood outdoors",
+        "behavioral_evidence_from_interview": [
+          "Q15: 'pickup basketball... yard work or grilling.'",
+          "Q08: 'porches, yards, church signs.'",
+          "Q32: 'walking at a festival.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-054",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "David's neighborhood safety depends on familiar cars, neighbors watching out, children's check-ins, and knowing who belongs.",
+        "ground_truth_label": "informal neighborhood safety network",
+        "behavioral_evidence_from_interview": [
+          "Q09: 'I know my neighbors and that helps.'",
+          "Q09 follow-up: 'Knowing who belongs, neighbors watching out.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-055",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "David uses POS systems and trains new employees on store technology.",
+        "ground_truth_label": "retail technology competence",
+        "behavioral_evidence_from_interview": [
+          "Q16: 'training newer staff on the POS system.'",
+          "Q65: 'train new employees on the POS system.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-056",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "David uses phone reminders, Facebook, Instagram, Facebook Marketplace, bank apps, online classes, direct deposit, and paycheck-based budgeting.",
+        "ground_truth_label": "practical everyday technology use",
+        "behavioral_evidence_from_interview": [
+          "Q18: 'Phone reminders.'",
+          "Q45: 'check the bank app.'",
+          "Q48: 'I use Facebook the most. I have Instagram.'",
+          "Q73: 'direct deposit.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-057",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David's community life includes church events, cookouts, school games, and neighborhood gatherings.",
+        "ground_truth_label": "community-centered social life",
+        "behavioral_evidence_from_interview": [
+          "Q08 follow-up: 'Church events, the park, cookouts, school games.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-058",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David votes most of the time and increasingly follows local politics.",
+        "ground_truth_label": "regular voter with local focus",
+        "behavioral_evidence_from_interview": [
+          "Q23: 'I vote most of the time.'",
+          "Q25: 'I have gotten more focused on local politics.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-059",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David supports fair policing, public schools, health care, wages, roads, small business opportunity, and working families.",
+        "ground_truth_label": "working-family civic priorities",
+        "behavioral_evidence_from_interview": [
+          "Q24: 'working people, affordable health care, public schools, fair policing, and small business opportunity.'",
+          "Q25: 'roads, zoning, and schools.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-060",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David identifies as a moderate or practical Democrat and is closer to the Democratic Party while evaluating local candidates individually.",
+        "ground_truth_label": "moderate Democrat",
+        "behavioral_evidence_from_interview": [
+          "Q95: 'moderate Democrat or a practical Democrat.'",
+          "Q96: 'Closer to the Democratic Party.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-061",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David has mixed law-enforcement experiences, has never been arrested, stays extra calm during traffic stops, and teaches his children similar caution.",
+        "ground_truth_label": "mixed police trust and racialized caution",
+        "behavioral_evidence_from_interview": [
+          "Q20: 'My experiences have been mixed. I have never been arrested.'",
+          "Q20: 'keep my hands visible, speak respectfully, and tell my kids the same.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-062",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David would call police in danger but prefers neighbors or church contacts first for smaller disputes when possible.",
+        "ground_truth_label": "conditional police reliance",
+        "behavioral_evidence_from_interview": [
+          "Q20 follow-up: 'If there is danger, yes. For smaller disputes, I would rather start with neighbors or church folks.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-063",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David supports Black Lives Matter's core concerns, attended one peaceful local prayer/community gathering, and mainly responds through conversations and teaching his children.",
+        "ground_truth_label": "BLM support through community conversation",
+        "behavioral_evidence_from_interview": [
+          "Q26: 'I supported the message.'",
+          "Q26 follow-up: 'I attended one local peaceful gathering.'",
+          "Q29: 'mostly my response has been conversations and teaching my kids.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-064",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "David believes police accountability should include clear consequences, body camera transparency, better training, and listening before harm occurs.",
+        "ground_truth_label": "police accountability preferences",
+        "behavioral_evidence_from_interview": [
+          "Q27 follow-up: 'Clear consequences, body camera transparency, better training.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-065",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "David uses music in the car after work to calm down.",
+        "ground_truth_label": "music as stress relief",
+        "behavioral_evidence_from_interview": [
+          "Q50 follow-up: 'Music in the car after work... can settle me down.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-066",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "David's choir work includes Thursday rehearsals, choosing songs with Sister Janice, helping parts, and keeping the spirit right.",
+        "ground_truth_label": "choir leadership practices",
+        "behavioral_evidence_from_interview": [
+          "Q47 follow-up: 'Thursday rehearsal, choosing songs with Sister Janice, helping tenors and baritones.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-067",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "David delayed buying clothes for himself during tight financial periods.",
+        "ground_truth_label": "defers personal clothing spending",
+        "behavioral_evidence_from_interview": [
+          "Q60: 'delayed buying clothes for myself.'",
+          "Q64: 'new shoes for me' was skipped."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-068",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "David bought better shoes to reduce basketball-related knee pain.",
+        "ground_truth_label": "practical athletic footwear",
+        "behavioral_evidence_from_interview": [
+          "Q33: 'it improved with rest, ice, and better shoes.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-069",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David identifies as Black or African American and not Hispanic.",
+        "ground_truth_label": "Black non-Hispanic identity",
+        "behavioral_evidence_from_interview": [
+          "Q88: 'No.'",
+          "Q89: 'Black or African American.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-070",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David identifies as Christian Baptist and belongs to a local Baptist church.",
+        "ground_truth_label": "Christian Baptist identity",
+        "behavioral_evidence_from_interview": [
+          "Q94: 'Christian, Baptist.'",
+          "Q94 follow-up: 'Yes, a local Baptist church.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-071",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David was born in the United States, born in Raleigh, raised mostly around Angier, and has not lived outside North Carolina for any long period.",
+        "ground_truth_label": "North Carolina-born and rooted",
+        "behavioral_evidence_from_interview": [
+          "Q86: 'Yes, I was born in the United States.'",
+          "Q87: 'I was born in Raleigh, North Carolina.'",
+          "Q87 follow-up: 'Mostly Angier and the surrounding area.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-072",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David tries to teach his children Black history and pride without bitterness.",
+        "ground_truth_label": "balanced Black pride teaching",
+        "behavioral_evidence_from_interview": [
+          "Q28: 'I try to teach pride without teaching bitterness.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-073",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David wants his children to inherit integrity, treating people right, and not forgetting where they came from.",
+        "ground_truth_label": "integrity as inherited value",
+        "behavioral_evidence_from_interview": [
+          "Q109 follow-up: 'Integrity. Do what you say, treat people right, and do not forget where you came from.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-074",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "David defines success partly by whether people feel better, safer, or more seen when they are around him.",
+        "ground_truth_label": "service-oriented success definition",
+        "behavioral_evidence_from_interview": [
+          "Q109: 'whether people feel better, safer, or more seen when they come around you.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-075",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "David dropped out of community college earlier to work more hours and help with adult responsibilities.",
+        "ground_truth_label": "left college for work responsibilities",
+        "behavioral_evidence_from_interview": [
+          "Q02: 'I chose work because it felt responsible at the time.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-076",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "David married Tonya about eighteen years ago and became father to Maya and Caleb.",
+        "ground_truth_label": "marriage and fatherhood transition",
+        "behavioral_evidence_from_interview": [
+          "Q84 follow-up: 'About eighteen years.'",
+          "Q05: 'We have two children at home.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-077",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "David returned to school in his forties for business administration to strengthen promotion prospects and model finishing for his children.",
+        "ground_truth_label": "midlife return to school",
+        "behavioral_evidence_from_interview": [
+          "Q02: 'going back to school in my forties.'",
+          "Q02 follow-up: 'I want my kids to see that finishing something matters.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-078",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Losing his father a few years ago and his father's earlier illness shaped David's views on responsibility, repair, money, and not delaying medical care.",
+        "ground_truth_label": "father's death as life-course influence",
+        "behavioral_evidence_from_interview": [
+          "Q01: 'losing my father a few years back.'",
+          "Q35: 'When my father was sick before he passed... not waiting too long to see a doctor.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-079",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Becoming a father made David more careful with money and time.",
+        "ground_truth_label": "fatherhood increased future planning",
+        "behavioral_evidence_from_interview": [
+          "Q01 follow-up: 'It made me more careful with money and time.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-080",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "David uses Facebook for church events, birthdays, local news, school announcements, and family pictures.",
+        "ground_truth_label": "Facebook local and family information use",
+        "behavioral_evidence_from_interview": [
+          "Q48: 'church events, birthdays, local news, school announcements, and family pictures.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-081",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "David trusts doctors, Tonya's medical office experience, local health departments, pharmacists, CDC information, and church medical professionals on vaccines.",
+        "ground_truth_label": "trusted medical information sources",
+        "behavioral_evidence_from_interview": [
+          "Q42: 'family doctor, Tonya's medical office experience, the local health department, and pharmacists.'",
+          "Q42: 'I will read CDC information.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-082",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "David avoids Facebook arguments and random scare posts.",
+        "ground_truth_label": "online conflict avoidance",
+        "behavioral_evidence_from_interview": [
+          "Q42: 'I do not trust random Facebook posts.'",
+          "Q48: 'I try not to get pulled into arguments.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-083",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "David uses social media for road closures, school reminders, church announcements, festivals, crime alerts, barbecue, car restoration, basketball, and music content.",
+        "ground_truth_label": "social media for local alerts and hobbies",
+        "behavioral_evidence_from_interview": [
+          "Q48 follow-up: 'Road closures, school reminders, church announcements, community festivals, and sometimes crime alerts.'",
+          "Q48: 'barbecue videos, old car restoration pages, basketball clips, and music posts.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-084",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "David may ask for prayer or share community fundraisers online but keeps private family financial stress mostly offline.",
+        "ground_truth_label": "private financial stress and limited online support seeking",
+        "behavioral_evidence_from_interview": [
+          "Q49: 'I do not usually ask for personal financial help online.'",
+          "Q49: 'I may ask for prayer or share a community fundraiser.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-085",
+        "source": "reprojected",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": "summaries.demographer",
+        "claim": "David's household relies on two hourly incomes and has stable employment but limited financial cushion.",
+        "ground_truth_label": "stable but stretched two-income household",
+        "behavioral_evidence_from_interview": [
+          "Q72-Q74: David and Tonya report monthly income from hourly jobs.",
+          "Q83: 'stable but stretched.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "HF-028",
+          "HF-030"
+        ]
+      },
+      {
+        "fact_id": "HF-086",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "David is willing to delay gratification by returning to school while working full time.",
+        "ground_truth_label": "delayed gratification through school and work",
+        "behavioral_evidence_from_interview": [
+          "Q02: 'going back to school in my forties.'",
+          "Q68: 'Usually 38 to 40 hours a week.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "HF-047",
+          "HF-077"
+        ]
+      },
+      {
+        "fact_id": "HF-087",
+        "source": "reprojected",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "David's decisions are shaped by household stability, peer respect, church norms, and his identity as a reliable provider.",
+        "ground_truth_label": "provider identity and social-norm motivation",
+        "behavioral_evidence_from_interview": [
+          "Q05: family responsibilities are central.",
+          "Q47: church is central to practical life.",
+          "Q83: he wants better pay and does not want Tonya carrying stress alone."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-088",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.psychologist",
+        "claim": "David is future-oriented but cautious and motivated by incremental progress rather than dramatic risk-taking.",
+        "ground_truth_label": "cautious incremental future orientation",
+        "behavioral_evidence_from_interview": [
+          "Q62: 'Right now the first goal is stability.'",
+          "Q108: 'first step... finishing the degree and getting promoted.'"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,2432 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "c750eeb05b9440e79877a7ce3217371a",
+      "name": "Laura Bost",
+      "verification_date": "2026-06-23"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed age 26, female sex, never-married status, Atwater CA residence, and U.S. location match interview demographics.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed age/sex/marital_status/city/state/zipcode/country",
+              "source_b_ref": "Q51, Q84-Q90",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed high-school education plus lab certifications is confirmed by the interview; she reports no college degree and no current formal enrollment.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed education_level, cultural_background",
+              "source_b_ref": "Q90-Q92",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed states she is targeting a master's in applied physics; interview clarifies she is preparing for an applied physics pathway but is not formally enrolled now.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed professional_persona/career_goals_and_ambitions",
+              "source_b_ref": "Q18, Q90-Q92, Q108",
+              "action": "REINTERPRET_SEED",
+              "resolution": "Interpret seed master's language as a future goal/preparation target, not current enrollment."
+            },
+            {
+              "id": 4,
+              "text": "Seed Modesto working-class agricultural family and Atwater High background are confirmed and enriched with parent occupations and move history.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q01, Q87, Q97-Q107",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Seed omits household count, while interview repeatedly confirms she lives alone, has no children, no partner, no roommates, and pays expenses herself.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed marital_status/location",
+              "source_b_ref": "Q11-Q14, Q51-Q55",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile demographics match interview: name, age, gender, never-married status, Atwater residence, high-school diploma plus certifications, and physical scientist occupation.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q51, Q84-Q90, Q65",
+              "source_b_ref": "corrected_extracted_profile top-level fields, summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile accurately captures living alone in a one-bedroom apartment and paying her own household expenses.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q11, Q51, Q55",
+              "source_b_ref": "preferences.home_and_lifestyle",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Profile captures parents and brother Evan but under-specifies that Evan is 22 and that one maternal grandmother is alive but not daily support.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q05, Q06",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add details to social_and_relationships about Evan being 22 and one maternal grandmother being extended rather than daily support."
+            },
+            {
+              "id": 4,
+              "text": "Profile states she was born and grew up in Modesto and lived in Atwater by age 16, matching interview.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q87, Q97",
+              "source_b_ref": "preferences.life_events_and_transitions, summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Profile omits her date of birth, April 14, 2000, though it supports the age-26 demographic claim.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q85",
+              "source_b_ref": "top-level age/life_events_and_transitions",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add date of birth to life_events_and_transitions."
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Top-level education, work_and_career, and demographer summary consistently describe high school plus certifications and no college degree.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "top-level education/preferences.work_and_career",
+              "field_b": "summaries.demographer",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Home_and_lifestyle, social_and_relationships, and demographer summary consistently describe living alone with no partner or children.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "summaries.demographer/preferences.social_and_relationships",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Life_events_and_transitions and work_and_career consistently frame her applied physics ambitions as future preparation rather than current degree enrollment.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.life_events_and_transitions",
+              "field_b": "preferences.work_and_career",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview gives date of birth as April 14, 2000, which is absent from the profile.",
+              "gap": true,
+              "interview_ref": "Q85",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add date of birth detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview describes no pets, which is absent from household lifestyle details.",
+              "gap": true,
+              "interview_ref": "Q14",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add that she has no pets because schedule and budget make pet ownership impractical for now."
+            },
+            {
+              "id": 3,
+              "text": "Interview notes one maternal grandmother is alive but not daily support.",
+              "gap": true,
+              "interview_ref": "Q06",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add as extended-family context."
+            },
+            {
+              "id": 4,
+              "text": "Interview states she was born in the United States and has not lived outside the U.S.",
+              "gap": true,
+              "interview_ref": "Q86",
+              "should_be_in": "preferences.cultural_and_linguistic",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add U.S.-born and no foreign residence detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed describes meticulous planning and budgeting; interview repeatedly confirms spreadsheet planning, Sunday budgeting, and decision notebooks.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed travel_persona/persona",
+              "source_b_ref": "Q03, Q17, Q57, Q61",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed graduate stipend language is not supported; interview says she has employer take-home pay and benefits, not a stipend.",
+              "verdict": "inconsistent",
+              "gap": true,
+              "source_a_ref": "seed travel_persona",
+              "source_b_ref": "Q72-Q76",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Correct profile should not describe her current finances as a graduate stipend; use employer pay and modest budget instead."
+            },
+            {
+              "id": 3,
+              "text": "Seed says she balances modest funds and careful travel planning; interview confirms travel fund, emergency fund, and cuts trips in tight months.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed travel_persona",
+              "source_b_ref": "Q61, Q62, Q81-Q83",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed presents anxiety-prone routines; interview enriches this with cost-avoidance, debt aversion, and fear of financial overextension.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona/career_goals",
+              "source_b_ref": "Q02, Q36, Q63, Q83",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Seed cooking and board-game habits are confirmed and enriched with cutting takeout and cheaper meal prep during tight periods.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed culinary_persona",
+              "source_b_ref": "Q07, Q56, Q60, Q81",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 1,
+            "gaps": 3
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Behavioral economist summary accurately captures cautious budgeting, savings categories, and ability to cover a $400 emergency with strain.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q57, Q61, Q82-Q83",
+              "source_b_ref": "summaries.behavioral_economist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile captures debt avoidance and car loan only indirectly; current debts should be explicit in finance-relevant preferences.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q63",
+              "source_b_ref": "preferences.home_and_lifestyle/preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add financial detail to home_and_lifestyle that she has a manageable car loan, no student loans, and avoids carrying credit-card balances."
+            },
+            {
+              "id": 3,
+              "text": "Profile captures delayed therapy/dental care in health only generally; interview specifically links delay to out-of-pocket cost anxiety.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q36, Q64",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add detail that she postponed therapy and dental work because of cost and scheduling."
+            },
+            {
+              "id": 4,
+              "text": "Profile accurately describes expense fluctuation and cutting discretionary purchases when finances tighten.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q59-Q61, Q81",
+              "source_b_ref": "preferences.food_and_dining, preferences.fashion_and_appearance",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Profile lacks pay and monthly spending specifics that structure her financial behavior.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q56-Q57, Q72-Q74",
+              "source_b_ref": "preferences.home_and_lifestyle",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add take-home pay around $3,650/month, usual spending around $2,400-$2,500, last month $2,650, and rent around $1,250."
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Travel, food_and_dining, and behavioral_economist summary consistently show her sacrificing discretionary spending to preserve savings.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.travel/preferences.food_and_dining",
+              "field_b": "summaries.behavioral_economist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Home_and_lifestyle and work_and_career consistently show routines used to reduce uncertainty in both household and laboratory domains.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "preferences.work_and_career/summaries.psychologist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "No internal contradiction appears between being financially cautious and maintaining modest hobbies such as hiking, cooking, and watercolor.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.hobbies_and_recreation",
+              "field_b": "preferences.home_and_lifestyle/preferences.travel",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile omits specific income and expense figures central to her budgeting behavior.",
+              "gap": true,
+              "interview_ref": "Q56-Q57, Q72-Q74",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add rent, spending, and take-home pay details."
+            },
+            {
+              "id": 2,
+              "text": "Profile omits that she has no student loans, a manageable car loan, and occasional small credit-card balances.",
+              "gap": true,
+              "interview_ref": "Q63",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add current debt profile."
+            },
+            {
+              "id": 3,
+              "text": "Profile omits that she could cover a $400 emergency but would rebuild savings afterward and might briefly use credit after another expense.",
+              "gap": true,
+              "interview_ref": "Q82",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add emergency liquidity detail."
+            },
+            {
+              "id": 4,
+              "text": "Profile omits seasonal bill fluctuations: summer utilities, gas for trips, holidays, and spring hiking/travel gear temptations.",
+              "gap": true,
+              "interview_ref": "Q59",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add seasonal fluctuation detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed does not include party identity; interview adds center-left/moderate Democrat or left-leaning independent views.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona/cultural_background",
+              "source_b_ref": "Q24, Q95-Q96",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed renewable-energy and Central Valley agriculture background plausibly aligns with interview climate, water, air quality, and clean-energy politics.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed professional_persona/cultural_background",
+              "source_b_ref": "Q23-Q25",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed collaborative openness to diverse perspectives is supported by interview reflections on race, policing, and access in science.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q26-Q30",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed omits law-enforcement experience; interview adds limited direct contact and nuanced concern about unequal treatment.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed demographic/persona fields",
+              "source_b_ref": "Q20-Q22",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Political summary faithfully represents her moderate Democratic/left-leaning independent identity and issue priorities.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q24-Q25, Q95-Q96",
+              "source_b_ref": "summaries.political_scientist, preferences.community_and_civic",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile captures voting by mail and ballot research accurately.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q23",
+              "source_b_ref": "preferences.community_and_civic, preferences.media_and_information_diet",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Profile omits specific policy preferences on policing: data transparency, de-escalation, independent review, and mental-health response.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q27",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add policing-accountability policy preferences to community_and_civic."
+            },
+            {
+              "id": 4,
+              "text": "Profile omits her response style to BLM: no protests, small donation, reading, conversations, and workplace/outreach equity support.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q26-Q30",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add non-protest civic response pattern to community_and_civic."
+            },
+            {
+              "id": 5,
+              "text": "Profile omits limited direct law-enforcement history: one brake-light stop, one non-emergency call, no arrests in immediate family.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q20-Q22",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add law-enforcement experience detail to community_and_civic."
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Community_and_civic and political summary consistently describe civic engagement without high activism.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Cultural_and_linguistic and political summary consistently frame her as white, non-Hispanic, and reflective about systemic racism from a position of partial distance.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.cultural_and_linguistic",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Media_and_information_diet and political summary consistently show evidence-oriented information seeking rather than social-media-driven politics.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.media_and_information_diet",
+              "field_b": "summaries.political_scientist",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview includes law-enforcement contact and no-arrest history missing from the profile.",
+              "gap": true,
+              "interview_ref": "Q20-Q22",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add limited police-contact and no-arrest details."
+            },
+            {
+              "id": 2,
+              "text": "Interview includes specific BLM-related actions missing from profile: small donation, no protest attendance, reading, conversations, and workplace equity support.",
+              "gap": true,
+              "interview_ref": "Q26-Q30",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add civic response details."
+            },
+            {
+              "id": 3,
+              "text": "Interview gives sources for political research including county voter guide, CalMatters, candidate websites, and local newspapers.",
+              "gap": true,
+              "interview_ref": "Q23",
+              "should_be_in": "preferences.media_and_information_diet",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add local newspaper endorsements to media details."
+            },
+            {
+              "id": 4,
+              "text": "Interview states her family differs politically: parents more moderate/practical, Evan more online and activist-language oriented.",
+              "gap": true,
+              "interview_ref": "Q23, Q30",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add political-discussion family dynamic."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed anxiety-prone, meticulous mind is strongly confirmed by interview reports of over-planning, rumination, tight shoulders, sleep trouble, and checklists.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q03, Q31, Q43-Q45, Q50",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Seed scientific rigor plus artistic wonder is confirmed through lab identity, watercolor, photography, astronomy, and nature awe.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed persona/arts_persona/hobbies",
+              "source_b_ref": "Q01, Q43, Q47, Q108-Q109",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Seed says collaborative yet assertive; interview supports collaboration and asking for help but does not strongly evidence assertiveness.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background/skills_and_expertise",
+              "source_b_ref": "Q04, Q44, Q65, Q77",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 4,
+              "text": "Seed modest team-spirit fandom and solitary cardio balance align with interview preference for quiet routines, hiking, yoga, and selective social contact.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed sports_persona/persona",
+              "source_b_ref": "Q07, Q15, Q38, Q49",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 5,
+              "text": "Seed does not mention agnostic/spiritual identity; interview adds nature/awe-based spirituality that fits her psychological profile.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona/arts_persona/travel_persona",
+              "source_b_ref": "Q47, Q94",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Psychologist summary accurately captures conscientiousness, anxiety, curiosity, selective relationships, and regulation through routines.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q03, Q17, Q43-Q45, Q49",
+              "source_b_ref": "summaries.psychologist",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Profile health details capture anxiety but omit the primary-care visit, possible generalized anxiety framing, chest tightness, and no regular therapy or medication.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q31-Q36, Q39, Q45",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add anxiety-care detail: primary-care discussion, possible generalized anxiety, no regular therapy or medication, and behavioral coping."
+            },
+            {
+              "id": 3,
+              "text": "Profile captures private support but omits the specific episode where Maya helped reframe work failure and prompted earlier help-seeking.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q44, Q50",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add Maya as practical emotional support and later ask-for-help shift."
+            },
+            {
+              "id": 4,
+              "text": "Profile omits religious/spiritual identity except indirectly under nature; interview gives agnostic/spiritual-but-not-religious background.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q47, Q94",
+              "source_b_ref": "preferences.cultural_and_linguistic/nature_and_outdoors",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add agnostic with loose Christian family background and nature/awe-based spirituality."
+            },
+            {
+              "id": 5,
+              "text": "Profile captures social-media comparison but could be clearer that late-night comparison worsens anxiety and she limits scrolling.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q43, Q48, Q50",
+              "source_b_ref": "preferences.media_and_information_diet",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add social-media comparison and reduced late-night scrolling as coping context."
+            }
+          ],
+          "summary": {
+            "consistent": 5,
+            "inconsistent": 0,
+            "gaps": 4
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Health_and_wellness, hobbies_and_recreation, music, and psychologist summary consistently describe adaptive regulation through yoga, journaling, walks, quiet books, and Max Richter.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.health_and_wellness/preferences.music",
+              "field_b": "summaries.psychologist/preferences.hobbies_and_recreation",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 2,
+              "text": "Social_and_relationships and media_and_information_diet consistently show preference for private support over public online vulnerability.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.social_and_relationships",
+              "field_b": "preferences.media_and_information_diet",
+              "action": "NO_CHANGE"
+            },
+            {
+              "id": 3,
+              "text": "Work_and_career ambition is internally consistent with home_and_lifestyle's need for quiet and routines; the profile frames this as a tension rather than contradiction.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.work_and_career",
+              "field_b": "preferences.home_and_lifestyle/summaries.psychologist",
+              "action": "NO_CHANGE"
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview details anxiety symptoms and medical discussion more specifically than the profile.",
+              "gap": true,
+              "interview_ref": "Q31-Q36, Q39, Q45",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add symptoms, primary-care discussion, therapy/medication status, and cost barriers."
+            },
+            {
+              "id": 2,
+              "text": "Interview includes a concrete emotional-struggle story involving Raman artifacts, crying, Maya's support, and earlier help-seeking afterward.",
+              "gap": true,
+              "interview_ref": "Q44",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add Maya support story as relational coping evidence."
+            },
+            {
+              "id": 3,
+              "text": "Interview includes agnostic/spiritual-but-not-religious identity and loose Christian upbringing.",
+              "gap": true,
+              "interview_ref": "Q47, Q94",
+              "should_be_in": "preferences.cultural_and_linguistic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add religious identity detail."
+            },
+            {
+              "id": 4,
+              "text": "Interview includes core values of reliability, curiosity, care, self-reliance, and quiet.",
+              "gap": true,
+              "interview_ref": "Q109",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add values detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "No FLAG_FOR_REVIEW findings remain, but several gaps required enrichment and one seed inconsistency about graduate-stipend/current-finance wording required correction.",
+    "final_status": "Corrected profile is ready for downstream use after applied revisions and hidden_facts generation."
+  },
+  "corrected_extracted_profile": {
+    "participant_id": "c750eeb05b9440e79877a7ce3217371a",
+    "name": "Laura Bost",
+    "age": 26,
+    "gender": "Female",
+    "marital_status": "Never married; not living with a romantic partner",
+    "location": "Atwater, CA 95301",
+    "education": "High school diploma from Atwater High School plus technical certifications in laboratory instrumentation and safety; no college degree yet",
+    "occupation": "Physical scientist in renewable-energy materials research",
+    "preferences": {
+      "_note": "Same 18 subcategories as the draft profile, with gaps filled and inconsistencies resolved. Every correction traces back to an observation in the verification report above.",
+      "health_and_wellness": {
+        "summary": "Laura prioritizes preventive routines, yoga, walking, sleep, and evidence-based medical care while managing anxiety and mild physical issues.",
+        "details": [
+          "Attends yoga and uses walking, journaling, and sleep routines to manage anxiety and tension headaches (Q31, Q32, Q45).",
+          "Is pro-vaccine and trusts doctors, CDC guidance, local public health, pharmacists, and university medical sources (Q41, Q42).",
+          "Avoids smoking, drinks lightly, and does not use marijuana or other substances for coping (Q38, Q39).",
+          "Has seasonal allergies, occasional tension headaches, and anxiety symptoms including overthinking, tight shoulders, sleep trouble, and chest tightness before presentations or heavy instrument weeks (Q31, Q33, Q45).",
+          "Discussed anxiety symptoms and possible generalized anxiety with a primary care doctor about a year ago; heart concerns were ruled out, and she has not started regular therapy or anxiety medication (Q33, Q39, Q45).",
+          "Postpones therapy and dental work because out-of-pocket costs, scheduling, and copays make her nervous despite having employer health coverage (Q36, Q40, Q64).",
+          "Uses supportive home remedies such as herbal tea, heat packs, stretching, yoga, breathing exercises, lavender or chamomile tea, and occasional vitamins, but treats them as complements rather than replacements for medical care (Q37)."
+        ],
+        "evidence": "Q31-Q42, Q45, Q64"
+      },
+      "food_and_dining": {
+        "summary": "Laura prefers seasonal, farm-to-table cooking and careful grocery planning, with occasional social cooking for friends.",
+        "details": [
+          "Meal preps and shops for seasonal produce, quinoa, vegetables, olive oil, nuts, and yogurt (Q15, Q56).",
+          "Hosts board-game nights and cooks dishes such as focaccia, sometimes overusing turmeric (Q07, Q38).",
+          "Cuts takeout and cooks cheaper meals when finances tighten (Q60, Q81).",
+          "Usually protects Sunday meal planning because skipping it makes the week feel more expensive and chaotic (Q15)."
+        ],
+        "evidence": "Q07, Q15, Q56, Q60, Q81"
+      },
+      "travel": {
+        "summary": "Laura favors quiet, nature-focused trips and plans travel carefully around a modest budget funded by employer income rather than a graduate stipend.",
+        "details": [
+          "Saves for Yosemite weekends and dreams of Provence lavender fields and Chile's Atacama Desert (Q62).",
+          "Uses small travel savings and avoids trips during tight months (Q61, Q81).",
+          "Prefers access to nature when imagining future places to live (Q108).",
+          "Has taken a few vacation days for Yosemite and family time (Q67)."
+        ],
+        "evidence": "Q61, Q62, Q67, Q81, Q108"
+      },
+      "social_and_relationships": {
+        "summary": "Laura has a small, trusted circle and values low-key, practical emotional support.",
+        "details": [
+          "Is close to parents, younger brother Evan, and friends Maya and Elise (Q05, Q06, Q07).",
+          "Usually sees parents for Sunday dinner twice a month and texts family about practical matters (Q05).",
+          "Prefers private support from Maya, Elise, or her mother instead of public social media vulnerability (Q44, Q49).",
+          "Her younger brother Evan is 22, and they text a few times a week, often joking or handling bills and forms (Q05, Q06).",
+          "One maternal grandmother is still alive but is extended family rather than daily support (Q06).",
+          "Maya is the person she usually calls first in a crisis and helped her reframe a work problem by reminding her that data problems are not moral failures (Q07, Q44).",
+          "Family political conversations are mixed: her parents are more moderate and practical, Evan is more online and activist-language oriented, and Laura tries to keep discussions concrete (Q23, Q29, Q30)."
+        ],
+        "evidence": "Q05-Q07, Q23, Q29-Q30, Q44, Q49"
+      },
+      "home_and_lifestyle": {
+        "summary": "Laura lives alone in a modest Atwater apartment and structures home life around quiet, budgeting, meal planning, art, and study.",
+        "details": [
+          "Lives alone in a one-bedroom apartment and pays household expenses herself (Q11, Q51, Q55).",
+          "Keeps watercolor supplies, science fiction books, and a desk area for data work and journaling (Q11).",
+          "Uses Sunday budgeting and meal planning to keep the week stable (Q15, Q17, Q57).",
+          "Has no pets because her schedule and budget make pet ownership impractical for now (Q14).",
+          "Rents her apartment for about $1,250 per month and has rented there a little over two years (Q56, Q58).",
+          "Her usual monthly spending is about $2,400-$2,500, with last month around $2,650 due to a copay, car maintenance, and art supplies (Q57).",
+          "Her household income is her take-home pay of about $3,650 per month after taxes and deductions, paid every two weeks by direct deposit (Q72-Q74).",
+          "Has no student loans, a manageable car loan, and only occasional small credit-card balances that she tries to pay quickly (Q63).",
+          "Could cover a $400 emergency from savings but would rebuild the emergency fund afterward and might briefly use a credit card if it followed another expense (Q82).",
+          "Bills fluctuate with summer air-conditioning, gas for Fresno/Yosemite/family trips, holiday gifts and food, and spring travel or hiking-gear temptations (Q59)."
+        ],
+        "evidence": "Q11, Q14-Q17, Q51, Q55-Q59, Q63, Q72-Q74, Q82"
+      },
+      "entertainment": {
+        "summary": "Laura prefers quiet entertainment such as science fiction, puzzles, board games, museum visits, and occasional sports viewing.",
+        "details": [
+          "Reads science fiction and uses quiet books after stressful days (Q11, Q38).",
+          "Plays board games such as Wingspan, Ticket to Ride, Azul, and logic puzzle games (Q07).",
+          "Watches Sacramento Kings games on TV and casually watches games with a light-drinking, low-key style (Q01, Q38)."
+        ],
+        "evidence": "Q01, Q07, Q11, Q38"
+      },
+      "hobbies_and_recreation": {
+        "summary": "Laura's hobbies combine science, art, nature, puzzles, and reflective routines.",
+        "details": [
+          "Paints watercolors, does macro photography, journals, solves puzzles, and reads science fiction (Q01, Q11, Q17).",
+          "Uses a modest telescope and feels awe through astronomy and nature (Q47).",
+          "Hikes with the Fresno Outdoor Club and tracks steps and elevation with a smartwatch (Q15, Q18, Q50).",
+          "Tries to protect one creative block each week for watercolor or photography, even if it is only an hour (Q17)."
+        ],
+        "evidence": "Q01, Q11, Q15, Q17, Q18, Q47, Q50"
+      },
+      "work_and_career": {
+        "summary": "Laura is methodical, research-oriented, and ambitious about renewable-energy materials despite a nontraditional education path.",
+        "details": [
+          "Works as a physical scientist running Raman and FTIR spectroscopy, sample preparation, calibration, documentation, and data processing (Q16, Q65).",
+          "Uses Python, MATLAB, spreadsheets, and careful lab notebooks (Q16, Q65).",
+          "Wants to become a research associate, lead a photovoltaic materials sub-project, publish, help with grants, and mentor local students (Q108).",
+          "Works one paid job, usually Monday through Friday about 8 a.m. to 4:30 p.m., sometimes staying until 6 during busy experiment weeks (Q16, Q68-Q71).",
+          "Her current position is not union-covered; she is open to a union if it addressed real workplace problems (Q66).",
+          "Has been at her current job about three years with health insurance, paid vacation, sick time, and a retirement plan (Q76).",
+          "Has good work relationships with a demanding but fair manager and trusted coworkers for troubleshooting and feedback (Q77)."
+        ],
+        "evidence": "Q16, Q65-Q71, Q76-Q78, Q108"
+      },
+      "arts_and_culture": {
+        "summary": "Laura values visual art, museums, watercolor landscapes, and nature-inspired photography.",
+        "details": [
+          "Participated in art club and paints California landscapes in watercolor (Q01).",
+          "Visits Fresno Art Museum and Studio Art Gallery with Elise (Q07).",
+          "Enjoys museum and artist accounts on Instagram and sometimes posts watercolors (Q48).",
+          "Was encouraged by Ms. Rivas in art club and felt painting landscapes was more than a hobby for quiet kids (Q01)."
+        ],
+        "evidence": "Q01, Q07, Q48"
+      },
+      "sports_and_fitness": {
+        "summary": "Laura balances solitary fitness with light team fandom.",
+        "details": [
+          "Does yoga, walks, and hikes to stay healthy and manage anxiety (Q15, Q18, Q31, Q32).",
+          "Uses a smartwatch to track steps and elevation (Q18, Q50).",
+          "Follows Sacramento Kings basketball casually and, from the seed profile, follows Fresno State Bulldogs football for seasonal excitement (Q01, seed sports_persona)."
+        ],
+        "evidence": "Q01, Q15, Q18, Q31, Q32, Q50, seed sports_persona"
+      },
+      "nature_and_outdoors": {
+        "summary": "Nature is central to Laura's identity, recreation, spirituality, politics, and travel dreams.",
+        "details": [
+          "Grew up shaped by Central Valley agriculture, orchards, irrigation, heat, and seasonal rhythms (Q01, Q107).",
+          "Hikes Sierra foothills and takes macro photos of trails and natural textures (Q15, Q43).",
+          "Feels spiritual awe through nature, astronomy, and landscapes (Q47).",
+          "Connects climate, water, smoke, air quality, crop decisions, and people's health to Central Valley life (Q24, Q28)."
+        ],
+        "evidence": "Q01, Q15, Q24, Q28, Q43, Q47, Q107"
+      },
+      "technology": {
+        "summary": "Laura uses technology pragmatically for lab work, budgeting, health tracking, social media, and family support.",
+        "details": [
+          "Processes scientific data with Python, MATLAB, and spreadsheets (Q16, Q65).",
+          "Uses a smartwatch for steps and elevation tracking (Q18, Q50).",
+          "Helps parents with online health portals and forms (Q17, Q35, Q40).",
+          "Uses tax software and double-checks forms because taxes make her nervous (Q75)."
+        ],
+        "evidence": "Q16, Q17, Q18, Q35, Q40, Q50, Q65, Q75"
+      },
+      "community_and_civic": {
+        "summary": "Laura is civically engaged but not highly activist, with interests in voting, science outreach, local policy, equity, and accountable institutions.",
+        "details": [
+          "Votes by mail in presidential and most midterm elections and researches ballots (Q23).",
+          "Cares about local water, air quality, schools, clean energy, and rural education (Q23, Q24).",
+          "Wants outreach programs for rural high school and community college students (Q04, Q108).",
+          "Identifies as a moderate Democrat or left-leaning independent and is closer to the Democratic Party, but remains issue-driven and attentive to rural and working-class practicality (Q24, Q95, Q96).",
+          "Supports climate action, science investment, community colleges, rural education, health-care access, reproductive rights, LGBTQ rights, and treating immigrants with dignity (Q24).",
+          "Has limited direct law-enforcement experience: one brake-light traffic stop, one non-emergency call about a suspicious car, no personal arrest history, and no immediate family arrests (Q20-Q22).",
+          "Thinks BLM raised real issues about accountability, unequal treatment, whose pain is believed, data transparency, de-escalation, independent review, and mental-health response (Q26-Q27).",
+          "Did not attend protests but read more, donated a small amount once, talked with friends and family, and supports structured mentoring and equity in science outreach (Q26-Q30)."
+        ],
+        "evidence": "Q04, Q20-Q30, Q95-Q96, Q108"
+      },
+      "music": {
+        "summary": "Laura uses quiet ambient music as part of emotional regulation and creative focus.",
+        "details": [
+          "Listens to Max Richter or quiet music after bad days and during calm routines (Q38).",
+          "Prefers calming audio environments over noisy social settings (Q11, Q38)."
+        ],
+        "evidence": "Q11, Q38"
+      },
+      "fashion_and_appearance": {
+        "summary": "There is limited evidence, but Laura appears practical and budget-conscious about appearance and clothing.",
+        "details": [
+          "Delayed buying new work shoes during a tight month, suggesting practical clothing purchases rather than fashion spending (Q64).",
+          "Cuts discretionary purchases before necessities when expenses rise (Q60, Q81)."
+        ],
+        "evidence": "Q60, Q64, Q81"
+      },
+      "cultural_and_linguistic": {
+        "summary": "Laura is a white, non-Hispanic Central Valley Californian with Irish-German ancestry, working-class agricultural family roots, and a loose Christian family background.",
+        "details": [
+          "Identifies as white and not Hispanic, Latinx, or Spanish origin (Q88, Q89).",
+          "Describes family background as mostly Irish and German ancestry (Q88).",
+          "Grew up in a multicultural Central Valley environment but from a white working-class agricultural family (Q01, Q28, Q107).",
+          "Was born in the United States, has not lived outside the U.S., and has no immediate family born outside the U.S. (Q86).",
+          "Identifies as agnostic with a loose Christian family background and somewhat spiritual through nature and awe; she does not belong to a church (Q47, Q94)."
+        ],
+        "evidence": "Q01, Q28, Q47, Q86, Q88-Q89, Q94, Q107"
+      },
+      "life_events_and_transitions": {
+        "summary": "Laura's major transitions include moving from Modesto to Atwater, choosing certifications over immediate college, and building a nontraditional science career.",
+        "details": [
+          "Grew up in Modesto and lived in Atwater by age 16 (Q01, Q87, Q97).",
+          "After high school, chose work plus technical certifications instead of immediate college due to cost and anxiety (Q02, Q03).",
+          "Recently increased study time to prepare for applied physics and research advancement (Q18, Q108).",
+          "Was born April 14, 2000, in Modesto, California (Q85, Q87).",
+          "Lived with both parents and younger brother Evan at age 16 in a stable, modest, busy household (Q97-Q99).",
+          "Values reliability, curiosity, care, self-reliance balanced with asking for help, and quiet (Q109)."
+        ],
+        "evidence": "Q01, Q02, Q03, Q18, Q85, Q87, Q97-Q99, Q108-Q109"
+      },
+      "media_and_information_diet": {
+        "summary": "Laura prefers evidence-based, low-drama information sources and uses social media selectively for art, science, hiking, family, local events, and political research.",
+        "details": [
+          "Uses Instagram for watercolor artists, hiking photos, science communication, museums, and friends (Q48).",
+          "Uses Facebook mainly for family, local events, and the Fresno Outdoor Club (Q48).",
+          "Researches elections through county voter guides, CalMatters, candidate websites, local newspaper endorsements, and local reporting, and avoids random social media for health claims (Q23, Q42).",
+          "Does not use Twitter/X much because it feels combative (Q48).",
+          "Social media can trigger comparison about apartments, art, and career timelines, so she tries to limit scrolling and avoid late-night use (Q43, Q48, Q50)."
+        ],
+        "evidence": "Q23, Q42-Q43, Q48, Q50"
+      }
+    },
+    "summaries": {
+      "_note": "Carried over VERBATIM from the draft extracted profile. Not regenerated in this step.",
+      "demographer": "Laura Bost is a 26-year-old never-married white woman living alone in a rented one-bedroom apartment in Atwater, California (Q51, Q84, Q88, Q89). She was born in Modesto and grew up in a modest Central Valley working-class family connected to agricultural labor and operations (Q01, Q87, Q107). Her highest completed formal education is a high school diploma from Atwater High School, supplemented by technical lab certifications rather than a college degree (Q90). She has no children, no cohabiting partner, and maintains close but bounded ties with parents, a younger brother, and a small friendship circle (Q05-Q07).",
+      "behavioral_economist": "Laura is highly budget-conscious, risk-aware, and oriented toward stability under uncertainty, using spreadsheets, categories, and Sunday routines to reduce anxiety around money and time (Q03, Q17, Q57, Q61). She avoids debt when possible and can cover a 400 dollar emergency, but it would meaningfully affect her plans (Q63, Q82). Her choices show long time horizons: she sacrifices discretionary purchases, travel, and convenience food to preserve savings and career options (Q60-Q62, Q81). She is motivated by mastery and identity as a careful scientist, but loss aversion and fear of financial overextension shaped her nontraditional education path (Q02, Q83).",
+      "political_scientist": "Laura is a moderate Democrat or left-leaning independent who votes by mail in major elections and increasingly pays attention to local policy, especially water, air quality, education, energy, and rural implementation (Q23-Q25, Q95-Q96). She supports climate action, public science investment, health care access, reproductive rights, LGBTQ rights, and immigrant dignity, while remaining sensitive to working-class and agricultural concerns about costs and regulation (Q24). She has been affected by Black Lives Matter and thinks about race through policing, education access, environmental justice, and institutional accountability, though she has not joined protests (Q26-Q30). Her institutional trust is conditional: she trusts evidence and science as methods but wants government implementation to be competent, transparent, and locally grounded (Q24, Q42).",
+      "psychologist": "Laura presents as conscientious, anxious, curious, and self-regulating, with a strong tendency to convert uncertainty into lists, schedules, spreadsheets, and documented routines (Q03, Q17, Q43, Q45). Her self-concept combines scientific rigor with artistic and nature-based awe, and she uses watercolor, hiking, astronomy, journaling, yoga, and private friendships as emotional regulation tools (Q01, Q38, Q43, Q47). She is relationally selective, relying on a few trusted people such as Maya rather than broad public support (Q07, Q44, Q49). Her core motivational tension is between ambition and stability: she wants research advancement and impact, but not at the cost of health, quiet, family connection, or personal integrity (Q83, Q108-Q109)."
+    },
+    "hidden_facts": [
+      {
+        "fact_id": "HF-001",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura attends yoga to help manage anxiety and physical tension.",
+        "ground_truth_label": "uses yoga for anxiety and tension management",
+        "behavioral_evidence_from_interview": [
+          "Q31: active enough with walking, yoga, and hiking",
+          "Q32: Yoga... forces me to breathe and notice tension"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-002",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura uses walking, journaling, and sleep routines to manage anxiety.",
+        "ground_truth_label": "behavioral anxiety coping routines",
+        "behavioral_evidence_from_interview": [
+          "Q45: manage it with routines, yoga, journaling, walks",
+          "Q43: anxiety is quieter when I sleep, move, and talk to people"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-003",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura is pro-vaccine and received COVID vaccines and boosters when recommended.",
+        "ground_truth_label": "pro-vaccine orientation",
+        "behavioral_evidence_from_interview": [
+          "Q41: I am pro-vaccine. I got COVID vaccines and boosters when recommended"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-004",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura gets a flu shot most years.",
+        "ground_truth_label": "annual flu vaccination most years",
+        "behavioral_evidence_from_interview": [
+          "Q41: I get a flu shot most years"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-005",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura trusts doctors, CDC guidance, local public health, pharmacists, and university medical sources for vaccine and health information.",
+        "ground_truth_label": "trusted evidence-based medical sources",
+        "behavioral_evidence_from_interview": [
+          "Q42: I trust my primary care doctor, the CDC... local public health... university medical sources... pharmacists"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-006",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura does not smoke.",
+        "ground_truth_label": "non-smoker",
+        "behavioral_evidence_from_interview": [
+          "Q38: I do not smoke"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-007",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura drinks lightly, usually two or three times per month and usually one drink.",
+        "ground_truth_label": "light alcohol use",
+        "behavioral_evidence_from_interview": [
+          "Q38: Maybe two or three times, usually one drink"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-008",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura does not use marijuana or other substances to cope.",
+        "ground_truth_label": "no marijuana or other substance coping",
+        "behavioral_evidence_from_interview": [
+          "Q39: I do not use marijuana or other substances to cope"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-009",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura has seasonal allergies and occasional tension headaches.",
+        "ground_truth_label": "seasonal allergies and tension headaches",
+        "behavioral_evidence_from_interview": [
+          "Q31: I have seasonal allergies and occasional tension headaches"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-010",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura's anxiety symptoms include overthinking, tight shoulders, trouble sleeping, and chest tightness before presentations or heavy instrument weeks.",
+        "ground_truth_label": "anxiety symptom pattern",
+        "behavioral_evidence_from_interview": [
+          "Q31: overthinking, tight shoulders, trouble sleeping",
+          "Q33: chest tightness before presentations or instrument-heavy weeks"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-011",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura discussed anxiety symptoms and possible generalized anxiety with a primary care doctor about a year ago.",
+        "ground_truth_label": "primary-care anxiety discussion",
+        "behavioral_evidence_from_interview": [
+          "Q33: finally naming my anxiety... with a primary care doctor",
+          "Q33 follow-up: possible generalized anxiety"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-012",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura has not started regular therapy or anxiety medication.",
+        "ground_truth_label": "no regular therapy or anxiety medication",
+        "behavioral_evidence_from_interview": [
+          "Q33: I have not started regular therapy",
+          "Q39: I have not started medication"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-013",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Laura has postponed therapy and dental work because of out-of-pocket cost and scheduling concerns.",
+        "ground_truth_label": "delayed therapy and dental care due to cost/scheduling",
+        "behavioral_evidence_from_interview": [
+          "Q36: postponed dental care and therapy because the out-of-pocket cost made me nervous"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-014",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Laura meal preps and buys seasonal produce, quinoa, vegetables, olive oil, nuts, and yogurt.",
+        "ground_truth_label": "seasonal meal prep grocery pattern",
+        "behavioral_evidence_from_interview": [
+          "Q56: Produce, olive oil, nuts, yogurt... quinoa and vegetables",
+          "Q15: Sunday... meal planning"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-015",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Laura hosts board-game nights and cooks for friends.",
+        "ground_truth_label": "social cooking for board-game nights",
+        "behavioral_evidence_from_interview": [
+          "Q07: I also have a small board-game group",
+          "Q07 follow-up: I cook too much food"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-016",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Laura sometimes overuses turmeric in food.",
+        "ground_truth_label": "overuses turmeric habit",
+        "behavioral_evidence_from_interview": [
+          "Q07 follow-up: usually put too much turmeric in something"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-017",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Laura cuts takeout and cooks cheaper meals when finances tighten.",
+        "ground_truth_label": "reduces food spending during tight months",
+        "behavioral_evidence_from_interview": [
+          "Q60: cheaper meal prep",
+          "Q81: cooking at home"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-018",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Laura protects Sunday meal planning because skipping it makes the week feel expensive and chaotic.",
+        "ground_truth_label": "Sunday meal planning as stability routine",
+        "behavioral_evidence_from_interview": [
+          "Q15: Sunday meal planning. If I skip it, the whole week feels more expensive and chaotic"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-019",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Laura saves for Yosemite weekends.",
+        "ground_truth_label": "Yosemite weekend travel saving",
+        "behavioral_evidence_from_interview": [
+          "Q62: A Yosemite weekend"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-020",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Laura dreams of visiting Provence lavender fields and Chile's Atacama Desert.",
+        "ground_truth_label": "Provence and Atacama travel aspirations",
+        "behavioral_evidence_from_interview": [
+          "Q62: Provence lavender fields and the Atacama"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-021",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Laura avoids trips during financially tight months.",
+        "ground_truth_label": "cuts travel during tight months",
+        "behavioral_evidence_from_interview": [
+          "Q81: avoiding trips"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-022",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Laura wants future places to live to have access to nature.",
+        "ground_truth_label": "future residence needs nature access",
+        "behavioral_evidence_from_interview": [
+          "Q108: I need access to nature"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-023",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Laura is close to her parents, younger brother Evan, and friends Maya and Elise.",
+        "ground_truth_label": "close family and friend circle",
+        "behavioral_evidence_from_interview": [
+          "Q05: My parents are still very important",
+          "Q07: My closest friends are Maya and Elise"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-024",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Laura sees her parents for Sunday dinner about twice a month.",
+        "ground_truth_label": "twice-monthly parent dinners",
+        "behavioral_evidence_from_interview": [
+          "Q05: Sunday dinner a couple times a month"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-025",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Laura prefers private support from Maya, Elise, or her mother rather than public social media vulnerability.",
+        "ground_truth_label": "private emotional support preference",
+        "behavioral_evidence_from_interview": [
+          "Q49: I text one or two trusted people privately",
+          "Q49: Public vulnerability online does not feel comfortable"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-026",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Laura's younger brother Evan is 22 and texts her a few times a week.",
+        "ground_truth_label": "younger brother Evan relationship",
+        "behavioral_evidence_from_interview": [
+          "Q05: younger brother, Evan, who is 22",
+          "Q06: A few times a week by text"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-027",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Laura has one maternal grandmother still alive but not part of daily support.",
+        "ground_truth_label": "living maternal grandmother extended support only",
+        "behavioral_evidence_from_interview": [
+          "Q06: One grandmother is still alive on my mom's side, but she is more extended family than daily support"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-028",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Maya is Laura's first call in a crisis and helped her reframe a work failure.",
+        "ground_truth_label": "Maya practical emotional support",
+        "behavioral_evidence_from_interview": [
+          "Q07: Usually Maya first",
+          "Q44: data problems are not moral failures"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-029",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura lives alone in a one-bedroom apartment in Atwater.",
+        "ground_truth_label": "single-person Atwater apartment household",
+        "behavioral_evidence_from_interview": [
+          "Q11: just me in a one-bedroom apartment",
+          "Q51: I live alone"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-030",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura pays her rent and household expenses herself.",
+        "ground_truth_label": "sole household expense responsibility",
+        "behavioral_evidence_from_interview": [
+          "Q55: I pay my rent and household expenses myself"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-031",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura keeps watercolor supplies, science fiction books, and a desk area for data work and journaling at home.",
+        "ground_truth_label": "home setup for art, reading, data, and journaling",
+        "behavioral_evidence_from_interview": [
+          "Q11: desk area for data work and journaling... watercolor supplies... science fiction books"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-032",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura has no pets because her schedule and budget make pet ownership impractical.",
+        "ground_truth_label": "no pets due to schedule and budget",
+        "behavioral_evidence_from_interview": [
+          "Q14: No pets... my schedule and budget say no for now"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-033",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura rents her apartment for about $1,250 per month and has rented there for a little over two years.",
+        "ground_truth_label": "renter with $1,250 monthly rent",
+        "behavioral_evidence_from_interview": [
+          "Q56: Around 1,250 dollars a month",
+          "Q58: A little over two years"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-034",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura usually spends about $2,400-$2,500 per month, with last month about $2,650.",
+        "ground_truth_label": "monthly spending range",
+        "behavioral_evidence_from_interview": [
+          "Q57: Last month... about 2,650... normal month... 2,400 to 2,500"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-035",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura's household income is about $3,650 monthly take-home pay from her job.",
+        "ground_truth_label": "monthly take-home income 3650",
+        "behavioral_evidence_from_interview": [
+          "Q72: take-home pay last month was about 3,650 dollars",
+          "Q74: household income is just mine"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-036",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura has no student loans, has a manageable car loan, and avoids carrying credit card debt.",
+        "ground_truth_label": "debt profile: no student loans, car loan, minimal credit debt",
+        "behavioral_evidence_from_interview": [
+          "Q63: I do not have student loans",
+          "Q63: main debt is a car loan",
+          "Q63: try to pay it off quickly"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-037",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Laura could cover a $400 emergency from savings but would feel it and rebuild over later paychecks.",
+        "ground_truth_label": "can cover 400 emergency with strain",
+        "behavioral_evidence_from_interview": [
+          "Q82: I could cover 400 dollars from savings, but I would feel it"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-038",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Laura reads science fiction and uses quiet books after stressful days.",
+        "ground_truth_label": "science fiction and quiet reading entertainment",
+        "behavioral_evidence_from_interview": [
+          "Q11: shelf... science fiction books",
+          "Q38: quiet science fiction book"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-039",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Laura plays Wingspan, Ticket to Ride, Azul, and logic puzzle games with her board-game group.",
+        "ground_truth_label": "board-game preferences",
+        "behavioral_evidence_from_interview": [
+          "Q07: Wingspan, Ticket to Ride, Azul, and sometimes logic puzzle games"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-040",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Laura watches Sacramento Kings games on TV casually.",
+        "ground_truth_label": "casual Sacramento Kings fandom",
+        "behavioral_evidence_from_interview": [
+          "Q01: Kings games on TV"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-041",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Laura paints watercolors.",
+        "ground_truth_label": "watercolor painting hobby",
+        "behavioral_evidence_from_interview": [
+          "Q01: trying to paint foothills in watercolor",
+          "Q17: creative block... watercolor"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-042",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Laura does macro photography of small natural details.",
+        "ground_truth_label": "macro photography hobby",
+        "behavioral_evidence_from_interview": [
+          "Q01: taking pictures of anything small enough that other people ignored it",
+          "Q43: On a trail with my camera"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-043",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Laura journals a few nights a week as a reality check for worries.",
+        "ground_truth_label": "journaling coping hobby",
+        "behavioral_evidence_from_interview": [
+          "Q17: journal a few nights a week",
+          "Q17: what I am worried about... what I can do next"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-044",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Laura hikes with the Fresno Outdoor Club once or twice a month when possible.",
+        "ground_truth_label": "Fresno Outdoor Club hiking",
+        "behavioral_evidence_from_interview": [
+          "Q15: hiking with the Fresno Outdoor Club maybe once or twice a month"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-045",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Laura uses a modest telescope for amateur astronomy.",
+        "ground_truth_label": "amateur astronomy with modest telescope",
+        "behavioral_evidence_from_interview": [
+          "Q01: looking through my little telescope",
+          "Q47: awe... in astronomy"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-046",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura works as a physical scientist in renewable-energy materials research.",
+        "ground_truth_label": "physical scientist occupation",
+        "behavioral_evidence_from_interview": [
+          "Q16: physical scientist in renewable-energy materials research",
+          "Q65: My occupation is physical scientist"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-047",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura runs Raman and FTIR spectroscopy as part of her lab work.",
+        "ground_truth_label": "Raman and FTIR spectroscopy duties",
+        "behavioral_evidence_from_interview": [
+          "Q16: running Raman and FTIR scans",
+          "Q65: running Raman and FTIR spectroscopy"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-048",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura prepares and labels samples, checks calibration, documents procedures, and processes data.",
+        "ground_truth_label": "lab preparation documentation and data duties",
+        "behavioral_evidence_from_interview": [
+          "Q65: preparing and labeling samples... checking instrument calibration... documenting procedures... processing data"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-049",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura uses Python, MATLAB, spreadsheets, and careful lab notebooks in her work.",
+        "ground_truth_label": "scientific computing and documentation tools",
+        "behavioral_evidence_from_interview": [
+          "Q16: Python or MATLAB",
+          "Q65: Python, MATLAB, or spreadsheets"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-050",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura wants to become a research associate leading a next-generation photovoltaic materials sub-project.",
+        "ground_truth_label": "research associate photovoltaic ambition",
+        "behavioral_evidence_from_interview": [
+          "Q108: research associate working on next-generation photovoltaic materials with more responsibility for a sub-project"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-051",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura wants to publish, contribute to a grant proposal, and mentor local students.",
+        "ground_truth_label": "publishing grant and mentoring goals",
+        "behavioral_evidence_from_interview": [
+          "Q108: publish, contribute to a grant proposal, and mentor students"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-052",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura works one paid job, usually around 40 hours per week, sometimes 43 to 45 hours during busy experiment weeks.",
+        "ground_truth_label": "single full-time job with occasional longer weeks",
+        "behavioral_evidence_from_interview": [
+          "Q68: about 40 hours... sometimes 43 or 45",
+          "Q70: I have one paid job"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-053",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Laura has been at her current job about three years and receives health insurance, paid vacation, sick time, and a retirement plan.",
+        "ground_truth_label": "three-year job tenure with benefits",
+        "behavioral_evidence_from_interview": [
+          "Q76: current job about three years. Benefits are decent: health insurance, paid vacation, sick time, and a retirement plan"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-054",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Laura paints California landscapes in watercolor and participated in art club.",
+        "ground_truth_label": "California landscape watercolor art",
+        "behavioral_evidence_from_interview": [
+          "Q01: joined art club... paint foothills in watercolor"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-055",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Laura visits Fresno Art Museum and Studio Art Gallery with Elise.",
+        "ground_truth_label": "Fresno Art Museum and Studio Art Gallery visits",
+        "behavioral_evidence_from_interview": [
+          "Q07: go to the Fresno Art Museum or Studio Art Gallery"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-056",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Laura follows museum and artist accounts on Instagram and sometimes posts watercolors.",
+        "ground_truth_label": "art Instagram use",
+        "behavioral_evidence_from_interview": [
+          "Q48: watercolor artists... museums",
+          "Q48: I post occasionally... a watercolor"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-057",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Laura does yoga, walks, and hikes to stay healthy and manage anxiety.",
+        "ground_truth_label": "yoga walking hiking fitness pattern",
+        "behavioral_evidence_from_interview": [
+          "Q31: walking, yoga, and hiking",
+          "Q32: Yoga... helps most"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-058",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Laura uses a smartwatch to track steps and elevation.",
+        "ground_truth_label": "smartwatch step and elevation tracking",
+        "behavioral_evidence_from_interview": [
+          "Q18: smartwatch... track steps and elevation",
+          "Q50: smartwatch step goals"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-059",
+        "source": "direct",
+        "source_subcategory": "preferences.sports_and_fitness",
+        "reprojected_from": null,
+        "claim": "Laura follows Fresno State Bulldogs football for seasonal excitement.",
+        "ground_truth_label": "Fresno State Bulldogs football fandom",
+        "behavioral_evidence_from_interview": [
+          "seed sports_persona: follows the Fresno State Bulldogs football team"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-060",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Laura grew up shaped by Central Valley agriculture, orchards, irrigation, heat, and seasonal rhythms.",
+        "ground_truth_label": "Central Valley agricultural upbringing",
+        "behavioral_evidence_from_interview": [
+          "Q01: tied to agriculture and the rhythms of the Central Valley",
+          "Q107: orchards and crop production"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-061",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Laura feels spiritual awe through nature, astronomy, and landscapes.",
+        "ground_truth_label": "nature-based awe spirituality",
+        "behavioral_evidence_from_interview": [
+          "Q47: awe in nature, in astronomy, in old landscapes"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-062",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Laura connects climate, water, smoke, air quality, crop decisions, and health to Central Valley life.",
+        "ground_truth_label": "Central Valley environmental concern",
+        "behavioral_evidence_from_interview": [
+          "Q24: heat, water, and air quality affect real families",
+          "Q24 follow-up: heat, smoke, crop decisions, and people's lungs"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-063",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Laura helps her parents with online health portals and forms.",
+        "ground_truth_label": "family technology support",
+        "behavioral_evidence_from_interview": [
+          "Q17: help them with online forms or health appointment portals",
+          "Q35: help with online portals and reminders"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-064",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Laura uses tax software and double-checks forms because taxes make her nervous.",
+        "ground_truth_label": "tax software with anxious double-checking",
+        "behavioral_evidence_from_interview": [
+          "Q75: used tax software and double-checked everything because tax forms make me nervous"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-065",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura votes by mail in presidential elections and usually in midterms but has missed some local special elections.",
+        "ground_truth_label": "vote-by-mail major-election voter",
+        "behavioral_evidence_from_interview": [
+          "Q23: vote in presidential elections and usually in midterms... missed some local special elections",
+          "Q23: I vote by mail"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-066",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura cares about local water, air quality, schools, clean energy, and rural education.",
+        "ground_truth_label": "local civic issue priorities",
+        "behavioral_evidence_from_interview": [
+          "Q23: Local water, air quality, schools, and energy issues matter",
+          "Q24: rural education"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-067",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura wants outreach programs for rural high-school and community-college students.",
+        "ground_truth_label": "rural and community college science outreach goal",
+        "behavioral_evidence_from_interview": [
+          "Q04: tell them there is not only one correct path",
+          "Q108: mentor students from local community colleges or rural high schools"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-068",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura identifies as a moderate Democrat or left-leaning independent and is closer to the Democratic Party.",
+        "ground_truth_label": "moderate Democrat or left-leaning independent",
+        "behavioral_evidence_from_interview": [
+          "Q24: center-left... moderate Democrat or left-leaning independent",
+          "Q96: Closer to the Democratic Party"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-069",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura supports climate action, public science investment, health-care access, reproductive rights, LGBTQ rights, and treating immigrants with dignity.",
+        "ground_truth_label": "center-left policy support set",
+        "behavioral_evidence_from_interview": [
+          "Q24: support public investment in science... health care... LGBTQ rights, reproductive rights, and treating immigrants with dignity"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-070",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura has limited direct law-enforcement experience: one brake-light traffic stop and one non-emergency call.",
+        "ground_truth_label": "limited police contact",
+        "behavioral_evidence_from_interview": [
+          "Q20: pulled over once for a brake light",
+          "Q20: called the non-emergency line once"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-071",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura has never been arrested and has no immediate family members who have been arrested.",
+        "ground_truth_label": "no arrest history in self or immediate family",
+        "behavioral_evidence_from_interview": [
+          "Q22: I have never been arrested. No immediate family member has been arrested"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-072",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura thinks BLM raises real questions about accountability, unequal treatment, and whose pain gets believed.",
+        "ground_truth_label": "BLM accountability and unequal treatment concern",
+        "behavioral_evidence_from_interview": [
+          "Q27: real questions about accountability, unequal treatment, and whose pain gets believed"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-073",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura supports data transparency, de-escalation, independent review, and mental-health response in policing.",
+        "ground_truth_label": "specific policing reform preferences",
+        "behavioral_evidence_from_interview": [
+          "Q27: data transparency, de-escalation, independent review, and investing in mental health response"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-074",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Laura did not attend BLM protests but read more, donated a small amount once, talked with friends and family, and supports equity efforts at work.",
+        "ground_truth_label": "non-protest BLM response",
+        "behavioral_evidence_from_interview": [
+          "Q26: No, I did not attend a protest... read, donated a small amount once",
+          "Q29: talked with friends and some family... support equity efforts at work"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-075",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Laura listens to Max Richter or quiet music after bad days and during calm routines.",
+        "ground_truth_label": "Max Richter calming music preference",
+        "behavioral_evidence_from_interview": [
+          "Q38: either Max Richter or a quiet science fiction book"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-076",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Laura delayed buying new work shoes during a tight month.",
+        "ground_truth_label": "delayed practical clothing purchase",
+        "behavioral_evidence_from_interview": [
+          "Q64: delay buying new work shoes"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-077",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Laura identifies as white and not Hispanic, Latinx, or Spanish origin.",
+        "ground_truth_label": "white non-Hispanic identity",
+        "behavioral_evidence_from_interview": [
+          "Q88: No, I am not Hispanic, Latinx, or Spanish origin",
+          "Q89: I identify as white"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-078",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Laura describes her family background as mostly Irish and German ancestry.",
+        "ground_truth_label": "Irish-German ancestry",
+        "behavioral_evidence_from_interview": [
+          "Q88: Mostly Irish and German ancestry"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-079",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Laura was born in the United States, has not lived outside the U.S., and has no immediate family born outside the U.S.",
+        "ground_truth_label": "U.S.-born no foreign residence",
+        "behavioral_evidence_from_interview": [
+          "Q86: Yes, I was born in the United States",
+          "Q86 follow-up: No"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-080",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Laura identifies as agnostic with a loose Christian family background and does not belong to a church.",
+        "ground_truth_label": "agnostic loose Christian background",
+        "behavioral_evidence_from_interview": [
+          "Q47: agnostic or spiritual-but-not-religious",
+          "Q94: Agnostic, with a loose Christian family background",
+          "Q94: No"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-081",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Laura was born April 14, 2000, in Modesto, California.",
+        "ground_truth_label": "DOB and birthplace",
+        "behavioral_evidence_from_interview": [
+          "Q85: My date of birth is April 14, 2000",
+          "Q87: born in Modesto, California"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-082",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Laura grew up in Modesto and lived in Atwater by age 16.",
+        "ground_truth_label": "Modesto childhood to Atwater adolescence",
+        "behavioral_evidence_from_interview": [
+          "Q87: Mostly, yes, before later living in Atwater",
+          "Q97: When I was 16, I lived in Atwater"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-083",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "After high school, Laura chose work plus technical certifications instead of immediate college because of cost and anxiety.",
+        "ground_truth_label": "nontraditional education path due to cost and anxiety",
+        "behavioral_evidence_from_interview": [
+          "Q02: chose work plus certifications because it felt financially safer",
+          "Q03: shaped by fear"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-084",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Laura recently increased formal evening study time to prepare for applied physics and research advancement.",
+        "ground_truth_label": "recent applied physics self-study increase",
+        "behavioral_evidence_from_interview": [
+          "Q18: added more formal study time in the evenings",
+          "Q108: completed the coursework or program steps I need for applied physics"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-085",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "At age 16, Laura lived with both parents and younger brother Evan in a stable, modest, busy household.",
+        "ground_truth_label": "age-16 two-parent household with brother",
+        "behavioral_evidence_from_interview": [
+          "Q98: lived with both my mother and father",
+          "Q99: younger brother Evan",
+          "Q98 follow-up: Stable, modest, and busy"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-086",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Laura values reliability, curiosity, care, self-reliance balanced with asking for help, and quiet.",
+        "ground_truth_label": "core values set",
+        "behavioral_evidence_from_interview": [
+          "Q109: I value reliability, curiosity, and care",
+          "Q109 follow-up: Self-reliance... balance it with asking for help",
+          "Q109: value quiet"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-087",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Laura uses Instagram for watercolor artists, hiking photos, science communication, museums, and friends.",
+        "ground_truth_label": "Instagram use pattern",
+        "behavioral_evidence_from_interview": [
+          "Q48: Instagram... watercolor artists, hiking photos, science communication accounts, museums, and a few friends"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-088",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Laura uses Facebook mainly for family, local events, and the Fresno Outdoor Club.",
+        "ground_truth_label": "Facebook family local events and outdoor club use",
+        "behavioral_evidence_from_interview": [
+          "Q48: Facebook mostly for family, local event pages, and the Fresno Outdoor Club group"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-089",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Laura researches elections through county voter guides, CalMatters, candidate websites, local newspaper endorsements, and local reporting.",
+        "ground_truth_label": "ballot research sources",
+        "behavioral_evidence_from_interview": [
+          "Q23: county voter guide, CalMatters, candidate websites... local newspaper endorsements"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-090",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Laura avoids random social media posts, Facebook threads, influencer videos, and fear-based claims for health information.",
+        "ground_truth_label": "avoids low-quality health information sources",
+        "behavioral_evidence_from_interview": [
+          "Q42: do not rely on random social media posts",
+          "Q42: Facebook threads, influencer videos, and anything that uses fear"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-091",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Laura does not use Twitter/X much because it feels too combative.",
+        "ground_truth_label": "low Twitter/X use due to combativeness",
+        "behavioral_evidence_from_interview": [
+          "Q48: I do not use Twitter or X much because it feels too combative"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-092",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Social media can trigger Laura to compare her apartment, art, and career timeline to others, so she limits scrolling and avoids late-night use.",
+        "ground_truth_label": "social media comparison and scrolling limits",
+        "behavioral_evidence_from_interview": [
+          "Q48: make me compare myself",
+          "Q50: fewer late-night scrolling sessions",
+          "Q43: comparing myself to other people's career timelines"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-093",
+        "source": "reprojected",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": "summaries.demographer",
+        "claim": "Laura has no children and no cohabiting partner.",
+        "ground_truth_label": "no children and no cohabiting partner",
+        "behavioral_evidence_from_interview": [
+          "Q05: I do not have a partner right now, and I do not have children",
+          "Q84: never been married, and I am not living with a romantic partner"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-094",
+        "source": "reprojected",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "Laura uses spreadsheets, savings categories, and Sunday routines to reduce anxiety around money and time.",
+        "ground_truth_label": "spreadsheet and routine-based uncertainty management",
+        "behavioral_evidence_from_interview": [
+          "Q03: I use spreadsheets now",
+          "Q17: detailed budget and calendar",
+          "Q61: track categories in a spreadsheet"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-095",
+        "source": "reprojected",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "Laura has long time horizons and sacrifices discretionary purchases to preserve savings and career options.",
+        "ground_truth_label": "long-term cautious financial tradeoffs",
+        "behavioral_evidence_from_interview": [
+          "Q60: tightened discretionary spending",
+          "Q81: cutting extras... delaying purchases",
+          "Q83: move slowly rather than take on debt"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-096",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "Laura is motivated by mastery and identity as a careful scientist.",
+        "ground_truth_label": "mastery-oriented careful scientist identity",
+        "behavioral_evidence_from_interview": [
+          "Q65: accuracy, reproducibility, and communication",
+          "Q65 follow-up: Careful documentation... saves projects"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-097",
+        "source": "reprojected",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": "summaries.political_scientist",
+        "claim": "Laura trusts evidence and science as methods but wants government implementation to be competent, transparent, and locally grounded.",
+        "ground_truth_label": "conditional institutional trust",
+        "behavioral_evidence_from_interview": [
+          "Q24: trust science as a method... competent, transparent, and grounded in local realities",
+          "Q42: check whether claims link back to actual data"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-098",
+        "source": "reprojected",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": "summaries.psychologist",
+        "claim": "Laura is conscientious, anxious, curious, and self-regulating.",
+        "ground_truth_label": "conscientious anxious curious self-regulating trait profile",
+        "behavioral_evidence_from_interview": [
+          "Q03: turn a scary choice into rows and dates",
+          "Q43: ambition and worry",
+          "Q109: Curiosity... thread through everything"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-099",
+        "source": "reprojected",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": "summaries.psychologist",
+        "claim": "Laura is relationally selective and relies on a few trusted people rather than broad public support.",
+        "ground_truth_label": "selective private support network",
+        "behavioral_evidence_from_interview": [
+          "Q07: small board-game group",
+          "Q49: text one or two trusted people privately"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-100",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.psychologist",
+        "claim": "Laura wants research advancement and impact without sacrificing health, quiet, family connection, or personal integrity.",
+        "ground_truth_label": "ambition-stability motivational tension",
+        "behavioral_evidence_from_interview": [
+          "Q108: I do not want ambition to turn me into someone who only works",
+          "Q83: stable but not relaxed",
+          "Q109: care... how I treat people"
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      }
+    ]
+  }
+}
