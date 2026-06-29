@@ -36,6 +36,8 @@ from llm import (
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
+REPO_ROOT = STEP_DIR.parent
+STEP4_OUTPUT_DIR = REPO_ROOT / "step4_app_log_synthesizer" / "data_samples" / "output"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 
 DEFAULT_MODEL = "claude-opus-4-7"
@@ -63,6 +65,31 @@ def fill(template: str, placeholder: str, payload: Any) -> str:
     return template.replace(
         placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
     )
+
+
+def resolve_verified_fragments_path(app_logs_path: Path) -> Path | None:
+    """Locate Step 4 {persona}_verified_fragments.json for Pass 2 scoring."""
+    candidates: list[Path] = []
+    if app_logs_path.name.endswith("_app_logs.json"):
+        candidates.append(
+            app_logs_path.with_name(
+                app_logs_path.name.replace(
+                    "_app_logs.json", "_verified_fragments.json"
+                )
+            )
+        )
+    stem = re.sub(r"_decoy\d+$", "", app_logs_path.stem.replace("_app_logs", ""))
+    candidates.append(STEP4_OUTPUT_DIR / f"{stem}_verified_fragments.json")
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.exists():
+            return resolved
+    return None
 
 
 # ----- raw log preparation -------------------------------------------------
@@ -134,7 +161,17 @@ FIELDS_HIDDEN_FROM_PASS1 = {
     "reasoning_requirement",
     "expected_current_state",
     "prior_state",
-    "dynamic_pattern"
+    "dynamic_pattern",
+    "temporal_distractor",
+    "change_explanation",
+    "source_hidden_fact_requirements",
+    "ground_truth_label_justification",
+    "supporting_context",
+    "reasoning_conclusion",
+    "reasoning_mechanism",
+    "reasoning_distractor",
+    "required_evidence_roles"
+ 
 }
 
 
@@ -234,6 +271,7 @@ def _call_pass2_single(
     reasoning_effort: str,
     claude_cmd: str,
     codex_cmd: str,
+    verified_fragments_path: Path | None = None
 ) -> dict[str, Any]:
     template = fill(
         sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_batch
@@ -241,6 +279,21 @@ def _call_pass2_single(
     template = fill(
         template, "{{INSERT_PASS_1_ANSWERS_JSON_HERE}}", answers_batch
     )
+    if verified_fragments_path and verified_fragments_path.exists():
+        verified_fragments = json.loads(
+            verified_fragments_path.read_text(encoding="utf-8")
+        )
+    else:
+        if verified_fragments_path:
+            print(
+                f"[pass 2] warning: verified fragments not found at "
+                f"{verified_fragments_path}; using empty list"
+            )
+        verified_fragments = []
+    template = fill(
+        template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
+    )
+
     if backend in SUBSCRIPTION_BACKENDS:
         raw = call_subscription_cli(
             template,
@@ -267,6 +320,7 @@ def run_pass_2(
     claude_cmd: str,
     codex_cmd: str,
     batch_size: int = 5,
+    verified_fragments_path: Path | None = None,
 ) -> dict[str, Any]:
     sections = load_prompt_sections()
     all_cases = test_cases_full.get("test_cases", [])
@@ -278,6 +332,7 @@ def run_pass_2(
             sections, test_cases_full, pass1_answers,
             model, client, backend, provider, reasoning_effort,
             claude_cmd, codex_cmd,
+            verified_fragments_path
         )
 
     merged_evaluations: list[dict[str, Any]] = []
@@ -303,6 +358,7 @@ def run_pass_2(
                     sections, tc_batch, ans_batch,
                     model, client, backend, provider, reasoning_effort,
                     claude_cmd, codex_cmd,
+                    verified_fragments_path,
                 )
                 evals = result.get("evaluations", [])
                 if not evals and isinstance(result, dict) and "test_case_id" in result:
@@ -451,6 +507,15 @@ def run_step_once(
     raw_logs_out = output_dir / f"{base_name}_app_logs_raw.txt"
     raw_logs_out.write_text(raw_logs, encoding="utf-8")
 
+    verified_fragments_path = resolve_verified_fragments_path(app_logs_path)
+    if verified_fragments_path:
+        print(f"[step6] verified fragments: {verified_fragments_path}")
+    else:
+        print(
+            f"[step6] verified fragments not found for {app_logs_path.name}; "
+            "Pass 2 will score without them"
+        )
+
     client = None
     if backend in API_BACKENDS:
         client = make_client(provider)
@@ -489,6 +554,7 @@ def run_step_once(
         reasoning_effort=reasoning_pass2,
         claude_cmd=claude_cmd,
         codex_cmd=codex_cmd,
+        verified_fragments_path=verified_fragments_path,
     )
     pass2 = recompute_benchmark_summary(pass2, test_cases, model_pass1, model_pass2)
     pass2.setdefault("metadata", {})
