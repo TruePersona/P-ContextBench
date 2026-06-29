@@ -1,0 +1,2229 @@
+{
+  "verification": {
+    "verification_metadata": {
+      "participant_id": "d5fe5ee20e6c4686af68be4c6f4c79b3",
+      "name": "Sarada Mongru",
+      "verification_date": "2026-06-23"
+    },
+    "experts": {
+      "demographer": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed age 34, female sex, never-married status, West Chester PA location, and accountant/auditor occupation are confirmed by the interview.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed age, sex, marital_status, occupation, city/state/zipcode",
+              "source_b_ref": "Q05, Q16, Q84-Q85",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed says bachelor's field is education, while the interview repeatedly says her bachelor's degree is in accounting.",
+              "verdict": "inconsistent",
+              "gap": false,
+              "source_a_ref": "seed bachelors_field",
+              "source_b_ref": "Q01, Q90",
+              "action": "REINTERPRET_SEED",
+              "resolution": "Treat the seed bachelors_field as superseded by interview evidence; corrected education remains Bachelor's degree in accounting."
+            },
+            {
+              "id": 3,
+              "text": "Seed South Asian immigrant family background is confirmed and enriched by birth in Philadelphia, childhood in Exton, and parents' immigration from India before her birth.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q01, Q86-Q89, Q97",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed states close family and community ties; interview confirms parents, younger brother Rohan, cousin Priya, and South Asian association involvement.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background, persona",
+              "source_b_ref": "Q05-Q07, Q17",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 1,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Top-level demographic profile correctly reflects age, gender, never-married status, West Chester location, accounting degree, and accountant/auditor occupation.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q16, Q84-Q85, Q90",
+              "source_b_ref": "corrected_extracted_profile top-level fields",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Household profile accurately captures that she lives alone with no partner, children, roommates, lodgers, or temporary members.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q11-Q14, Q51-Q55",
+              "source_b_ref": "preferences.home_and_lifestyle",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Profile mentions Indian American identity but omits date of birth and specific birthplace.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q85, Q87",
+              "source_b_ref": "preferences.cultural_and_linguistic, preferences.life_events_and_transitions",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add March 14, 1992 date of birth and Philadelphia, Pennsylvania birthplace to life_events_and_transitions/cultural_and_linguistic details."
+            },
+            {
+              "id": 4,
+              "text": "Profile includes nearby parents and brother but omits that parents live in Exton, Rohan lives in King of Prussia and works in IT.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q05, Q51",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add parents' Exton area residence and Rohan's King of Prussia/IT detail to social_and_relationships."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Top-level education and demographer summary both say bachelor's degree in accounting; they are internally aligned.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "corrected_extracted_profile.education",
+              "field_b": "summaries.demographer",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Home, social, and demographer sections consistently describe a single-person household with no children.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "preferences.social_and_relationships, summaries.demographer",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Location details consistently place her in West Chester, PA while noting parents separately in Exton.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "corrected_extracted_profile.location",
+              "field_b": "preferences.social_and_relationships, preferences.home_and_lifestyle",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview includes date of birth March 14, 1992, which was absent from preferences.",
+              "gap": true,
+              "interview_ref": "Q85",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add DOB detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview includes birthplace Philadelphia, Pennsylvania and childhood at age 16 in Exton.",
+              "gap": true,
+              "interview_ref": "Q87, Q97",
+              "should_be_in": "preferences.cultural_and_linguistic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add birthplace and Exton childhood detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview gives parents' education and occupations, which are absent from preferences.",
+              "gap": true,
+              "interview_ref": "Q100-Q107",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "CARRY_FORWARD",
+              "resolution": "Add concise family background detail about parents' bachelor's degrees and work histories."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 3
+          }
+        }
+      },
+      "behavioral_economist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed describes a meticulous, structured professional; interview confirms spreadsheet-based decisions, audit rigor, and Sunday budget reviews.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed professional_persona, skills_and_expertise",
+              "source_b_ref": "Q03, Q16, Q57",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed career ambition toward CPA and senior audit leadership is confirmed by interview goals.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed career_goals_and_ambitions",
+              "source_b_ref": "Q18, Q108",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed community service orientation is confirmed through financial-literacy volunteering and cultural association duties.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed cultural_background, hobbies_and_interests",
+              "source_b_ref": "Q16, Q17, Q70",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Interview enriches seed with detailed budgeting, savings, debt, income, and emergency-fund behavior.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q56-Q64, Q72-Q74, Q82-Q83",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Profile captures her planning orientation, automation of savings, emergency fund, and avoidance of credit-card interest.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q57, Q61-Q63",
+              "source_b_ref": "summaries.behavioral_economist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Profile omits concrete monthly budget amounts, rent, gross pay, take-home pay, and student loan balance.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q56-Q57, Q63, Q72-Q74",
+              "source_b_ref": "preferences.home_and_lifestyle, preferences.work_and_career",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add rent, spending range, student loan balance, and monthly income details to appropriate preference sections."
+            },
+            {
+              "id": 3,
+              "text": "Profile accurately reflects balancing travel, CPA costs, home savings, and family-related contingencies.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q61-Q62, Q83",
+              "source_b_ref": "preferences.travel, summaries.behavioral_economist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Profile includes work intensity and career goals but omits pay frequency and benefits such as 401(k), PTO, sick time, and CPA support.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q73, Q76",
+              "source_b_ref": "preferences.work_and_career",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add biweekly pay and benefits to work_and_career."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Financial stability in the behavioral summary is consistent with home renting, saving, debt management, and professional income.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "summaries.behavioral_economist",
+              "field_b": "preferences.home_and_lifestyle, preferences.work_and_career",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Travel goals are internally consistent with a capped travel fund and stronger emphasis on security-first savings.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.travel",
+              "field_b": "summaries.behavioral_economist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Health and work sections consistently show a high-effort routine that requires boundary-setting around stress.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.health_and_wellness",
+              "field_b": "preferences.work_and_career, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview details rent of about $1,950 and usual monthly spending around $4,100-$4,300.",
+              "gap": true,
+              "interview_ref": "Q56-Q57",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add concrete rent and monthly spending details."
+            },
+            {
+              "id": 2,
+              "text": "Interview details student loan balance of about $12,000 and full monthly credit-card payoff behavior.",
+              "gap": true,
+              "interview_ref": "Q63",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add debt and credit-card behavior."
+            },
+            {
+              "id": 3,
+              "text": "Interview details income, biweekly pay, and benefits.",
+              "gap": true,
+              "interview_ref": "Q72-Q76",
+              "should_be_in": "preferences.work_and_career",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add gross/take-home pay, pay frequency, and benefits."
+            },
+            {
+              "id": 4,
+              "text": "Interview says she could cover a $400 emergency from savings.",
+              "gap": true,
+              "interview_ref": "Q82",
+              "should_be_in": "preferences.home_and_lifestyle",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add emergency affordability fact."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "political_scientist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed community-service orientation is confirmed through voting, volunteering, and cultural association work.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q17, Q23, Q70",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed does not specify partisan identity; interview enriches with moderately strong Democratic, center-left, pragmatic views.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q24, Q95-Q96",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed immigrant-family background is consistent with interview's emphasis on immigration, civil rights, and cultural communities.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q24, Q26-Q30",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Seed does not mention law enforcement; interview adds limited personal traffic-stop experience and concern for accountability.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q20-Q22, Q27",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 4
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Political summary correctly identifies her as a regular voter and moderately strong Democrat/center-left pragmatic voter.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q23-Q24, Q95-Q96",
+              "source_b_ref": "summaries.political_scientist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Community preferences include voting but omit party identity and issue priorities.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q24-Q25, Q95-Q96",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add center-left Democrat identity and issue priorities to community_and_civic."
+            },
+            {
+              "id": 3,
+              "text": "Profile captures racial justice actions but underrepresents her systems-thinking explanation of policing and race.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q26-Q30",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add BLM impact, institutional accountability, and systems-thinking detail."
+            },
+            {
+              "id": 4,
+              "text": "Profile omits her limited personal law-enforcement experience with traffic stops and no arrests.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q20-Q22",
+              "source_b_ref": "preferences.community_and_civic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add law-enforcement experience and no-arrest detail."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Community-and-civic details align with political summary: she is civically active but not performative online.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "summaries.political_scientist, preferences.media_and_information_diet",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Fiscal competence concerns in political summary are consistent with her accounting career and budgeting habits.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "summaries.political_scientist",
+              "field_b": "preferences.work_and_career, preferences.technology",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Race and immigration views are consistent with cultural-and-linguistic identity details.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "preferences.cultural_and_linguistic",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview gives Democratic identification and closeness to the Democratic Party.",
+              "gap": true,
+              "interview_ref": "Q95-Q96",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add party identity detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview lists issue priorities: health care, education, reproductive rights, immigration, climate, and competent government.",
+              "gap": true,
+              "interview_ref": "Q24-Q25",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add issue-priority detail."
+            },
+            {
+              "id": 3,
+              "text": "Interview includes traffic-stop experiences, no arrests, and views on legal-system harshness.",
+              "gap": true,
+              "interview_ref": "Q20-Q22",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add law-enforcement and legal-system detail."
+            },
+            {
+              "id": 4,
+              "text": "Interview gives BLM-related response: listening, family conversations, donation, gathering, workplace equity discussions.",
+              "gap": true,
+              "interview_ref": "Q26-Q30",
+              "should_be_in": "preferences.community_and_civic",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add racial-justice response detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      },
+      "psychologist": {
+        "direction_1_seed_vs_interview": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Seed portrays a meticulous, outgoing, team-focused person; interview confirms conscientiousness, mentoring, and sociability.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed professional_persona, persona",
+              "source_b_ref": "Q04, Q16, Q43-Q45, Q77",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Seed says she sometimes forgets to pause for a coffee break; interview confirms overwork, missed lunch breaks, and stress during deadlines.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q18, Q33, Q43-Q45",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Seed cultural continuity and community ties are psychologically consistent with interview values of family, integrity, growth, and community.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "seed cultural_background",
+              "source_b_ref": "Q47, Q109",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 4,
+              "text": "Interview enriches seed with anxiety tendencies, perfectionism, and coping strategies, without contradicting seed traits.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "seed persona",
+              "source_b_ref": "Q43-Q45, Q50",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 2
+          }
+        },
+        "direction_2_interview_vs_profile": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Psychologist summary accurately captures conscientiousness, achievement orientation, warmth, perfectionism, and prosocial motivation.",
+              "verdict": "consistent",
+              "gap": false,
+              "source_a_ref": "Q43-Q45, Q109",
+              "source_b_ref": "summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Health preferences mention stress and sleep but omit no formal anxiety/depression diagnosis and openness to therapy.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q45",
+              "source_b_ref": "preferences.health_and_wellness",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add stress/anxiety tendencies, no diagnosis, and openness to counseling if worse."
+            },
+            {
+              "id": 3,
+              "text": "Profile includes coping through exercise and routines but omits trusted social support from Megan and Priya during distress.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q44, Q49",
+              "source_b_ref": "preferences.social_and_relationships",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add Megan/Priya as first-line emotional supports."
+            },
+            {
+              "id": 4,
+              "text": "Cultural section includes Hindu identity but omits her cultural-spiritual rather than strictly ritualistic stance.",
+              "verdict": "consistent",
+              "gap": true,
+              "source_a_ref": "Q47, Q94",
+              "source_b_ref": "preferences.cultural_and_linguistic",
+              "action": "PARTIAL_UPDATE",
+              "resolution": "Add cultural-spiritual Hindu practice detail."
+            }
+          ],
+          "summary": {
+            "consistent": 4,
+            "inconsistent": 0,
+            "gaps": 3
+          }
+        },
+        "direction_3_profile_internal_consistency": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Independence in home life is consistent with strong interdependence in social and family relationships.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.home_and_lifestyle",
+              "field_b": "preferences.social_and_relationships, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 2,
+              "text": "Work ambition, CPA preparation, and stress management details consistently reflect conscientiousness and perfectionistic tendencies.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.work_and_career",
+              "field_b": "preferences.health_and_wellness, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            },
+            {
+              "id": 3,
+              "text": "Community service, mentoring, and financial-literacy volunteering consistently support the prosocial motivation described in the psychologist summary.",
+              "verdict": "consistent",
+              "gap": false,
+              "field_a": "preferences.community_and_civic",
+              "field_b": "preferences.work_and_career, summaries.psychologist",
+              "action": "NO_CHANGE",
+              "resolution": null
+            }
+          ],
+          "summary": {
+            "consistent": 3,
+            "inconsistent": 0,
+            "gaps": 0
+          }
+        },
+        "direction_4_completeness": {
+          "observations": [
+            {
+              "id": 1,
+              "text": "Interview includes performance-related anxiety tendencies and perfectionism without formal diagnosis.",
+              "gap": true,
+              "interview_ref": "Q45",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add mental-health detail."
+            },
+            {
+              "id": 2,
+              "text": "Interview describes coping through lists, exercise, sleep, cooking, walks, and calling trusted people.",
+              "gap": true,
+              "interview_ref": "Q43-Q45, Q50",
+              "should_be_in": "preferences.health_and_wellness",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add coping strategies."
+            },
+            {
+              "id": 3,
+              "text": "Interview states values: integrity, family, growth, community, and difficulty with balance.",
+              "gap": true,
+              "interview_ref": "Q109",
+              "should_be_in": "preferences.life_events_and_transitions",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add values detail."
+            },
+            {
+              "id": 4,
+              "text": "Interview says she does not use social media for emotional support and contacts Megan or Priya instead.",
+              "gap": true,
+              "interview_ref": "Q49",
+              "should_be_in": "preferences.social_and_relationships",
+              "disposition": "NEEDS_ENRICHMENT",
+              "resolution": "Add interpersonal support detail."
+            }
+          ],
+          "summary": {
+            "present": 0,
+            "missing": 4
+          }
+        }
+      }
+    },
+    "overall_verdict": "PASS_WITH_REVISIONS",
+    "verdict_rationale": "One seed inconsistency about bachelor's field was resolved by interview evidence, and multiple interview details were added to the corrected profile. No FLAG_FOR_REVIEW findings remain.",
+    "final_status": "Corrected profile is ready for downstream use with revisions and hidden_facts generated."
+  },
+  "corrected_extracted_profile": {
+    "participant_id": "d5fe5ee20e6c4686af68be4c6f4c79b3",
+    "name": "Sarada Mongru",
+    "age": 34,
+    "gender": "Female",
+    "marital_status": "Never married; not living with a romantic partner",
+    "location": "West Chester, PA 19380",
+    "education": "Bachelor's degree in accounting",
+    "occupation": "Accountant and auditor at a regional public accounting firm",
+    "preferences": {
+      "_note": "Same 18 subcategories as the draft profile, with gaps filled and inconsistencies resolved. Every correction traces back to an observation in the verification report above.",
+      "health_and_wellness": {
+        "summary": "Sarada prioritizes preventive health, structured exercise, sleep improvement, and evidence-based medical care, with some complementary South Asian home remedies.",
+        "details": [
+          "Exercises through yoga, Zumba, badminton, and hiking three to four days a week when work allows. Evidence: Q31, Q32",
+          "Has no major chronic illness but manages stress, sleep disruption, and neck or shoulder tension from computer work. Evidence: Q31, Q33",
+          "Uses employer health insurance, annual checkups, dental care, an HSA, and trusted medical sources. Evidence: Q36, Q40, Q42",
+          "Uses ginger tea, turmeric, steam, and other South Asian home remedies for minor issues while relying on doctors for serious care. Evidence: Q37",
+          "Does not smoke, drinks socially about two or three times a month, and does not use marijuana or other recreational drugs. Evidence: Q38, Q39",
+          "Is pro-vaccine, received COVID vaccines and boosters when recommended, and gets a flu shot most years. Evidence: Q41",
+          "Has stress and anxiety tendencies around performance and deadlines, but no diagnosis of anxiety disorder or depression; she is open to counseling if symptoms worsen. Evidence: Q45",
+          "Copes through exercise, lists, sleep, cooking, walks, and talking to trusted people. Evidence: Q43-Q45, Q50",
+          "Helps parents with health care needs; her father has high blood pressure and her mother has knee joint pain. Evidence: Q35"
+        ],
+        "evidence": "Q31-Q45, Q50"
+      },
+      "food_and_dining": {
+        "summary": "She enjoys South Asian cooking with health-conscious adaptations and uses food as a way to connect with friends and family.",
+        "details": [
+          "Frequently cooks butter chicken with avocado oil, quinoa pilaf, roasted cauliflower, turmeric, ginger, and cilantro. Evidence: Q32",
+          "Shops at Wegmans, Trader Joe's, and Indian grocery stores for spices and staples. Evidence: Q56",
+          "Chooses Thai curry, sushi, or Indian takeout when stressed or too tired to cook. Evidence: Q32",
+          "Hosts friends for dinner and helps cook at family Sunday meals. Evidence: Q05, Q07",
+          "Meal preps mainly on Sunday afternoons and sometimes cooks on Wednesday nights. Evidence: Q15"
+        ],
+        "evidence": "Q05, Q07, Q15, Q32, Q56"
+      },
+      "travel": {
+        "summary": "Sarada likes purposeful, planned travel centered on food, culture, and walking or outdoor experiences.",
+        "details": [
+          "Maintains a travel savings fund and dreams of a Kyoto trip. Evidence: Q62, Q108",
+          "Has visited India, including Delhi, and follows travel content for Japan and Europe. Evidence: Q86, Q48",
+          "Balances travel goals against home savings and CPA costs. Evidence: Q62",
+          "Caps monthly travel savings while putting a larger amount toward long-term savings. Evidence: Q62"
+        ],
+        "evidence": "Q48, Q62, Q86, Q108"
+      },
+      "social_and_relationships": {
+        "summary": "Her social life centers on family, a small close friend group, badminton peers, work relationships, and South Asian community ties.",
+        "details": [
+          "Never married, not cohabiting, no children, and not currently in a serious relationship. Evidence: Q05, Q84",
+          "Sees parents most Sundays, talks to her mother almost daily, and her parents live separately in the Exton area. Evidence: Q05, Q51",
+          "Close to younger brother Rohan, who lives in King of Prussia and works in IT. Evidence: Q05",
+          "Close to cousin Priya in New Jersey and texts with her about work, family expectations, and travel ideas. Evidence: Q06",
+          "Core friends include Megan, badminton group members, college friends, coworkers, and cultural association friends. Evidence: Q07",
+          "Usually contacts Megan or cousin Priya for emotional support rather than posting hardship on social media. Evidence: Q49"
+        ],
+        "evidence": "Q05-Q07, Q49, Q51, Q84"
+      },
+      "home_and_lifestyle": {
+        "summary": "She lives alone in a rented one-bedroom apartment in walkable West Chester and values quiet, order, and independence.",
+        "details": [
+          "Lives alone with no roommate, partner, children, lodgers, or temporary household members. Evidence: Q11-Q14, Q51-Q55",
+          "Rents her apartment and pays all household expenses herself. Evidence: Q55, Q58",
+          "Likes walkability, parks, coffee shops, restaurants, and community events in West Chester. Evidence: Q08, Q10",
+          "Feels generally safe in her neighborhood but is cautious walking alone at night and in parking lots. Evidence: Q09",
+          "Pays about $1,950 per month in rent. Evidence: Q56",
+          "Usually spends about $4,100 to $4,300 per month, with a recent higher month of about $4,600 due to CPA materials and car maintenance. Evidence: Q57",
+          "Has about $12,000 remaining in student loans, pays monthly, and pays credit cards in full. Evidence: Q63",
+          "Could cover a $400 emergency from high-yield savings without borrowing. Evidence: Q82",
+          "Wants to buy eventually but is not ready with the down payment and may need to look outside West Chester for affordability. Evidence: Q58"
+        ],
+        "evidence": "Q08-Q14, Q51-Q58, Q63, Q82"
+      },
+      "entertainment": {
+        "summary": "Her entertainment preferences include local festivals, social meals, Eagles games, music, hiking, and limited social media.",
+        "details": [
+          "Enjoys watching Philadelphia Eagles games with friends. Evidence: Q07, Q87",
+          "Attends West Chester Summer Arts Festival and local cultural events. Evidence: Q10",
+          "Uses Instagram for food, travel, fitness, local events, music, and friends. Evidence: Q48"
+        ],
+        "evidence": "Q07, Q10, Q48, Q87"
+      },
+      "hobbies_and_recreation": {
+        "summary": "Her hobbies are active, social, and skill-building: badminton, hiking, yoga, Zumba, cooking, festivals, reading, and volunteering.",
+        "details": [
+          "Plays badminton regularly at West Chester Recreation Club. Evidence: Q07, Q15",
+          "Hikes and walks locally, including parks and nearby trails. Evidence: Q07, Q15, Q32",
+          "Cooks for family and friends and experiments with traditional recipes. Evidence: Q05, Q32",
+          "Volunteers as a financial-literacy instructor. Evidence: Q16, Q70"
+        ],
+        "evidence": "Q07, Q15, Q16, Q32, Q70"
+      },
+      "work_and_career": {
+        "summary": "Sarada is a meticulous accountant and auditor focused on CPA licensure, audit leadership, mentoring, forensic accounting, sustainability reporting, and eventual consultancy.",
+        "details": [
+          "Works as an accountant and auditor at a regional public accounting firm. Evidence: Q16, Q65",
+          "Uses Excel, QuickBooks, Sage Intacct, audit planning, controls testing, risk assessment, and financial statement review. Evidence: Q16, Q65",
+          "Trains and mentors junior staff. Evidence: Q04, Q16, Q65, Q77",
+          "Aims to earn CPA license, become senior audit manager, and possibly build a boutique consultancy for small businesses and immigrant communities. Evidence: Q108",
+          "Has one paid job; financial-literacy teaching is volunteer work, not paid side work. Evidence: Q70-Q71",
+          "Usually works around 42 to 45 hours per week and closer to 50 or more during busy season. Evidence: Q68",
+          "Gross monthly pay is about $7,500, take-home pay is about $5,200, and she is paid every two weeks. Evidence: Q72-Q74",
+          "Has been at her current firm about five years, with health, dental, vision, 401(k), PTO, sick time, CPA exam support, and hybrid flexibility. Evidence: Q76",
+          "Her job is not union-covered and workplace concerns go through managers, HR, and engagement teams. Evidence: Q66",
+          "Filed federal, Pennsylvania, and local taxes for the most recent tax year and prepared them herself using tax software. Evidence: Q75"
+        ],
+        "evidence": "Q04, Q16, Q65-Q77, Q108"
+      },
+      "arts_and_culture": {
+        "summary": "She participates in South Asian cultural life and local arts events, connecting festivals, music, spoken word, and community service.",
+        "details": [
+          "Celebrates Diwali and Holi and attends temple and cultural association events. Evidence: Q47, Q94",
+          "Attends West Chester Summer Arts Festival. Evidence: Q10",
+          "Helps with cultural association budgeting, registration, and youth mentorship panels. Evidence: Q17"
+        ],
+        "evidence": "Q10, Q17, Q47, Q94"
+      },
+      "sports_and_fitness": {
+        "summary": "She follows Philadelphia sports and maintains fitness through badminton, yoga, Zumba, hiking, and walking.",
+        "details": [
+          "Follows the Philadelphia Eagles. Evidence: Q07, Q87",
+          "Plays badminton at West Chester Recreation Club. Evidence: Q07, Q15",
+          "Does yoga and Zumba, especially Tuesday evenings. Evidence: Q15, Q31",
+          "Uses hiking and walking as stress relief and exercise. Evidence: Q15, Q31, Q32"
+        ],
+        "evidence": "Q07, Q15, Q31, Q32, Q87"
+      },
+      "nature_and_outdoors": {
+        "summary": "She values nearby trails, parks, and outdoor movement as a source of health and emotional balance.",
+        "details": [
+          "Likes being close to parks and trails in West Chester. Evidence: Q08",
+          "Hikes with friends and uses walks to recover from stress. Evidence: Q07, Q43",
+          "Nearby trails and outdoor access make staying healthy easier. Evidence: Q32"
+        ],
+        "evidence": "Q07, Q08, Q32, Q43"
+      },
+      "technology": {
+        "summary": "Her technology use is practical and professional, centered on accounting software, spreadsheets, online portals, budgeting, and selective social media.",
+        "details": [
+          "Uses advanced Excel, QuickBooks, Sage Intacct, tax software, and spreadsheets. Evidence: Q03, Q16, Q65, Q75",
+          "Uses online medical portals for herself and helps parents navigate theirs. Evidence: Q36",
+          "Uses Instagram, Facebook, and LinkedIn with boundaries around scrolling. Evidence: Q48, Q50",
+          "Tracks personal spending in a spreadsheet every Sunday. Evidence: Q57"
+        ],
+        "evidence": "Q03, Q16, Q36, Q48, Q50, Q57, Q65, Q75"
+      },
+      "community_and_civic": {
+        "summary": "She is civically engaged through voting, South Asian association participation, financial-literacy volunteering, and equity conversations.",
+        "details": [
+          "Votes regularly, including presidential, midterm, and increasingly local elections. Evidence: Q23",
+          "Volunteers as a financial-literacy instructor for community members. Evidence: Q16, Q70",
+          "Participates weekly in a South Asian cultural association and helps with event budgeting and mentorship. Evidence: Q17",
+          "Attended one peaceful local gathering and donated to legal aid related to racial justice. Evidence: Q29",
+          "Identifies as a moderately strong Democrat or center-left pragmatic Democrat, closer to the Democratic Party than the Republican Party. Evidence: Q95-Q96",
+          "Prioritizes health care, education, reproductive rights, immigration, climate policy, civil rights, and competent government while also valuing fiscal seriousness. Evidence: Q24-Q25",
+          "Has limited personal law-enforcement experience with routine traffic stops, has never been arrested, and has no immediate family arrests. Evidence: Q20-Q22",
+          "Black Lives Matter affected her somewhat to a lot; she thinks about accountability, unequal treatment, and institutional systems. Evidence: Q26-Q30",
+          "Prefers voting, donations, workplace equity discussions, and real conversations over constant political posting online. Evidence: Q23, Q29, Q48"
+        ],
+        "evidence": "Q16, Q17, Q20-Q30, Q70, Q95-Q96"
+      },
+      "music": {
+        "summary": "Music is part of her relaxation and cultural life, including film scores, indie folk, and festival performances.",
+        "details": [
+          "Uses music while cooking and relaxing. Evidence: Q43",
+          "Follows indie folk music accounts on Instagram. Evidence: Q48",
+          "Attends local arts festival music events. Evidence: Q10"
+        ],
+        "evidence": "Q10, Q43, Q48"
+      },
+      "fashion_and_appearance": {
+        "summary": "There is limited evidence, but she buys clothing for work and South Asian festivals while cutting back when budgets tighten.",
+        "details": [
+          "Delayed buying new work clothes to manage extra expenses. Evidence: Q60",
+          "Diwali spending includes clothing. Evidence: Q59",
+          "Follows some South Asian fashion content on Instagram. Evidence: Q48"
+        ],
+        "evidence": "Q48, Q59, Q60"
+      },
+      "cultural_and_linguistic": {
+        "summary": "Sarada is Indian American, Hindu, English-dominant with some conversational Hindi, and deeply connected to South Asian immigrant family and community traditions.",
+        "details": [
+          "Born in Philadelphia, Pennsylvania to parents who immigrated from India in the late 1980s. Evidence: Q86, Q87",
+          "Identifies as Asian, South Asian, Indian American, and Hindu. Evidence: Q88-Q94",
+          "Speaks some Hindi, though English is dominant. Evidence: Q88",
+          "Celebrates Diwali and Holi and participates in temple and cultural association activities. Evidence: Q47, Q94",
+          "Is not of Hispanic, Latinx, or Spanish origin. Evidence: Q88",
+          "Describes Hindu identity as cultural-spiritual rather than strictly ritualistic. Evidence: Q47, Q94"
+        ],
+        "evidence": "Q47, Q86-Q94"
+      },
+      "life_events_and_transitions": {
+        "summary": "Major life-shaping transitions include growing up in an immigrant family, choosing public audit over a safer corporate accounting path, independent living, CPA preparation, and increasing parental support.",
+        "details": [
+          "Chose public accounting and audit after college instead of a calmer corporate accounting role. Evidence: Q02, Q03",
+          "Lives independently in West Chester while staying closely involved with parents and brother. Evidence: Q05, Q11",
+          "Recently restructured her routine around CPA exam study blocks. Evidence: Q18",
+          "Increasingly helps parents with health care paperwork and appointments. Evidence: Q35, Q36",
+          "Was born on March 14, 1992. Evidence: Q85",
+          "Lived in Exton, Pennsylvania at age 16 with both parents and younger brother Rohan. Evidence: Q97-Q99",
+          "Her father completed a bachelor's degree in commerce in India and worked in finance operations for a manufacturing company. Evidence: Q100, Q105-Q107",
+          "Her mother completed a bachelor's degree in India and worked as an administrative assistant in a private medical office. Evidence: Q101-Q104",
+          "Values integrity, family, growth, and community, while recognizing that balance is difficult for her. Evidence: Q109"
+        ],
+        "evidence": "Q02, Q03, Q05, Q11, Q18, Q35, Q36, Q85, Q97-Q109"
+      },
+      "media_and_information_diet": {
+        "summary": "She relies on official, professional, and medically credible sources, uses social media selectively, and avoids performative online politics.",
+        "details": [
+          "Uses voter guides and candidate research before elections. Evidence: Q23",
+          "Trusts primary care doctor, CDC, local health departments, and hospital systems for vaccine information. Evidence: Q42",
+          "Uses Instagram, Facebook, and LinkedIn but avoids heavy Twitter/X use. Evidence: Q48",
+          "Avoids relying on random social media posts for health decisions and checks original sources. Evidence: Q42"
+        ],
+        "evidence": "Q23, Q42, Q48"
+      }
+    },
+    "summaries": {
+      "_note": "Carried over VERBATIM from the draft extracted profile. Not regenerated in this step.",
+      "demographer": "Sarada Mongru is a 34-year-old never-married Indian American woman living alone in a rented apartment in West Chester, Pennsylvania (Q05, Q11, Q84). She was born in Philadelphia, grew up in Exton with both parents and a younger brother, and is the U.S.-born daughter of Indian immigrants who emphasized education and cultural continuity (Q86-Q99). She holds a bachelor's degree in accounting and works full time as an accountant and auditor at a regional public accounting firm, with a stable professional income and no children (Q65-Q74, Q90). Her household is a single-person household, but her life-course position remains strongly tied to nearby parents, sibling relationships, cultural association networks, and future plans around homeownership and CPA licensure (Q05, Q17, Q83, Q108).",
+      "behavioral_economist": "Sarada shows high planning orientation, strong future discounting discipline, and a preference for structured decision-making, illustrated by her spreadsheet-based career choice and Sunday spending reviews (Q03, Q57). She automates savings, maintains an emergency fund, avoids credit card interest, and balances consumption goals like travel against long-term security goals like home savings and CPA advancement (Q61-Q63, Q82). Her choices are motivated by identity and obligation as much as money: professional competence, family reliability, cultural continuity, and community service all shape how she allocates time and resources (Q05, Q17, Q65, Q109). She is risk-aware rather than risk-avoidant, choosing the harder audit career path because it offered long-term human capital gains (Q02).",
+      "political_scientist": "Sarada is a regular voter who identifies as a moderately strong Democrat or center-left pragmatic voter, closer to the Democratic Party than the Republican Party (Q23-Q24, Q95-Q96). Her political views combine support for civil rights, immigration, health care, reproductive rights, climate policy, and public education with an accountant's concern for fiscal competence and program implementation (Q24-Q25). She is civically engaged but not performative, preferring voting, family conversations, donations, workplace equity discussions, and community volunteering over constant online posting (Q23, Q29, Q48). Her views on race and policing are shaped by systems thinking, minority experience, and concern for institutional accountability (Q26-Q30).",
+      "psychologist": "Sarada presents as conscientious, achievement-oriented, socially warm, and somewhat perfectionistic, with a self-concept organized around integrity, competence, family, growth, and community (Q43-Q45, Q109). She copes with stress through planning, exercise, cooking, social support, and structured routines, though she can overwork and has anxiety tendencies around performance and deadlines (Q18, Q31, Q43-Q45, Q50). Her relational style blends independence with strong interdependence: she lives alone and manages her own finances, but maintains frequent contact with parents, sibling, friends, and cultural networks (Q05-Q07, Q11, Q61). Her motivation is strongly prosocial, especially in mentoring junior staff and teaching financial literacy to community members (Q04, Q16, Q65, Q108)."
+    },
+    "hidden_facts": [
+      {
+        "fact_id": "HF-001",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada exercises through yoga, Zumba, badminton, and hiking three to four days a week when work allows.",
+        "ground_truth_label": "Exercises 3-4 days weekly when possible",
+        "behavioral_evidence_from_interview": [
+          "Q31: I try to stay active with yoga, Zumba, badminton, and hiking.",
+          "Q31: Usually three to four days, though busy season can knock it down to one or two."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.sports_and_fitness",
+          "preferences.hobbies_and_recreation"
+        ]
+      },
+      {
+        "fact_id": "HF-002",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada has no major chronic illness.",
+        "ground_truth_label": "No major chronic illness",
+        "behavioral_evidence_from_interview": [
+          "Q31: I do not have a major chronic illness."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-003",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada manages stress, sleep disruption, and neck or shoulder tension from computer work.",
+        "ground_truth_label": "Work-related stress and musculoskeletal tension",
+        "behavioral_evidence_from_interview": [
+          "Q31: My main issues are stress, tight shoulders from computer work, and occasional sleep problems during audit deadlines.",
+          "Q33: The biggest thing was stress-related sleep disruption last busy season and some neck and shoulder pain from long laptop days."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-004",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada uses employer health insurance, annual checkups, dental care, an HSA, and trusted medical sources.",
+        "ground_truth_label": "Preventive care with employer insurance and HSA",
+        "behavioral_evidence_from_interview": [
+          "Q36: I am fortunate to have employer health insurance.",
+          "Q40: I use an HSA through work and contribute monthly.",
+          "Q42: I trust my primary care doctor, the CDC, local health department updates, and major hospital systems."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-005",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada uses South Asian home remedies for minor issues while relying on doctors for serious care.",
+        "ground_truth_label": "Complementary home remedies with evidence-based medical care",
+        "behavioral_evidence_from_interview": [
+          "Q37: We use turmeric, ginger, ajwain, steam, warm saltwater gargles, and home remedies for minor things.",
+          "Q37: I see those things as complementary, not replacements for medical care."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-006",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada does not smoke, drinks socially about two or three times a month, and does not use marijuana or other recreational drugs.",
+        "ground_truth_label": "No smoking or recreational drug use; light social alcohol use",
+        "behavioral_evidence_from_interview": [
+          "Q38: I do not smoke.",
+          "Q38: Maybe two or three times a month, usually one drink.",
+          "Q39: I do not use marijuana or other recreational drugs."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-007",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada is pro-vaccine, received COVID vaccines and boosters when recommended, and gets a flu shot most years.",
+        "ground_truth_label": "Pro-vaccine",
+        "behavioral_evidence_from_interview": [
+          "Q41: I am pro-vaccine. I got COVID vaccines and boosters when recommended, and I get a flu shot most years."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-008",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada has stress and anxiety tendencies around performance and deadlines but has not been diagnosed with anxiety disorder or depression.",
+        "ground_truth_label": "Performance-related anxiety tendencies without formal diagnosis",
+        "behavioral_evidence_from_interview": [
+          "Q45: I have stress and some anxiety tendencies, especially around performance and deadlines, but I have not been diagnosed with an anxiety disorder or depression."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-009",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada copes through exercise, lists, sleep, cooking, walks, and talking to trusted people.",
+        "ground_truth_label": "Structured and social coping strategies",
+        "behavioral_evidence_from_interview": [
+          "Q45: My coping tools are exercise, lists, talking to trusted people, and trying to sleep properly.",
+          "Q43: Cooking with music on, taking a walk outside, or playing badminton."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-010",
+        "source": "direct",
+        "source_subcategory": "preferences.health_and_wellness",
+        "reprojected_from": null,
+        "claim": "Sarada helps parents with health care needs; her father has high blood pressure and her mother has knee joint pain.",
+        "ground_truth_label": "Supports parents' health care needs",
+        "behavioral_evidence_from_interview": [
+          "Q35: My dad has high blood pressure, and my mom has some joint pain, especially in her knees.",
+          "Q35: I help them understand insurance, appointments, and lab bills."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-011",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Sarada frequently cooks butter chicken with avocado oil, quinoa pilaf, roasted cauliflower, turmeric, ginger, and cilantro.",
+        "ground_truth_label": "Health-conscious South Asian cooking",
+        "behavioral_evidence_from_interview": [
+          "Q32: Butter chicken with avocado oil, quinoa pilaf, roasted cauliflower, and lots of cilantro."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-012",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Sarada shops at Wegmans, Trader Joe's, and Indian grocery stores for spices and staples.",
+        "ground_truth_label": "Uses Wegmans, Trader Joe's, and Indian grocery stores",
+        "behavioral_evidence_from_interview": [
+          "Q56: Mostly Wegmans, Trader Joe's, and an Indian grocery store for spices and staples."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-013",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Sarada chooses Thai curry, sushi, or Indian takeout when stressed or too tired to cook.",
+        "ground_truth_label": "Stress takeout preferences",
+        "behavioral_evidence_from_interview": [
+          "Q32: Thai curry, sushi, or Indian food from a local place if I have no energy to cook."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-014",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Sarada hosts friends for dinner and helps cook at family Sunday meals.",
+        "ground_truth_label": "Food as social and family connection",
+        "behavioral_evidence_from_interview": [
+          "Q05: I usually go over late morning, help my mom with cooking, eat lunch.",
+          "Q07: We hike, try restaurants, cook at someone's apartment."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-015",
+        "source": "direct",
+        "source_subcategory": "preferences.food_and_dining",
+        "reprojected_from": null,
+        "claim": "Sarada meal preps mainly on Sunday afternoons and sometimes cooks on Wednesday nights.",
+        "ground_truth_label": "Sunday meal prep routine",
+        "behavioral_evidence_from_interview": [
+          "Q15: Sunday afternoons are my main meal-prep time. I also cook Wednesday nights if I am not too tired."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-016",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Sarada maintains a travel savings fund and dreams of a Kyoto trip.",
+        "ground_truth_label": "Saving for Kyoto travel",
+        "behavioral_evidence_from_interview": [
+          "Q62: Kyoto is my dream trip, so I have a travel fund for that.",
+          "Q108: I also want to travel more intentionally, especially to Kyoto."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-017",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Sarada has visited India, including Delhi, and follows travel content for Japan and Europe.",
+        "ground_truth_label": "India travel and Japan/Europe travel interest",
+        "behavioral_evidence_from_interview": [
+          "Q86: Yes, we visited relatives, including a memorable trip to Delhi.",
+          "Q48: Travel pages for Japan and Europe."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-018",
+        "source": "direct",
+        "source_subcategory": "preferences.travel",
+        "reprojected_from": null,
+        "claim": "Sarada balances travel goals against home savings and CPA costs.",
+        "ground_truth_label": "Balances travel with practical goals",
+        "behavioral_evidence_from_interview": [
+          "Q62: I am balancing it with practical goals.",
+          "Q62: CPA exam fees and maybe a Japan trip if the timing works."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-019",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada has never been married, is not cohabiting, has no children, and is not currently in a serious relationship.",
+        "ground_truth_label": "Never married, no partner, no children",
+        "behavioral_evidence_from_interview": [
+          "Q05: I am not married, I am not living with a romantic partner, and I do not have children.",
+          "Q84: I have never been married, and I am not currently living with a romantic partner."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-020",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada sees her parents most Sundays, talks to her mother almost daily, and her parents live separately in the Exton area.",
+        "ground_truth_label": "Close nearby parental ties",
+        "behavioral_evidence_from_interview": [
+          "Q05: They are in the Exton area, so I see them most Sundays for lunch or dinner, and I talk to my mom almost every day.",
+          "Q51: Yes, they live separately in the Exton area."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-021",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada is close to her younger brother Rohan, who lives in King of Prussia and works in IT.",
+        "ground_truth_label": "Close younger brother Rohan",
+        "behavioral_evidence_from_interview": [
+          "Q05: I also have a younger brother, Rohan, who lives in King of Prussia and works in IT."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-022",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada is close to cousin Priya in New Jersey and texts with her about work, family expectations, and travel ideas.",
+        "ground_truth_label": "Close cousin Priya",
+        "behavioral_evidence_from_interview": [
+          "Q06: I talk most with my cousin Priya in New Jersey. We text about work, family expectations, and travel ideas."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-023",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada's core social network includes Megan, badminton group members, college friends, coworkers, and cultural association friends.",
+        "ground_truth_label": "Small close friend and community network",
+        "behavioral_evidence_from_interview": [
+          "Q07: I have a small core group from college and work, plus a badminton group.",
+          "Q07: My closest friend locally is Megan."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-024",
+        "source": "direct",
+        "source_subcategory": "preferences.social_and_relationships",
+        "reprojected_from": null,
+        "claim": "Sarada usually contacts Megan or cousin Priya for emotional support rather than posting hardship on social media.",
+        "ground_truth_label": "Private interpersonal support seeking",
+        "behavioral_evidence_from_interview": [
+          "Q49: If I am struggling, I text or call specific people.",
+          "Q49: Usually Megan or my cousin Priya, depending on the issue."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-025",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada lives alone with no roommate, partner, children, lodgers, or temporary household members.",
+        "ground_truth_label": "Single-person household",
+        "behavioral_evidence_from_interview": [
+          "Q11: I live alone in a one-bedroom apartment.",
+          "Q54: No, none."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-026",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada rents her apartment and pays all household expenses herself.",
+        "ground_truth_label": "Renter paying own expenses",
+        "behavioral_evidence_from_interview": [
+          "Q55: I pay my own rent and household expenses.",
+          "Q58: I rent my apartment."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-027",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada likes West Chester's walkability, parks, coffee shops, restaurants, and community events.",
+        "ground_truth_label": "Values walkable West Chester amenities",
+        "behavioral_evidence_from_interview": [
+          "Q08: It has a walkable small-town feel, with coffee shops, restaurants, the farmers market.",
+          "Q10: The ups are walkability, community events, good restaurants, and being near my family."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-028",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada feels generally safe in her neighborhood but is cautious walking alone at night and in parking lots.",
+        "ground_truth_label": "Generally safe but situationally cautious",
+        "behavioral_evidence_from_interview": [
+          "Q09: I feel generally safe.",
+          "Q09: Late at night in parking lots, mostly."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-029",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada pays about $1,950 per month in rent.",
+        "ground_truth_label": "Rent about $1,950 monthly",
+        "behavioral_evidence_from_interview": [
+          "Q56: Around $1,950 a month."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-030",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada usually spends about $4,100 to $4,300 per month, with one recent higher month around $4,600.",
+        "ground_truth_label": "Usual monthly spending $4,100-$4,300",
+        "behavioral_evidence_from_interview": [
+          "Q57: Last month I spent about $4,600.",
+          "Q57: A normal month is closer to $4,100 to $4,300."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-031",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada has about $12,000 in remaining student loans and pays credit cards in full.",
+        "ground_truth_label": "Manageable student loan and no revolving card debt",
+        "behavioral_evidence_from_interview": [
+          "Q63: I have a remaining student loan balance from college, around $12,000.",
+          "Q63: I use credit cards for points and convenience, but I pay them off in full."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-032",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada could cover a $400 emergency from high-yield savings without borrowing.",
+        "ground_truth_label": "Can cover $400 emergency from savings",
+        "behavioral_evidence_from_interview": [
+          "Q82: I could cover a $400 emergency from savings without borrowing.",
+          "Q82: My high-yield savings emergency fund."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-033",
+        "source": "direct",
+        "source_subcategory": "preferences.home_and_lifestyle",
+        "reprojected_from": null,
+        "claim": "Sarada wants to buy a home eventually but is not ready with the down payment and may need to look outside West Chester for affordability.",
+        "ground_truth_label": "Future homeownership goal constrained by affordability",
+        "behavioral_evidence_from_interview": [
+          "Q58: I would like to buy eventually, but I am not ready with the down payment and current prices in the area.",
+          "Q58: Ideally yes, but I may need to look nearby for affordability."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-034",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Sarada enjoys watching Philadelphia Eagles games with friends.",
+        "ground_truth_label": "Philadelphia Eagles fan",
+        "behavioral_evidence_from_interview": [
+          "Q07: We ... watch Eagles games.",
+          "Q87: Yes, especially with sports and regional culture."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-035",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Sarada attends the West Chester Summer Arts Festival and local cultural events.",
+        "ground_truth_label": "Attends local arts and cultural events",
+        "behavioral_evidence_from_interview": [
+          "Q10: I like the West Chester Summer Arts Festival.",
+          "Q47: Diwali, Holi, temple visits, and family prayers matter to me."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.arts_and_culture"
+        ]
+      },
+      {
+        "fact_id": "HF-036",
+        "source": "direct",
+        "source_subcategory": "preferences.entertainment",
+        "reprojected_from": null,
+        "claim": "Sarada uses Instagram for food, travel, fitness, local events, music, and friends.",
+        "ground_truth_label": "Instagram use for lifestyle and social content",
+        "behavioral_evidence_from_interview": [
+          "Q48: I use Instagram the most, mostly for friends, food, travel ideas, fitness classes, and local events."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.technology",
+          "preferences.media_and_information_diet"
+        ]
+      },
+      {
+        "fact_id": "HF-037",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Sarada plays badminton regularly at West Chester Recreation Club.",
+        "ground_truth_label": "Regular badminton at West Chester Recreation Club",
+        "behavioral_evidence_from_interview": [
+          "Q07: A badminton group at the West Chester Recreation Club.",
+          "Q15: Saturdays are for badminton."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-038",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Sarada hikes and walks locally, including parks and nearby trails.",
+        "ground_truth_label": "Local hiking and walking",
+        "behavioral_evidence_from_interview": [
+          "Q07: We hike.",
+          "Q32: Having trails nearby helps a lot."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.nature_and_outdoors",
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-039",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Sarada cooks for family and friends and experiments with traditional recipes.",
+        "ground_truth_label": "Experimental cooking for social connection",
+        "behavioral_evidence_from_interview": [
+          "Q05: Help my mom with cooking.",
+          "Q32: I like cooking healthy versions of South Asian dishes."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.food_and_dining"
+        ]
+      },
+      {
+        "fact_id": "HF-040",
+        "source": "direct",
+        "source_subcategory": "preferences.hobbies_and_recreation",
+        "reprojected_from": null,
+        "claim": "Sarada volunteers as a financial-literacy instructor.",
+        "ground_truth_label": "Financial-literacy volunteer",
+        "behavioral_evidence_from_interview": [
+          "Q16: I also volunteer as a financial-literacy instructor.",
+          "Q70: My financial-literacy teaching is volunteer work."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.community_and_civic",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-041",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada works as an accountant and auditor at a regional public accounting firm.",
+        "ground_truth_label": "Accountant and auditor at regional public accounting firm",
+        "behavioral_evidence_from_interview": [
+          "Q16: I work as an accountant and auditor at a regional public accounting firm.",
+          "Q65: I am an accountant and auditor at a regional public accounting firm."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-042",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada uses Excel, QuickBooks, Sage Intacct, audit planning, controls testing, risk assessment, and financial statement review.",
+        "ground_truth_label": "Audit and accounting technical toolkit",
+        "behavioral_evidence_from_interview": [
+          "Q16: I use Excel heavily, plus QuickBooks and Sage Intacct.",
+          "Q65: Audit planning, risk assessment, internal control testing, substantive testing."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.technology"
+        ]
+      },
+      {
+        "fact_id": "HF-043",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada trains and mentors junior staff.",
+        "ground_truth_label": "Junior staff mentor",
+        "behavioral_evidence_from_interview": [
+          "Q04: I mentor junior staff.",
+          "Q16: I help junior staff understand audit procedures, Excel models, and how to document clearly."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-044",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada aims to earn her CPA license, become senior audit manager, and possibly build a boutique consultancy for small businesses and immigrant communities.",
+        "ground_truth_label": "CPA, senior audit manager, and consultancy goals",
+        "behavioral_evidence_from_interview": [
+          "Q108: I hope I have my CPA license and have moved into a senior audit manager role.",
+          "Q108: Long term, I can imagine a boutique consultancy that serves small businesses and immigrant communities."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer",
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-045",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada has one paid job; her financial-literacy teaching is volunteer work, not paid side work.",
+        "ground_truth_label": "One paid job plus unpaid volunteer work",
+        "behavioral_evidence_from_interview": [
+          "Q70: No, I have one paid job. My financial-literacy teaching is volunteer work.",
+          "Q71: One paid job in the past month."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-046",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada usually works around 42 to 45 hours per week and closer to 50 or more during busy season.",
+        "ground_truth_label": "Audit workload varies with busy season",
+        "behavioral_evidence_from_interview": [
+          "Q68: Usually around 42 to 45 hours, and closer to 50 or more during busy season."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-047",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada's gross monthly pay is about $7,500, take-home pay is about $5,200, and she is paid every two weeks.",
+        "ground_truth_label": "Gross $7,500 monthly, take-home $5,200, biweekly pay",
+        "behavioral_evidence_from_interview": [
+          "Q72: My gross monthly pay is about $7,500.",
+          "Q72: My take-home pay is around $5,200.",
+          "Q73: I get paid every two weeks."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-048",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada has been at her current firm about five years and receives health, dental, vision, 401(k), PTO, sick time, CPA exam support, and hybrid flexibility.",
+        "ground_truth_label": "Five-year tenure with solid benefits",
+        "behavioral_evidence_from_interview": [
+          "Q76: I have been at my current firm for about five years.",
+          "Q76: Benefits are solid: health insurance, dental, vision, 401(k), paid time off, sick time, CPA exam support, and some hybrid flexibility."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-049",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada's job is not union-covered.",
+        "ground_truth_label": "Non-union job",
+        "behavioral_evidence_from_interview": [
+          "Q66: No, my job is not union-covered and not under an employee association contract."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-050",
+        "source": "direct",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": null,
+        "claim": "Sarada filed federal, Pennsylvania, and local taxes for the most recent tax year and prepared them herself using tax software.",
+        "ground_truth_label": "Self-prepared recent taxes",
+        "behavioral_evidence_from_interview": [
+          "Q75: Yes, I filed my federal, Pennsylvania, and local taxes for the most recent tax year.",
+          "Q75: Yes, I prepared them myself using tax software."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.technology"
+        ]
+      },
+      {
+        "fact_id": "HF-051",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Sarada celebrates Diwali and Holi and attends temple and cultural association events.",
+        "ground_truth_label": "Participates in Hindu and South Asian cultural events",
+        "behavioral_evidence_from_interview": [
+          "Q47: Diwali, Holi, temple visits, and family prayers matter to me.",
+          "Q94: Yes, especially Diwali and Holi."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.cultural_and_linguistic"
+        ]
+      },
+      {
+        "fact_id": "HF-052",
+        "source": "direct",
+        "source_subcategory": "preferences.arts_and_culture",
+        "reprojected_from": null,
+        "claim": "Sarada helps with cultural association budgeting, registration, and youth mentorship panels.",
+        "ground_truth_label": "Cultural association administrative and mentoring role",
+        "behavioral_evidence_from_interview": [
+          "Q17: I help with event budgeting, registration spreadsheets, and occasionally youth mentorship panels."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.community_and_civic"
+        ]
+      },
+      {
+        "fact_id": "HF-053",
+        "source": "direct",
+        "source_subcategory": "preferences.nature_and_outdoors",
+        "reprojected_from": null,
+        "claim": "Sarada values nearby trails, parks, and outdoor movement as sources of health and emotional balance.",
+        "ground_truth_label": "Outdoor access supports health and stress relief",
+        "behavioral_evidence_from_interview": [
+          "Q08: I like being close to parks and trails.",
+          "Q43: Taking a walk outside."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.hobbies_and_recreation",
+          "preferences.sports_and_fitness"
+        ]
+      },
+      {
+        "fact_id": "HF-054",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Sarada uses advanced Excel, QuickBooks, Sage Intacct, tax software, and spreadsheets.",
+        "ground_truth_label": "Practical accounting and spreadsheet technology use",
+        "behavioral_evidence_from_interview": [
+          "Q03: I made a spreadsheet.",
+          "Q16: I use Excel heavily, plus QuickBooks and Sage Intacct.",
+          "Q75: I prepared them myself using tax software."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.work_and_career"
+        ]
+      },
+      {
+        "fact_id": "HF-055",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Sarada uses online medical portals for herself and helps parents navigate theirs.",
+        "ground_truth_label": "Uses patient portals",
+        "behavioral_evidence_from_interview": [
+          "Q36: Yes, for myself and sometimes helping my parents navigate theirs."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-056",
+        "source": "direct",
+        "source_subcategory": "preferences.technology",
+        "reprojected_from": null,
+        "claim": "Sarada tracks personal spending in a spreadsheet every Sunday.",
+        "ground_truth_label": "Sunday spending spreadsheet review",
+        "behavioral_evidence_from_interview": [
+          "Q57: Yes, I use a spreadsheet and check categories every Sunday."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-057",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Sarada votes regularly, including presidential, midterm, and increasingly local elections.",
+        "ground_truth_label": "Regular voter",
+        "behavioral_evidence_from_interview": [
+          "Q23: I vote regularly, especially in presidential and midterm elections, and I have gotten better about local elections too."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-058",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Sarada identifies as a moderately strong Democrat or center-left pragmatic Democrat, closer to the Democratic Party than the Republican Party.",
+        "ground_truth_label": "Moderately strong center-left Democrat",
+        "behavioral_evidence_from_interview": [
+          "Q95: I usually think of myself as a Democrat.",
+          "Q96: Closer to the Democratic Party, definitely."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-059",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Sarada prioritizes health care, education, reproductive rights, immigration, climate policy, civil rights, competent government, and fiscal seriousness.",
+        "ground_truth_label": "Center-left issue priorities with fiscal competence",
+        "behavioral_evidence_from_interview": [
+          "Q24: I care about competent government, public education, access to health care, fair treatment for immigrants, and civil rights.",
+          "Q24: I look for fiscal seriousness.",
+          "Q25: Housing costs, school boards, policing, zoning, and local budgets affect daily life."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-060",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Sarada has limited personal law-enforcement experience with routine traffic stops, has never been arrested, and has no immediate family arrests.",
+        "ground_truth_label": "Limited law-enforcement exposure and no arrests",
+        "behavioral_evidence_from_interview": [
+          "Q20: I have had routine traffic stops.",
+          "Q22: I have never been arrested, and no immediate family member has been arrested."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-061",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Black Lives Matter affected Sarada somewhat to a lot and led her to think about accountability, unequal treatment, and institutional systems.",
+        "ground_truth_label": "BLM-influenced institutional accountability view",
+        "behavioral_evidence_from_interview": [
+          "Q26: They affected me somewhat to a lot.",
+          "Q27: I think about accountability, unequal treatment, and how institutions can produce different outcomes."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-062",
+        "source": "direct",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": null,
+        "claim": "Sarada prefers voting, donations, workplace equity discussions, and real conversations over constant political posting online.",
+        "ground_truth_label": "Civically engaged but not performative online",
+        "behavioral_evidence_from_interview": [
+          "Q29: I am not a constant poster online.",
+          "Q29: I have mostly talked with family and friends, attended one local peaceful gathering, donated to a legal aid organization."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.political_scientist"
+        ]
+      },
+      {
+        "fact_id": "HF-063",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Sarada uses music while cooking and relaxing.",
+        "ground_truth_label": "Music for cooking and relaxation",
+        "behavioral_evidence_from_interview": [
+          "Q43: Cooking with music on."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-064",
+        "source": "direct",
+        "source_subcategory": "preferences.music",
+        "reprojected_from": null,
+        "claim": "Sarada follows indie folk music accounts on Instagram.",
+        "ground_truth_label": "Indie folk music interest",
+        "behavioral_evidence_from_interview": [
+          "Q48: Indie folk music accounts."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-065",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Sarada delayed buying new work clothes to manage extra expenses.",
+        "ground_truth_label": "Cuts work-clothing purchases when budgeting",
+        "behavioral_evidence_from_interview": [
+          "Q60: I delayed buying new work clothes."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-066",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Sarada's Diwali spending includes clothing.",
+        "ground_truth_label": "Diwali clothing expense",
+        "behavioral_evidence_from_interview": [
+          "Q59: Diwali can add up because of gifts, clothing, food, donations, and events."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-067",
+        "source": "direct",
+        "source_subcategory": "preferences.fashion_and_appearance",
+        "reprojected_from": null,
+        "claim": "Sarada follows some South Asian fashion content on Instagram.",
+        "ground_truth_label": "Follows South Asian fashion content",
+        "behavioral_evidence_from_interview": [
+          "Q48: Some South Asian fashion and cooking pages."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-068",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Sarada was born in Philadelphia, Pennsylvania to parents who immigrated from India in the late 1980s.",
+        "ground_truth_label": "U.S.-born daughter of Indian immigrants",
+        "behavioral_evidence_from_interview": [
+          "Q86: Yes, I was born in the United States. My parents immigrated from India before I was born.",
+          "Q87: I was born in Philadelphia, Pennsylvania.",
+          "Q86: They came in the late 1980s."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-069",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Sarada identifies as Asian, South Asian, Indian American, and Hindu, and is not Hispanic, Latinx, or Spanish origin.",
+        "ground_truth_label": "Asian/South Asian Indian American Hindu; not Hispanic",
+        "behavioral_evidence_from_interview": [
+          "Q88: No, I am not of Hispanic, Latinx, or Spanish origin.",
+          "Q89: I identify as Asian, specifically South Asian or Indian American.",
+          "Q94: I identify as Hindu."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-070",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Sarada speaks some Hindi, though English is dominant.",
+        "ground_truth_label": "English-dominant with some Hindi",
+        "behavioral_evidence_from_interview": [
+          "Q88: Some Hindi, though English is dominant for me."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-071",
+        "source": "direct",
+        "source_subcategory": "preferences.cultural_and_linguistic",
+        "reprojected_from": null,
+        "claim": "Sarada describes her Hindu identity as cultural-spiritual rather than strictly ritualistic.",
+        "ground_truth_label": "Cultural-spiritual Hindu identity",
+        "behavioral_evidence_from_interview": [
+          "Q47: I identify as Hindu, culturally and spiritually, though I am not extremely ritualistic every day.",
+          "Q94: Both, but more cultural-spiritual than strictly observant."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-072",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada chose public accounting and audit after college instead of a calmer corporate accounting role.",
+        "ground_truth_label": "Chose harder audit track over corporate accounting",
+        "behavioral_evidence_from_interview": [
+          "Q02: I had to decide whether to take a safer corporate accounting job or go into public accounting and audit.",
+          "Q02: I chose the audit track."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist"
+        ]
+      },
+      {
+        "fact_id": "HF-073",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada recently restructured her routine around CPA exam study blocks.",
+        "ground_truth_label": "CPA study blocks added to routine",
+        "behavioral_evidence_from_interview": [
+          "Q18: The biggest recent change is being more serious about CPA study blocks.",
+          "Q18: I put it on my calendar like a client meeting."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-074",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada was born on March 14, 1992.",
+        "ground_truth_label": "Date of birth March 14, 1992",
+        "behavioral_evidence_from_interview": [
+          "Q85: My date of birth is March 14, 1992."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-075",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "At age 16, Sarada lived in Exton, Pennsylvania with both parents and younger brother Rohan.",
+        "ground_truth_label": "Exton adolescent household with parents and brother",
+        "behavioral_evidence_from_interview": [
+          "Q97: When I was 16, I lived in Exton, Pennsylvania.",
+          "Q98: Yes, I lived with both my mother and father when I was 16.",
+          "Q99: I lived with my younger brother, Rohan."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.demographer"
+        ]
+      },
+      {
+        "fact_id": "HF-076",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada's father completed a bachelor's degree in commerce in India and worked in finance operations for a manufacturing company.",
+        "ground_truth_label": "Father educated in commerce and worked in manufacturing finance operations",
+        "behavioral_evidence_from_interview": [
+          "Q100: My dad completed a bachelor's degree in commerce in India.",
+          "Q106: My dad worked in finance operations for a manufacturing company."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-077",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada's mother completed a bachelor's degree in India and worked as an administrative assistant in a private medical office.",
+        "ground_truth_label": "Mother educated in India and worked in medical office administration",
+        "behavioral_evidence_from_interview": [
+          "Q101: My mom completed a bachelor's degree in India.",
+          "Q103: My mom worked as an administrative assistant in a medical office."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-078",
+        "source": "direct",
+        "source_subcategory": "preferences.life_events_and_transitions",
+        "reprojected_from": null,
+        "claim": "Sarada values integrity, family, growth, and community, while recognizing that balance is difficult for her.",
+        "ground_truth_label": "Core values: integrity, family, growth, community; balance is difficult",
+        "behavioral_evidence_from_interview": [
+          "Q109: I value integrity, family, growth, and community.",
+          "Q109: Balance. I value it, but I still overcommit."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-079",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Sarada uses voter guides and candidate research before elections.",
+        "ground_truth_label": "Uses voter guides and candidate research",
+        "behavioral_evidence_from_interview": [
+          "Q23: I usually read voter guides and check candidates' positions."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-080",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Sarada trusts her primary care doctor, CDC, local health departments, and hospital systems for vaccine information.",
+        "ground_truth_label": "Trusted vaccine information sources",
+        "behavioral_evidence_from_interview": [
+          "Q42: I trust my primary care doctor, the CDC, local health department updates, and major hospital systems like Penn Medicine or Main Line Health."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-081",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Sarada uses Instagram, Facebook, and LinkedIn but avoids heavy Twitter/X use.",
+        "ground_truth_label": "Selective social media use",
+        "behavioral_evidence_from_interview": [
+          "Q48: I use Instagram the most.",
+          "Q48: I have Facebook but use it mainly for family.",
+          "Q48: LinkedIn is important professionally.",
+          "Q48: I do not use Twitter or X much."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "preferences.technology"
+        ]
+      },
+      {
+        "fact_id": "HF-082",
+        "source": "direct",
+        "source_subcategory": "preferences.media_and_information_diet",
+        "reprojected_from": null,
+        "claim": "Sarada avoids relying on random social media posts for health decisions and checks original sources.",
+        "ground_truth_label": "Checks original sources for health information",
+        "behavioral_evidence_from_interview": [
+          "Q42: I do not use random social media posts for health decisions.",
+          "Q42: If something sounds dramatic, I look for the original source."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-083",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.demographer",
+        "claim": "Sarada holds a bachelor's degree in accounting.",
+        "ground_truth_label": "Bachelor's degree in accounting",
+        "behavioral_evidence_from_interview": [
+          "Q90: I completed a bachelor's degree in accounting."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": []
+      },
+      {
+        "fact_id": "HF-084",
+        "source": "reprojected",
+        "source_subcategory": "preferences.work_and_career",
+        "reprojected_from": "summaries.psychologist",
+        "claim": "Sarada is conscientious, achievement-oriented, socially warm, and somewhat perfectionistic.",
+        "ground_truth_label": "Conscientious achievement orientation with perfectionism",
+        "behavioral_evidence_from_interview": [
+          "Q43: I feel proud of my work and more serious about my CPA goal.",
+          "Q45: I can get caught in perfectionism."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.psychologist"
+        ]
+      },
+      {
+        "fact_id": "HF-085",
+        "source": "reprojected",
+        "source_subcategory": "preferences.community_and_civic",
+        "reprojected_from": "summaries.behavioral_economist",
+        "claim": "Sarada's choices are motivated by professional competence, family reliability, cultural continuity, and community service.",
+        "ground_truth_label": "Identity-and-obligation-driven choices",
+        "behavioral_evidence_from_interview": [
+          "Q05: Family obligations are a real part of my schedule.",
+          "Q17: I also attend a local South Asian cultural association most weeks.",
+          "Q65: Accuracy and judgment are the most important things.",
+          "Q109: I value integrity, family, growth, and community."
+        ],
+        "duplicate_of": null,
+        "also_supported_by": [
+          "summaries.behavioral_economist",
+          "summaries.psychologist"
+        ]
+      }
+    ]
+  }
+}
