@@ -25,19 +25,40 @@ Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
 | [step5_testcases_synthesis](step5_testcases_synthesis) | Construct typed test cases (five types, including agent-behavior scenarios) grounded in the hidden_facts registry. |
 | [step6_benchmark_runner](step6_benchmark_runner) | Execute the benchmark against a frontier LLM using a two-pass design that prevents ground-truth leakage; includes Pass^k aggregation for repeated-run reliability. |
 
-## Personas
+## Generated Samples
 
-| Name | UUID | Hidden facts |
-|---|---|---:|
-| `julio_simmons` | `e7035edf5bc744c9912694a7d4b2a99c` | 134 |
-| `mary_alberti` | `e7c0574639a244c8972c92aab9501035` | 104 |
-| `alicia_gonzalez` | `50f90a6f17de473f9ca15f00afdedf7a` | 157 |
-| `deeva_cintron` | `f2f5dbaf4d3d43f68adeb7f318afa3a2` | 174 |
-| `maria_buendia` | `5237e90a0ca3460dbbcba20adb61922f` | 104 |
+Generated persona artifacts are tracked under each step's
+`data_samples/output/` directory. The file naming convention is:
+
+- `step1_seed/data_samples/output/{persona}_seed.json`
+- `step2_interview/data_samples/output/{persona}_interview.json`
+- `step2_interview/data_samples/output/{persona}_verification.json`
+- `step3_social_circle/data_samples/output/{persona}_social_circle.json`
+- `step3_social_circle/data_samples/output/{persona}_social_circle_verification.json`
+- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs.json`
+- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json`
+- `step4_app_log_synthesizer/data_samples/output/{persona}_verified_fragments.json`
+
+This output batch adds 40 new personas through Step 4:
+
+`alicia_mosquera`, `alina_acosta`, `andrew_black`,
+`angel_diaz`, `antonio_gonzalez`, `baljinder_simmons`,
+`brian_martin`, `carolyn_amos`, `catherine_denis`, `chol_tran`,
+`christopher_montero`, `david_mckethan`, `debra_reeves`,
+`donovan_munoz`, `ellias_chand`, `hanh_gunasekara`,
+`irene_tangarife`, `iris_trujillo`, `james_lee`,
+`jennifer_cuzzort`, `jose_bonnet`, `joseph_giordano`,
+`judith_castillo`, `kailea_rubel`, `katherine_holder`,
+`keith_moore`, `kerri_wilson`, `lashonda_brazzell`,
+`laura_bost`, `miguel_perezramos`, `mikala_langley`,
+`pedro_jimenez`, `raki_roseberry`, `saba_guevara`,
+`sandi_chapman`, `sarada_mongru`, `sean_buckley`, `shoba_mehta`,
+`terri_maxson`, and `tyler_brizendine`.
 
 ## Scope
 
-The current pipeline produces **5 personas end-to-end** for initial validation. The target at benchmark release is **100 personas**. The 5-persona run validates the pipeline before scaling.
+This batch is scoped to 40 new personas through Step 4 app logs. Step 5 test
+cases and Step 6 benchmark runs are generated and reviewed separately.
 
 ## Getting started
 

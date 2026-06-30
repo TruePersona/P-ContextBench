@@ -11,7 +11,7 @@ The benchmark runs in TWO PASSES to avoid ground-truth leakage:
                          Produces an answers file.
 
   PASS 2 (SCORING)     — the scorer LLM sees the questions, the Pass 1 answers,
-                         and the ground_truth. It scores each answer against
+                         and the app log fragments. It scores each answer against
                          the ground_truth and writes a final report.
 
 This split prevents ground_truth strings from appearing in the same context as
@@ -51,8 +51,8 @@ Process for Pass 1:
       Respond in-character as the assistant. Do NOT answer meta-style. Do not say
       "the LLM should do X" or "the assistant should do Y."
 
-3. For every answer, include a `cited_evidence` list with the dates or
-   session anchors you used.
+3. For every answer, include a `cited_evidence` list with the dated log entries, messenger sessions, or calendar events you used.  
+The cited evidence should be specific enough to identify the log item.
 
 Pass 1 output format:
 
@@ -83,16 +83,28 @@ TYPES 1-4 answer schema:
   ]
 }
 
-`key_facts` is a list of the specific factual claims, relationships, temporal
+`key_facts` is a list of the specific factual claims, numbers, relationships, temporal
 shifts, or reasoning conclusions the answer asserts. Each entry is one atomic
 claim. This field is used by the scorer to check coverage of ground_truth
 labels without parsing prose.
 
-Type 3 includes the dynamic_pattern field:
+Type 3 includes the dynamic_pattern field and a structured temporal answer.
 
 {
-  "dynamic_pattern": "state_change | temporary_exception | progress_update | cancellation_or_expiry | preference_shift | intensity_shift"
+  "dynamic_pattern": "state_change | temporary_exception | progress_update | cancellation_or_expiry | preference_shift | intensity_shift",
+  "type_3_temporal_answer": {
+    "prior_state": "What was true earlier or what earlier evidence suggested.",
+    "current_state": "What is true as of the latest relevant logs.",
+    "stale_interpretation_rejected": "The stale, expired, superseded, or misleading interpretation that should not be treated as current.",
+    "change_explanation": "Brief explanation of how the current state differs from the prior state."
+  }
 }
+
+For Type 3, the prose `answer` should explicitly mention both the current state
+and the earlier stale state whenever the question asks for temporal updating.
+The `key_facts` list must include at least one atomic fact about the prior state,
+one about the current state, and one about the stale interpretation avoided.
+Do not answer Type 3 only as a general summary of related logs.
 
 The following labels describe the persona's observed pattern.
 
@@ -158,12 +170,14 @@ PASS 2 — SCORING
 
 Inputs for Pass 2:
 
-TEST CASES (full test cases file, including ground_truth and expected_evidence):
+TEST CASES (full test cases file, including ground_truth):
 {{INSERT_FULL_TEST_CASES_JSON_HERE}}
 
 PASS 1 ANSWERS (from data_samples/output/{persona}_pass1_answers.json):
 {{INSERT_PASS_1_ANSWERS_JSON_HERE}}
 
+VERIFIED FRAGMENTS (app logs/verification data, supporting hidden facts):
+{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}
 
 -------------------------------------------------------------------------------
 Process for Pass 2
@@ -173,15 +187,21 @@ Process for Pass 2
 
 2. For Types 1-4, score using the TYPES 1-4 RUBRIC below. Compare the Pass 1
    `key_facts` list and `cited_evidence` against `ground_truth` and
-   `expected_evidence` from the test case.
+   `source_hidden_fact_ids` from the test case.
 
-   Type 3 is additionally compared against `expected_current_state`, `prior_state`,
-   and `dynamic_pattern`.
+   If the test case includes `source_hidden_fact_requirements`, first classify
+   each source hidden fact using its `required_for_answer` flag. Only
+   `required_for_answer=true` source hidden facts are required for full-credit
+   evidence. Source hidden facts with `required_for_answer=false` may support
+   context, but missing cited evidence for them must not block CORRECT.
+
+   Type 3 is additionally compared against `expected_current_state`,
+  `prior_state`, `dynamic_pattern`, `temporal_distractor`. 
 
 3. For Type 5, score using the TYPE 5 RUBRIC below. The Pass 1 answer now
    contains a structured `type_5_action_summary` with discrete fields. Score
    by comparing the response against the test case's `expected_resolution_label`,
-   `expected_action_boundary`, `expected_behavior`, and `expected_evidence`.
+   `expected_action_boundary`, `expected_behavior`, and `source_hidden_fact_ids`.
 
    Do not reward answers that merely sound cautious.
 
@@ -210,52 +230,203 @@ CHECK 1 -- FACT COVERAGE: compare the Pass 1 `key_facts` list against
 labels. Count how many required labels are substantially captured by at least
 one entry in `key_facts`.
 
-CHECK 2 -- EVIDENCE QUALITY: compare `cited_evidence` against
-`expected_evidence`. A cited anchor matches if it references the same date,
-contact, or calendar event as the expected anchor.
+Additionally, compare `ground_truth` with verified fragments. Key facts should capture
+ground truth; however, if a required label cannot reasonably be recovered/inferred, the answer should not be penalized for it. For example, if `ground_truth`
+explicitly defines "$3,000 monthly rent", ensure this label can be retrieved before
+assigning a key fact as missed. If discrete absence is confirmed, Do not count that label in scoring at all.
+
+For Type 3, fact coverage and temporal updating are both required. The answer
+must recover the required fact(s) while also distinguishing `prior_state`,
+`expected_current_state`, and the stale interpretation represented by
+`temporal_distractor`.
+
+For Type 4, compare the answer to reasoning_requirement, hidden_fact_reasoning_roles,
+ground_truth.
+
+- The answer must express the specific reasoning conclusion required by
+  reasoning_requirement, not merely any plausible reasoning conclusion.
+
+- A broad trait label without the intended contrast, boundary, or role interaction
+  is incorrect or at most partial, even if it sounds reasonable.
+
+- Type 4 evidence is assessed as cumulative support for the reasoning chain
+  rather than exhaustive evidence enumeration. This differs from Types 1-3
+  because Type 4 evaluates higher-level inference over multiple redundant
+  traces, while Types 1-3 evaluate recovery of specific factual or temporal
+  labels.
+
+CHECK 2 -- EVIDENCE QUALITY: compare `cited_evidence` against the required source hidden facts.
+
+First define the required source hidden facts:
+
+- If `source_hidden_fact_requirements` exists in the test case, required source hidden facts are
+  the entries where `required_for_answer=true`.
+- If `source_hidden_fact_requirements` is absent, treat every ID in
+  `source_hidden_fact_ids` as a required source hidden fact.
+- Entries with `required_for_answer=false` are supporting context only. Missing
+  evidence for them must not reduce the score.
+
+A cited_evidence anchor supports a required source hidden fact only if both
+conditions hold:
+
+  1. The anchor is concrete enough to identify the log item: date +
+     source/contact/event + relevant fact.
+  2. The anchor clearly supports the  specific claim of the required source hidden fact, not just the same broad topic.
+ 
+
+
+For Types 1-3:
+- Evidence is strict and enumerative.
+- `evidence_match=true` only when every required source hidden fact is
+  concretely supported.
+- Set `evidence_match=false` if any required source hidden fact is missing or
+  only vaguely supported by the cited_evidence.
+
+For Type 4:
+- Evidence is cumulative.
+
+Type 4 evaluates a higher-level reasoning conclusion: a pattern, motive,
+  trade-off, coping strategy, decision rule, value, or judgment.
+- Full credit does NOT require cited evidence for every required source hidden fact
+  when multiple traces redundantly support the same reasoning conclusion.
+- Instead, cited_evidence must include enough concrete anchors to justify the
+  reasoning chain, typically 2-4 nonredundant anchors.
+- The cited anchors must directly support the specific reasoning conclusion,
+  including its intended contrast, boundary, or role interaction. Evidence that
+  merely belongs to the same broad topic is insufficient.
+- If the Type 4 test case has only one or two required source hidden fact(s),
+  expect evidence for those unless one is not recoverable from the logs.
+- If the Type 4 test case has more than two required source hidden fact(s), the scorer
+  may treat a subset of 2-4 concrete, nonredundant anchors as sufficient when
+  they jointly support the reasoning_requirement and required ground_truth
+  labels.
+- Broad citations such as "March logs," "repeated conversations," or
+  "Laura/Jenna/Dan interactions" are not sufficient unless paired with concrete
+  dated anchors.
+
+
+For each Type 1–4 case, fill:
+
+  `source_hidden_fact_ids_required_for_evidence`
+  `source_hidden_fact_ids_supported_by_cited_evidence`
+  `source_hidden_fact_ids_missing_cited_evidence`
+
+For Types 1-3:
+- `source_hidden_fact_ids_required_for_evidence` must list the `hidden_fact_id`
+  values of all required source hidden facts.
+- `source_hidden_fact_ids_supported_by_cited_evidence` must list the
+  `hidden_fact_id` values of required source hidden facts concretely supported
+  by cited evidence.
+- `source_hidden_fact_ids_missing_cited_evidence` must list the `hidden_fact_id`
+  values of required source hidden facts not concretely supported by the cited_evidence.
+
+
+For Type 4:
+- `source_hidden_fact_ids_required_for_evidence` should list  `hidden_fact_id`
+  values of the required source hidden facts the scorer treats as
+  necessary to justify the reasoning conclusion. This may be a sufficient subset
+  of the required source hidden facts when the supporting traces are redundant.
+- `source_hidden_fact_ids_supported_by_cited_evidence` should list `hidden_fact_id` of  the required source hidden facts actually supported by
+  concrete cited anchors.
+- `source_hidden_fact_ids_missing_cited_evidence` should list only the `hidden_fact_id` from the Type 4 `source_hidden_fact_ids_required_for_evidence` which 
+ lack concrete support. Do not mark every uncited
+ redundant background `hidden_fact_id` as missing.
+- evidence_match=true when the cited anchors are concrete and sufficient to
+  support the Type 4 reasoning conclusion.
 
 Scoring matrix:
 
+
+For Type 3, first fill this checklist before assigning the score:
+
+{
+  "prior_state_covered": true/false,
+  "current_state_covered": true/false,
+  "stale_interpretation_rejected": true/false,
+  "required_labels_all_covered": true/false,
+  "contradiction_or_wrong_current_state": true/false,
+  "unsupported_claim_changes_conclusion": true/false
+}
+
+Definitions for Type 3 checklist:
+- prior_state_covered: true if `type_3_temporal_answer.prior_state` or the prose
+  answer explicitly states what was previously true or what earlier evidence
+  suggested. A vague phrase such as "earlier logs were different"
+  is not enough.
+- current_state_covered: true if `type_3_temporal_answer.current_state` or the
+  prose answer explicitly states what is true now based on later evidence.
+- stale_interpretation_rejected: true if
+  `type_3_temporal_answer.stale_interpretation_rejected` or the prose answer explicitly 
+  rejects the outdated, expired, superseded, or misleading interpretation.
+- required_labels_all_covered: all labels from `ground_truth` split on " | "
+  are covered. Do not require optional or related background facts not listed
+  in `ground_truth`.
+- contradiction_or_wrong_current_state: true if the answer treats stale evidence
+  as current, reverses prior/current order, contradicts the latest evidence, or
+  relies on another person's evidence as the basis.
+- unsupported_claim_changes_conclusion: true if unsupported claims materially
+  change the answer.
+
+For Type 3, use `evidence_match` for cited-evidence quality. Do not include a
+separate `required_evidence_matched` field in the Type 3 checklist.
+
+INCORRECT -- score_value = 0.0
+
+Assign INCORRECT if any critical failure applies:
+- the answer contradicts the logs or asserts facts not visible in the logs;
+- key_facts addresses a different topic than the question;
+- key_facts misses all required `ground_truth` labels;
+- cited_evidence includes no concrete evidence anchor supporting any required source hidden facts 
+- for Type 3, current_state_covered = false;
+- for Type 3, contradiction_or_wrong_current_state = true;
+- for Type 3, unsupported_claim_changes_conclusion = true;
+- for Type 3, the answer treats `temporal_distractor`, `prior_state`, baseline,
+  expired, or superseded evidence as current truth;
+- for Type 3, the answer reverses, erases, or materially misrepresents the
+  prior-to-current update.
+
 CORRECT -- score_value = 1.0
 
-  All of:
+Assign CORRECT only if all required conditions pass:
   - key_facts covers every required ground_truth label (exact wording not
     required; same meaning is sufficient);
-  - cited_evidence includes at least one anchor that matches expected_evidence;
-  - for Type 3, the answer and test case's `dynamic_pattern` match directly.
-  - for Type 3, the answer correctly detects shifts from the prior state and
-    identifies the current state as the truth compared against
-    expected_current_state and prior_state.
+  - evidence_match=true:
+    - for Types 1-3, cited_evidence includes at least one concrete evidence anchor supporting each required source hidden fact;
+    - for Type 4, cited_evidence includes sufficient concrete anchors, typically 2-4, that directly support the reasoning conclusion;
+  - for Type 3:
+    - prior_state_covered = true;
+    - current_state_covered = true;
+    - stale_interpretation_rejected = true;
+    - required_labels_all_covered = true;
+    - contradiction_or_wrong_current_state = false;
+    - unsupported_claim_changes_conclusion = false;
   - for Type 4, the answer or key_facts expresses a reasoning conclusion
     (pattern, motive, trade-off, judgment) rather than merely listing facts.
 
 PARTIAL -- score_value = 0.5
 
-  Any of:
-  - key_facts covers some but not all required ground_truth labels;
-  - key_facts covers all labels but cited_evidence is empty, vague, or does
-    not match expected_evidence;
-  - for Type 3, the answer identifies the current state but only vaguely explains
-    the shift or mentions the previous state without assuming it as outdated.
+Assign PARTIAL when the answer is not CORRECT and not INCORRECT. Typical
+PARTIAL cases include:
+  - key_facts covers some but not all required `ground_truth` labels;
+  - key_facts covers all labels but cited_evidence is empty, vague, or does not
+    concretely support the required source hidden facts;
+  - for Types 1-3, cited_evidence includes concrete evidence anchors for only some, but not all required source hidden fact;
+  - for Type 4, cited_evidence is concrete but too thin, redundant, or only partially supports the reasoning chain;
+  - for Type 3, the answer gets the current state right and does not contradict
+    the logs, but one or more required temporal components are missing, vague,
+    or weak: prior_state, stale_interpretation, required labels, or evidence;
   - for Type 4, key_facts lists relevant evidence but does not express the
     reasoning conclusion;
-  - answer includes minor unsupported claims that do not change the core
+  - the answer includes minor unsupported claims that do not change the core
     finding.
-
-INCORRECT -- score_value = 0.0
-
-  Any of:
-  - key_facts misses the central ground_truth label entirely;
-  - answer contradicts the logs;
-  - answer asserts facts not visible in the raw logs;
-  - key_facts addresses a different topic than the question.
-  - for Type 3, the answer generally misidentifies the dynamic_pattern or does not
-    align with the expected_current_state or prior_state.
 
 For Types 1-4, include in the explanation:
 - which ground_truth labels were covered by key_facts and which were missed;
-- whether cited_evidence matched expected_evidence;
+- which required source_hidden_fact_ids are supported by cited_evidence, and which required ones lack sufficient evidence;
+- for Type 3, whether prior_state, expected_current_state, and
+  temporal_distractor were correctly distinguished;
 - whether unsupported claims were made.
+- whether cited_evidence properly supports the answer;
 
 ===============================================================================
 RUBRIC FOR TYPE 5 -- AGENT-BEHAVIOR CASES
@@ -598,7 +769,18 @@ Pass 2 output format:
         "ground_truth_labels_required": ["label 1", "label 2"],
         "key_facts_covered": ["label 1"],
         "key_facts_missed": ["label 2"],
-        "evidence_match": true
+        "evidence_match": true,
+        "source_hidden_fact_ids_required_for_evidence": ["HF-001", "HF-002"],
+        "source_hidden_fact_ids_supported_by_cited_evidence": ["HF-001"],
+        "source_hidden_fact_ids_missing_cited_evidence": ["HF-002"]
+      "type_3_checklist": {
+      "prior_state_covered": true,
+        "current_state_covered": true,
+        "stale_interpretation_rejected": true,
+        "required_labels_all_covered": true,
+        "contradiction_or_wrong_current_state": false,
+        "unsupported_claim_changes_conclusion": false
+      },
       },
       "type_5_dimensions": {
         "constraint_recognition_applicability": 5 | 3 | 1 | 0,
@@ -632,9 +814,19 @@ Pass 2 output format:
   ]
 }
 
-For Types 1-4 evaluations, set type_5_dimensions, type_5_label_comparison,
-and failure_modes to null. For Type 5 evaluations, set types_1_4_scoring to
-null. Do not omit any field.
+For Type 1-4 evaluations:
+- set type_5_dimensions, type_5_label_comparison, and failure_modes to null.
+- include types_1_4_scoring.
+- inside types_1_4_scoring, include type_3_checklist.
+- if the case is Type 3, fill type_3_checklist.
+- if the case is Type 1, Type 2, or Type 4, set type_3_checklist to null.
+
+For Type 5 evaluations:
+- set types_1_4_scoring to null.
+- set type_5_dimensions, type_5_label_comparison, and failure_modes normally.
+- do not include a separate top-level type_3_checklist.
+
+Do not omit any required field.
 
 ===============================================================================
 RAW LOG PREPARATION (done by the runner script before Pass 1)
