@@ -234,6 +234,7 @@ def run_pass_1(
     client: Any | None,
     backend: str,
     provider: str,
+    response_format: str,
     reasoning_effort: str,
     claude_cmd: str,
     codex_cmd: str,
@@ -256,7 +257,7 @@ def run_pass_1(
         )
     else:
         assert client is not None
-        raw = call_llm(client, model, template, reasoning_effort, provider=provider)
+        raw = call_llm(client, model, template, reasoning_effort, provider, response_format)
     return extract_json(raw)
 
 
@@ -268,6 +269,7 @@ def _call_pass2_single(
     client: Any | None,
     backend: str,
     provider: str,
+    response_format: str,
     reasoning_effort: str,
     claude_cmd: str,
     codex_cmd: str,
@@ -305,7 +307,7 @@ def _call_pass2_single(
         )
     else:
         assert client is not None
-        raw = call_llm(client, model, template, reasoning_effort, provider=provider)
+        raw = call_llm(client, model, template, reasoning_effort, provider, response_format)
     return extract_json(raw)
 
 
@@ -316,6 +318,7 @@ def run_pass_2(
     client: Any | None,
     backend: str,
     provider: str,
+    response_format: str,
     reasoning_effort: str,
     claude_cmd: str,
     codex_cmd: str,
@@ -330,8 +333,8 @@ def run_pass_2(
     if backend not in SUBSCRIPTION_BACKENDS or len(all_cases) <= batch_size:
         return _call_pass2_single(
             sections, test_cases_full, pass1_answers,
-            model, client, backend, provider, reasoning_effort,
-            claude_cmd, codex_cmd,
+            model, client, backend, provider, response_format,
+            reasoning_effort, claude_cmd, codex_cmd,
             verified_fragments_path
         )
 
@@ -356,8 +359,8 @@ def run_pass_2(
             try:
                 result = _call_pass2_single(
                     sections, tc_batch, ans_batch,
-                    model, client, backend, provider, reasoning_effort,
-                    claude_cmd, codex_cmd,
+                    model, client, backend, provider, response_format,
+                    reasoning_effort, claude_cmd, codex_cmd,
                     verified_fragments_path,
                 )
                 evals = result.get("evaluations", [])
@@ -462,6 +465,7 @@ def run_step_once(
     backend_pass2: str,
     provider: str,
     provider_pass2: str,
+    response_format: str,
     claude_cmd: str,
     codex_cmd: str,
     run_index: int | None = None,
@@ -522,7 +526,7 @@ def run_step_once(
     if skip_pass1 and pass1_out.exists():
         print(f"[pass 1] skipped — loading existing {pass1_out.name}")
         pass1 = json.loads(pass1_out.read_text(encoding="utf-8"))
-        model_pass1 = pass1["metadata"]["model_used"]
+        model_pass1 = pass1.get("metadata", {}).get("model_used", model_pass1)
     else:
         client = None
         if backend in API_BACKENDS:
@@ -536,6 +540,7 @@ def run_step_once(
             client=client,
             backend=backend,
             provider=provider,
+            response_format=response_format,
             reasoning_effort=reasoning_pass1,
             claude_cmd=claude_cmd,
             codex_cmd=codex_cmd,
@@ -563,6 +568,7 @@ def run_step_once(
         client_pass2,
         backend=backend_pass2,
         provider=provider_pass2,
+        response_format=response_format,
         reasoning_effort=reasoning_pass2,
         claude_cmd=claude_cmd,
         codex_cmd=codex_cmd,
@@ -589,6 +595,7 @@ def run_step(
     backend_pass2: str,
     provider: str,
     provider_pass2: str,
+    response_format: str,
     claude_cmd: str,
     codex_cmd: str,
     skip_pass1: bool = False,
@@ -606,6 +613,7 @@ def run_step(
         backend_pass2,
         provider,
         provider_pass2,
+        response_format,
         claude_cmd,
         codex_cmd,
         skip_pass1=skip_pass1,
@@ -626,6 +634,7 @@ def run_passk_step(
     backend_pass2: str,
     provider: str,
     provider_pass2: str,
+    response_format,
     claude_cmd: str,
     codex_cmd: str,
     runs: int,
@@ -651,6 +660,7 @@ def run_passk_step(
                 backend_pass2,
                 provider,
                 provider_pass2,
+                response_format,
                 claude_cmd,
                 codex_cmd,
                 run_index=run_index,
@@ -726,6 +736,11 @@ def main() -> None:
         "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
     )
     parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Optional response format override for JSON outputs (openai-api).",
+    )
+    parser.add_argument(
         "--openclaw", action="store_true",
         help="Deprecated alias for --backend claude.",
     )
@@ -779,9 +794,11 @@ def main() -> None:
     backend = "claude" if args.openclaw else args.backend
     backend_pass2 = args.backend_pass2 or backend
 
-    provider = provider_for_backend(backend, args.provider or "anthropic") if backend in API_BACKENDS else (args.provider or "anthropic")
-    provider_pass2 = provider_for_backend(backend_pass2, args.provider_pass2 or provider) if backend_pass2 in API_BACKENDS else (args.provider_pass2 or provider)
+    provider = provider_for_backend(backend, args.provider) if backend in API_BACKENDS else (args.provider or "anthropic")
+    provider_pass2 = provider_for_backend(backend_pass2, args.provider_pass2) if backend_pass2 in API_BACKENDS else (args.provider_pass2 or provider)
     
+    response_format = "json_object" if args.json else "text"
+
     if args.model_pass1 is None:
         args.model_pass1 = DEFAULT_MODEL if backend in {"anthropic-api", "claude"} else "gpt-5.4-mini"
     if args.model_pass2 is None:
@@ -793,7 +810,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(2)
-    if backend_pass2 in API_BACKENDS and not check_api_key(provider_pass2):
+    if backend_pass2 in API_BACKENDS and not check_api_key(provider_pass2) and not args.skip_pass2:
         print(
             f"{provider_pass2.upper()}_API_KEY is not set and no subscription backend was selected.",
             file=sys.stderr,
@@ -812,6 +829,7 @@ def main() -> None:
                 backend_pass2,
                 provider,
                 provider_pass2,
+                response_format,
                 args.claude_cmd,
                 args.codex_cmd,
                 runs=args.passk_runs,
@@ -833,6 +851,7 @@ def main() -> None:
             backend_pass2,
             provider,
             provider_pass2,
+            response_format,
             args.claude_cmd,
             args.codex_cmd,
             skip_pass1=args.skip_pass1,

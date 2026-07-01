@@ -35,6 +35,7 @@ def call_llm(
     prompt: str,
     gpt_reasoning: str | None = "high",
     provider: str = "anthropic",
+    response_format: str | None = "text",
     max_retries: int = 3,
 ) -> str:
     import time
@@ -74,7 +75,7 @@ def call_llm(
                     model=model,
                     temperature=0,
                     messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"},
+                    response_format={"type": response_format},
                     extra_body=reasoning_field
                 )
                 return response.choices[0].message.content
