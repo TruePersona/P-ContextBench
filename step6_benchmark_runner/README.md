@@ -116,6 +116,41 @@ python generator.py \
   --model-pass2 claude-sonnet-4-6
 ```
 
+### Separate backend per pass, skip a pass, and OpenRouter
+
+Pass 2 can score on a different backend or provider than Pass 1, which keeps the evaluator and judge independent even when they run on different platforms. `--backend-pass2` and `--provider-pass2` default to the Pass 1 backend and provider when omitted:
+
+```bash
+python generator.py \
+  --app-logs      data_samples/input/{persona}_app_logs.json \
+  --test-cases    data_samples/input/{persona}_test_cases.json \
+  --output        data_samples/output/ \
+  --backend       openai-api \
+  --model-pass1   gpt-5.4-mini \
+  --backend-pass2 anthropic-api \
+  --model-pass2   claude-sonnet-4-6
+```
+
+Use `--skip-pass2` to run only the answering pass, then score later with `--skip-pass1` against a different backend. Each pass only needs credentials for the pass it actually runs, and `--skip-pass2` cannot be combined with `--passk-runs`:
+
+```bash
+python generator.py ... --backend openai-api --model-pass1 gpt-5.4-mini --skip-pass2
+python generator.py ... --backend claude    --model-pass2 claude-sonnet-4-6 --skip-pass1
+```
+
+OpenRouter is reached through the OpenAI-compatible endpoint. Set `OPENROUTER_API_KEY` and pass `--provider openrouter` (or `--provider-pass2 openrouter`); the `openrouter` provider is compatible with an `openai-api` backend and currently targets reasoning-capable models. Add `--json` to request a JSON-object response format from an OpenAI or OpenRouter answering pass:
+
+```bash
+python generator.py \
+  --app-logs     data_samples/input/{persona}_app_logs.json \
+  --test-cases   data_samples/input/{persona}_test_cases.json \
+  --output       data_samples/output/ \
+  --backend      openai-api \
+  --provider     openrouter \
+  --model-pass1  qwen/qwen3-235b-a22b \
+  --model-pass2  gpt-5.4
+```
+
 ## Verifying a successful run
 
 Check overall accuracy and the capstone result in the benchmark results file. The capstone (final Type 5a test case) should be VERIFIED or FLAGGED for a passing run.

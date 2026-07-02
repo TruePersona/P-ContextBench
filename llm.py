@@ -6,7 +6,7 @@ imports make_client() and call_llm() from here.
 
 from __future__ import annotations
 
-SUPPORTED_PROVIDERS = ("anthropic", "openai")
+SUPPORTED_PROVIDERS = ("anthropic", "openai", "openrouter")
 SUBSCRIPTION_BACKENDS = ("claude", "codex")
 API_BACKENDS = ("anthropic-api", "openai-api")
 SUPPORTED_BACKENDS = SUBSCRIPTION_BACKENDS + API_BACKENDS
@@ -19,6 +19,13 @@ def make_client(provider: str):
     if provider == "openai":
         from openai import OpenAI
         return OpenAI()
+    if provider == "openrouter":
+        from openai import OpenAI
+        import os
+        return OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.environ.get("OPENROUTER_API_KEY")
+        )
     raise ValueError(f"Unknown provider: {provider}")
 
 
@@ -28,6 +35,7 @@ def call_llm(
     prompt: str,
     gpt_reasoning: str | None = "high",
     provider: str = "anthropic",
+    response_format: str | None = "text",
     max_retries: int = 3,
 ) -> str:
     import time
@@ -53,12 +61,22 @@ def call_llm(
                     ],
                 ) as stream:
                     return stream.get_final_text()
-            if provider == "openai":
+            if provider in {"openai", "openrouter"}:
+                reasoning_field = {
+                    "reasoning_effort": gpt_reasoning
+                } if provider == "openai" else {
+                    "reasoning": {
+                        "effort": gpt_reasoning,
+                        "exclude": True
+                    },
+                    "max_completion_tokens": 64000
+                }
                 response = client.chat.completions.create(
                     model=model,
                     temperature=0,
                     messages=[{"role": "user", "content": prompt}],
-                    reasoning_effort=gpt_reasoning
+                    response_format={"type": response_format},
+                    extra_body=reasoning_field
                 )
                 return response.choices[0].message.content
             raise ValueError(f"Unknown provider: {provider}")
@@ -101,16 +119,16 @@ def check_api_key(provider: str) -> bool:
         return "ANTHROPIC_API_KEY" in os.environ
     if provider == "openai":
         return "OPENAI_API_KEY" in os.environ
+    if provider == "openrouter":
+        return "OPENROUTER_API_KEY" in os.environ
     return False
 
 
-def provider_for_backend(backend: str, provider: str = "anthropic") -> str:
+def provider_for_backend(backend: str, provider: str | None = None) -> str:
     if backend == "anthropic-api":
-        return "anthropic"
+        return provider or "anthropic"
     if backend == "openai-api":
-        return "openai"
-    if backend == "api":
-        return provider
+        return provider or "openai"
     raise ValueError(f"Backend {backend!r} is not an API backend")
 
 

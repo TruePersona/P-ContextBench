@@ -15,6 +15,8 @@ pip install anthropic openai datasets
 
 **API key** (metered): set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your environment. Select with `--backend anthropic-api` or `--backend openai-api`.
 
+**OpenRouter** (metered, OpenAI-compatible): set `OPENROUTER_API_KEY` and pass `--backend openai-api --provider openrouter`. Requests route through the OpenAI SDK against the OpenRouter endpoint and currently target reasoning-capable models.
+
 Verify your backend works before starting a long run: `python openclaw_pipeline.py --help`.
 
 ## Score a model against the existing dataset
