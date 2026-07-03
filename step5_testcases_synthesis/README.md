@@ -28,6 +28,7 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 
 - `data_samples/output/{persona}_test_cases.json` — typed test cases with ground truth labels, evidence anchors, and coverage metadata
 - `data_samples/output/{persona}_test_cases_verification.json` — verification report and corrected test cases
+- `data_samples/output/{persona}_overlap_report.json`: deterministic duplicate-overlap and coverage report (see "Overlap and coverage report" below)
 
 ## Test case types
 
@@ -58,6 +59,15 @@ Every `ground_truth` field is a literal copy of one (or more, joined with ` | `)
 3. All four Type 5 subtypes (5a, 5b, 5c, 5d) must be present. The capstone counts toward 5a.
 4. No two test cases may cite overlapping evidence sets of more than 50%.
 5. Every test case must cite at least one real `fact_id` from the profile.
+
+## Overlap and coverage report
+
+`overlap.py` measures coverage rules 4 and 5 in code, deterministically, rather than relying on the LLM self-check. `generator.py` writes `{persona}_overlap_report.json` on every run, wrapped so a report failure never aborts generation. This is detection and reporting only; it does not remove or regenerate cases. The report contains:
+
+- Duplicate overlaps: every case pair whose cited `source_hidden_fact_ids` share more than 75% for any pair, or more than 50% for the same base type, by Jaccard overlap. Duplicate fact ids resolve to their canonical `fact_id` first, so a pair that cites a fact and its `duplicate_of` twin is not missed.
+- Coverage gap: canonical `hidden_facts` (those without a `duplicate_of`) that no case cites. A citation of a duplicate id is credited to its canonical fact.
+
+Run the unit tests with `python -m unittest test_overlap`.
 
 ## Running
 

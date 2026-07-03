@@ -32,6 +32,11 @@ from llm import (
     SUPPORTED_PROVIDERS,
 )
 
+try:
+    from .overlap import build_report
+except ImportError:
+    from overlap import build_report
+
 STEP_DIR = Path(__file__).parent
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
@@ -170,6 +175,32 @@ def extract_base_name(profile_path: Path) -> str:
     return profile_path.stem.replace("_verification", "")
 
 
+def _cases_list(test_cases: Any) -> list[dict[str, Any]]:
+    if isinstance(test_cases, dict):
+        return test_cases.get("test_cases", [])
+    return test_cases if isinstance(test_cases, list) else []
+
+
+def write_overlap_report(
+    base_name: str,
+    test_cases: Any,
+    corrected_profile: dict[str, Any],
+    output_dir: Path,
+) -> dict[str, Any]:
+    cases = _cases_list(test_cases)
+    hidden_facts = corrected_profile.get("hidden_facts", [])
+    report = build_report(base_name, cases, hidden_facts)
+    (output_dir / f"{base_name}_overlap_report.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"[overlap] {base_name}: {report['violation_pairs']} duplicate pair(s), "
+        f"coverage {report['coverage_pct']}% "
+        f"({len(report['untested_facts'])} facts untested)"
+    )
+    return report
+
+
 def run_step(
     profile_path: Path,
     app_logs_path: Path,
@@ -203,6 +234,10 @@ def run_step(
         test_cases_out.write_text(
             json.dumps(test_cases, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+        try:
+            write_overlap_report(base_name, test_cases, corrected_profile, output_dir)
+        except Exception as exc:
+            print(f"[overlap] report skipped: {exc}")
 
         print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}")
         verification = run_verification(
