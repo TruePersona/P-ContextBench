@@ -640,6 +640,8 @@ def run_passk_step(
     runs: int,
     passk_output: Path | None = None,
     allow_missing: bool = False,
+    skip_pass1: bool = False,
+    skip_pass2: bool = False,
     reasoning_pass1: str = "low",
     reasoning_pass2: str = "high",
 ) -> int:
@@ -664,28 +666,32 @@ def run_passk_step(
                 claude_cmd,
                 codex_cmd,
                 run_index=run_index,
-                skip_pass1=False,
-                skip_pass2=False,
+                skip_pass1=skip_pass1,
+                skip_pass2=skip_pass2,
                 reasoning_pass1=reasoning_pass1,
                 reasoning_pass2=reasoning_pass2,
             )
         )
 
-    summary = aggregate_passk(
-        result_paths,
-        test_cases_path=test_cases_path,
-        allow_missing=allow_missing,
-    )
-    if passk_output is None:
-        base_name = test_cases_path.stem.replace("_test_cases", "")
-        passk_output = output_dir / f"{base_name}_pass{runs}_summary.json"
+    if skip_pass2:
+        print("[pass^k] done (scoring skipped)")
+    else:
+        summary = aggregate_passk(
+            result_paths,
+            test_cases_path=test_cases_path,
+            allow_missing=allow_missing,
+        )
+        if passk_output is None:
+            base_name = test_cases_path.stem.replace("_test_cases", "")
+            passk_output = output_dir / f"{base_name}_pass{runs}_summary.json"
 
-    passk_output.parent.mkdir(parents=True, exist_ok=True)
-    passk_output.write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    print(f"[pass^k] wrote {passk_output}")
+        passk_output.parent.mkdir(parents=True, exist_ok=True)
+        passk_output.write_text(
+            json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(f"[pass^k] wrote {passk_output}")
+
     return 0
 
 
@@ -786,10 +792,6 @@ def main() -> None:
     args = parser.parse_args()
     if args.passk_runs < 1:
         parser.error("--passk-runs must be at least 1")
-    if args.passk_runs > 1 and args.skip_pass1:
-        parser.error("--skip-pass1 cannot be used with --passk-runs > 1")
-    if args.passk_runs > 1 and args.skip_pass2:
-        parser.error("--skip-pass2 cannot be used with --passk-runs > 1")
 
     backend = "claude" if args.openclaw else args.backend
     backend_pass2 = args.backend_pass2 or backend
@@ -835,6 +837,8 @@ def main() -> None:
                 runs=args.passk_runs,
                 passk_output=args.passk_output,
                 allow_missing=args.passk_allow_missing,
+                skip_pass1=args.skip_pass1,
+                skip_pass2=args.skip_pass2,
                 reasoning_pass1=args.reasoning_pass1,
                 reasoning_pass2=args.reasoning_pass2,
             )
