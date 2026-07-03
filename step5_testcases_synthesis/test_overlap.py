@@ -69,6 +69,19 @@ class FindOverlapViolationsTests(unittest.TestCase):
         ]
         self.assertEqual(find_overlap_violations(cases), [])
 
+    def test_canonical_map_collapses_duplicate_ids_before_overlap(self):
+        cases = [
+            _case("TC-01", "type_1_simple_fact_check", ["HF-1", "HF-2"]),
+            _case("TC-02", "type_1_simple_fact_check", ["HF-101", "HF-2"]),
+        ]
+        # HF-101 duplicates HF-1; without the map the pair reads as distinct.
+        self.assertEqual(find_overlap_violations(cases), [])
+        pairs = {
+            tuple(sorted(v["pair"]))
+            for v in find_overlap_violations(cases, canonical_map={"HF-101": "HF-1"})
+        }
+        self.assertIn(("TC-01", "TC-02"), pairs)
+
 
 class CoverageGapTests(unittest.TestCase):
     def test_returns_facts_no_case_references(self):
@@ -86,6 +99,15 @@ class CoverageGapTests(unittest.TestCase):
             {"fact_id": "HF-1"},
             {"fact_id": "HF-2", "duplicate_of": "HF-1"},
         ]
+        self.assertEqual(coverage_gap(cases, hidden_facts), [])
+
+    def test_case_citing_duplicate_id_covers_canonical(self):
+        cases = [_case("TC-01", "type_1_simple_fact_check", ["HF-2"])]
+        hidden_facts = [
+            {"fact_id": "HF-1"},
+            {"fact_id": "HF-2", "duplicate_of": "HF-1"},
+        ]
+        # Citing the duplicate HF-2 should count as covering canonical HF-1.
         self.assertEqual(coverage_gap(cases, hidden_facts), [])
 
 

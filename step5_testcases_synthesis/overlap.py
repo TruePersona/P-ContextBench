@@ -18,8 +18,13 @@ def find_overlap_violations(
     cases: list[dict[str, Any]],
     any_type_threshold: float = 0.75,
     same_type_threshold: float = 0.50,
+    canonical_map: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    fact_sets = {c["id"]: set(c.get("source_hidden_fact_ids") or []) for c in cases}
+    cmap = canonical_map or {}
+    fact_sets = {
+        c["id"]: {cmap.get(i, i) for i in (c.get("source_hidden_fact_ids") or [])}
+        for c in cases
+    }
     types = {c["id"]: _base_type(c) for c in cases}
     violations: list[dict[str, Any]] = []
     for a, b in combinations(cases, 2):
@@ -37,19 +42,33 @@ def _canonical_fact_ids(hidden_facts: list[dict[str, Any]]) -> set[str]:
     return {h["fact_id"] for h in hidden_facts if not h.get("duplicate_of")}
 
 
+def _canonical_map(hidden_facts: list[dict[str, Any]]) -> dict[str, str]:
+    direct = {h["fact_id"]: h.get("duplicate_of") for h in hidden_facts}
+    resolved: dict[str, str] = {}
+    for fact_id in direct:
+        current, seen = fact_id, set()
+        while direct.get(current) and current not in seen:
+            seen.add(current)
+            current = direct[current]
+        resolved[fact_id] = current
+    return resolved
+
+
 def coverage_gap(
     cases: list[dict[str, Any]], hidden_facts: list[dict[str, Any]]
 ) -> list[str]:
+    cmap = _canonical_map(hidden_facts)
     covered: set[str] = set()
     for c in cases:
-        covered |= set(c.get("source_hidden_fact_ids") or [])
+        covered |= {cmap.get(i, i) for i in (c.get("source_hidden_fact_ids") or [])}
     return sorted(_canonical_fact_ids(hidden_facts) - covered)
 
 
 def build_report(
     persona: str, cases: list[dict[str, Any]], hidden_facts: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    violations = find_overlap_violations(cases)
+    cmap = _canonical_map(hidden_facts)
+    violations = find_overlap_violations(cases, canonical_map=cmap)
     untested = coverage_gap(cases, hidden_facts)
     total_facts = len(_canonical_fact_ids(hidden_facts))
     covered = total_facts - len(untested)
