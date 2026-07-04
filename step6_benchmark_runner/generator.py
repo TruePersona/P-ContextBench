@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,10 @@ PROMPT_PATH = STEP_DIR / "prompt.txt"
 
 DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
+
+# Backoff (seconds) between the 3 Pass-2 batch attempts on a backend/rate-limit
+# failure; env-tune if the account's rate limits differ.
+PASS2_BACKOFF_SECONDS = [30, 60]
 
 
 # ----- prompt splitting ----------------------------------------------------
@@ -340,6 +345,7 @@ def run_pass_2(
 
     merged_evaluations: list[dict[str, Any]] = []
     merged_result: dict[str, Any] = {}
+    skipped_batches: list[int] = []
 
     for i in range(0, len(all_cases), batch_size):
         batch_cases = all_cases[i : i + batch_size]
@@ -370,18 +376,33 @@ def run_pass_2(
                 if not merged_result:
                     merged_result = result
                 break
-            except (json.JSONDecodeError, ValueError) as exc:
+            except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
                 print(f"    batch {batch_num} attempt {attempt + 1} failed: {exc}")
+                if isinstance(exc, RuntimeError) and attempt < 2:
+                    # rate limits are transient; wait before retrying, don't hammer
+                    time.sleep(PASS2_BACKOFF_SECONDS[attempt])
                 if attempt == 2:
                     print(f"    skipping batch {batch_num} after 3 attempts")
+                    skipped_batches.append(batch_num)
 
     if not merged_result:
         merged_result = {"evaluations": [], "metadata": {}}
     merged_result["evaluations"] = merged_evaluations
     merged_result["metadata"] = merged_result.get("metadata", {})
+    batches_total = (len(all_cases) + batch_size - 1) // batch_size
+    batches_scored = batches_total - len(skipped_batches)
     merged_result["metadata"]["total_cases"] = len(merged_evaluations)
     merged_result["metadata"]["batched"] = True
-    merged_result["metadata"]["batches_total"] = (len(all_cases) + batch_size - 1) // batch_size
+    merged_result["metadata"]["batches_total"] = batches_total
+    merged_result["metadata"]["skipped_batches"] = skipped_batches
+    merged_result["metadata"]["batches_scored"] = batches_scored
+    summary = (
+        f"[pass 2] scored {len(merged_evaluations)} cases across "
+        f"{batches_scored}/{batches_total} batches"
+    )
+    if skipped_batches:
+        summary += f", {len(skipped_batches)} skipped: {skipped_batches}"
+    print(summary)
     return merged_result
 
 
