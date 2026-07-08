@@ -28,37 +28,16 @@ Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
 ## Generated Samples
 
 Generated persona artifacts are tracked under each step's
-`data_samples/output/` directory. The file naming convention is:
+`data_samples/` directory. The file naming convention is:
 
-- `step1_seed/data_samples/output/{persona}_seed.json`
-- `step2_interview/data_samples/output/{persona}_interview.json`
-- `step2_interview/data_samples/output/{persona}_verification.json`
-- `step3_social_circle/data_samples/output/{persona}_social_circle.json`
-- `step3_social_circle/data_samples/output/{persona}_social_circle_verification.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_verified_fragments.json`
-
-This output batch adds 40 new personas through Step 4:
-
-`alicia_mosquera`, `alina_acosta`, `andrew_black`,
-`angel_diaz`, `antonio_gonzalez`, `baljinder_simmons`,
-`brian_martin`, `carolyn_amos`, `catherine_denis`, `chol_tran`,
-`christopher_montero`, `david_mckethan`, `debra_reeves`,
-`donovan_munoz`, `ellias_chand`, `hanh_gunasekara`,
-`irene_tangarife`, `iris_trujillo`, `james_lee`,
-`jennifer_cuzzort`, `jose_bonnet`, `joseph_giordano`,
-`judith_castillo`, `kailea_rubel`, `katherine_holder`,
-`keith_moore`, `kerri_wilson`, `lashonda_brazzell`,
-`laura_bost`, `miguel_perezramos`, `mikala_langley`,
-`pedro_jimenez`, `raki_roseberry`, `saba_guevara`,
-`sandi_chapman`, `sarada_mongru`, `sean_buckley`, `shoba_mehta`,
-`terri_maxson`, and `tyler_brizendine`.
-
-## Scope
-
-This batch is scoped to 40 new personas through Step 4 app logs. Step 5 test
-cases and Step 6 benchmark runs are generated and reviewed separately.
+- `step1_seed/data_samples/{persona}_seed.json`
+- `step2_interview/data_samples/{persona}_interview.json`
+- `step2_interview/data_samples/{persona}_verification.json`
+- `step3_social_circle/data_samples/{persona}_social_circle.json`
+- `step3_social_circle/data_samples/{persona}_social_circle_verification.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs_trace.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_verified_fragments.json`
 
 ## Getting started
 

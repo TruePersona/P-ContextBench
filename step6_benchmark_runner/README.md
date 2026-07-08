@@ -19,14 +19,14 @@ The split prevents ground truth strings from appearing in the same context as th
 
 ## Inputs
 
-- `data_samples/input/{persona}_app_logs.json` or `data_samples/input/{persona}_decoyN_app_logs.json` — merged messenger + calendar output (from `../step4_app_log_synthesizer/data_samples/output/`). Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
-- `data_samples/input/{persona}_test_cases.json` — typed test cases (from `../step5_testcases_synthesis/data_samples/output/`)
+- `../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json` or `../step4_app_log_synthesizer/data_samples/{persona}_decoyN_app_logs.json` — merged messenger + calendar output. Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
+- `../step5_testcases_synthesis/data_samples/{persona}_test_cases.json` — typed test cases
 
 ## Outputs
 
-- `data_samples/output/{persona}_app_logs_raw.txt` — the flattened text view of the logs that Pass 1 actually saw (useful for audit/reproducibility)
-- `data_samples/output/{persona}_pass1_answers.json` — evaluator answers, one per test case
-- `data_samples/output/{persona}_benchmark_results.json` — final scored report with per-type accuracy, Type 5 breakdown, and per-case evaluations
+- `data_samples/{persona}_app_logs_raw.txt` — the flattened text view of the logs that Pass 1 actually saw (useful for audit/reproducibility)
+- `data_samples/{persona}_pass1_answers.json` — evaluator answers, one per test case
+- `data_samples/{persona}_benchmark_results.json` — final scored report with per-type accuracy, Type 5 breakdown, and per-case evaluations
 
 Pass^k summaries can also be generated with `passk.py` from repeated Step 6
 result JSONs aligned by `test_case_id`.
@@ -64,21 +64,21 @@ Default API mode (Anthropic SDK, requires `ANTHROPIC_API_KEY`):
 
 ```bash
 python generator.py \
-  --app-logs   data_samples/input/{persona}_app_logs.json \
-  --test-cases data_samples/input/{persona}_test_cases.json \
-  --output     data_samples/output/
+  --app-logs   ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output     data_samples/
 ```
 
 For decoy runs, pass the matching Step 4 file, for example
-`data_samples/input/{persona}_decoy12_app_logs.json`.
+`../step4_app_log_synthesizer/data_samples/{persona}_decoy12_app_logs.json`.
 
 OpenAI API mode:
 
 ```bash
 python generator.py \
-  --app-logs     data_samples/input/{persona}_app_logs.json \
-  --test-cases   data_samples/input/{persona}_test_cases.json \
-  --output       data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output       data_samples/ \
   --backend      openai-api \
   --model-pass1  gpt-5.4-mini \
   --model-pass2  gpt-5.4
@@ -88,9 +88,9 @@ Subscription CLI backend:
 
 ```bash
 python generator.py \
-  --app-logs   data_samples/input/{persona}_app_logs.json \
-  --test-cases data_samples/input/{persona}_test_cases.json \
-  --output     data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output       data_samples/ \
   --backend    claude
 ```
 
@@ -98,9 +98,9 @@ Codex subscription backend:
 
 ```bash
 python generator.py \
-  --app-logs     data_samples/input/{persona}_app_logs.json \
-  --test-cases   data_samples/input/{persona}_test_cases.json \
-  --output       data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output       data_samples/ \
   --backend      codex \
   --model-pass1  gpt-5.4-mini \
   --model-pass2  gpt-5.4
@@ -122,29 +122,31 @@ Pass 2 can score on a different backend or provider than Pass 1, which keeps the
 
 ```bash
 python generator.py \
-  --app-logs      data_samples/input/{persona}_app_logs.json \
-  --test-cases    data_samples/input/{persona}_test_cases.json \
-  --output        data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output       data_samples/ \
   --backend       openai-api \
   --model-pass1   gpt-5.4-mini \
   --backend-pass2 anthropic-api \
   --model-pass2   claude-sonnet-4-6
 ```
 
-Use `--skip-pass2` to run only the answering pass, then score later with `--skip-pass1` against a different backend. Each pass only needs credentials for the pass it actually runs, and `--skip-pass2` cannot be combined with `--passk-runs`:
+Use `--skip-pass2` to run only the answering pass, then score later with `--skip-pass1` against a different backend. Each pass only needs credentials for the pass it actually runs:
 
 ```bash
 python generator.py ... --backend openai-api --model-pass1 gpt-5.4-mini --skip-pass2
 python generator.py ... --backend claude    --model-pass2 claude-sonnet-4-6 --skip-pass1
 ```
 
+`--skip-pass2` can be combined with `--passk-runs`
+
 OpenRouter is reached through the OpenAI-compatible endpoint. Set `OPENROUTER_API_KEY` and pass `--provider openrouter` (or `--provider-pass2 openrouter`); the `openrouter` provider is compatible with an `openai-api` backend and currently targets reasoning-capable models. Add `--json` to request a JSON-object response format from an OpenAI or OpenRouter answering pass:
 
 ```bash
 python generator.py \
-  --app-logs     data_samples/input/{persona}_app_logs.json \
-  --test-cases   data_samples/input/{persona}_test_cases.json \
-  --output       data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/{persona}_test_cases.json \
+  --output       data_samples/ \
   --backend      openai-api \
   --provider     openrouter \
   --model-pass1  qwen/qwen3-235b-a22b \
@@ -166,12 +168,12 @@ To repeat Step 6 from the generator and summarize the results in one command:
 
 ```bash
 python generator.py \
-  --app-logs data_samples/input/alicia_gonzalez_app_logs.json \
-  --test-cases data_samples/input/alicia_gonzalez_test_cases.json \
-  --output data_samples/output/ \
+  --app-logs     ../step4_app_log_synthesizer/data_samples/alicia_gonzalez_app_logs.json \
+  --test-cases   ../step5_testcases_synthesis/data_samples/alicia_gonzalez_test_cases.json \
+  --output       data_samples/ \
   --backend claude \
   --passk-runs 4 \
-  --passk-output data_samples/output/alicia_pass4_summary.json
+  --passk-output data_samples/alicia_pass4_summary.json
 ```
 
 Pass^k mode writes suffixed run artifacts such as
@@ -185,12 +187,12 @@ for every input result file:
 
 ```bash
 python passk.py \
-  data_samples/output/alicia_run1_benchmark_results.json \
-  data_samples/output/alicia_run2_benchmark_results.json \
-  data_samples/output/alicia_run3_benchmark_results.json \
-  data_samples/output/alicia_run4_benchmark_results.json \
-  --test-cases ../step5_testcases_synthesis/data_samples/output/alicia_gonzalez_test_cases.json \
-  --output data_samples/output/alicia_pass4_summary.json
+  data_samples/alicia_run1_benchmark_results.json \
+  data_samples/alicia_run2_benchmark_results.json \
+  data_samples/alicia_run3_benchmark_results.json \
+  data_samples/alicia_run4_benchmark_results.json \
+  --test-cases ../step5_testcases_synthesis/data_samples/alicia_gonzalez_test_cases.json \
+  --output data_samples/alicia_pass4_summary.json
 ```
 
 The output reports `strict_pass_k`, `min_score_k`, average accuracy across

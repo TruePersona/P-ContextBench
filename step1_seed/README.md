@@ -10,7 +10,7 @@ A participant ID from the Nemotron-Personas-USA dataset (HuggingFace: `nvidia/Ne
 
 ## Output
 
-`data_samples/output/{name}_seed.json` — a JSON file containing:
+`data_samples/{name}_seed.json` — a JSON file containing:
 
 - Participant ID, name, age, sex, marital status, education, occupation, location
 - Narrative paragraphs across professional, sports, arts, travel, culinary, and cultural domains
@@ -19,7 +19,7 @@ A participant ID from the Nemotron-Personas-USA dataset (HuggingFace: `nvidia/Ne
 ## Running
 
 ```bash
-python generator.py --uuid <id> --output data_samples/output/
+python generator.py --uuid <id> --output data_samples/
 ```
 
 The generator pulls the record from the HuggingFace dataset and writes the seed JSON.

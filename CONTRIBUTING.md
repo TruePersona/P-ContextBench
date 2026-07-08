@@ -16,13 +16,12 @@ Every step folder follows the same structure:
 - `verification_prompt.txt` — verification prompt for the step (where applicable)
 - `generator.py` — orchestration script that runs generation, verification, and iterative refinement
 - `README.md` — step documentation
-- `data_samples/input/` — sample input data (when the step requires input beyond the previous step's output)
-- `data_samples/output/` — sample output data
+- `data_samples/` — sample output data
 
 ## Prompt Conventions
 
 - Prompts are model-agnostic. Do not reference specific model names or providers inside prompt bodies.
-- Prompts do not reference step numbers or pipeline positions. When another step's output is needed, refer to it by path (e.g., `step2_interview/data_samples/output/`).
+- Prompts do not reference step numbers or pipeline positions. When another step's output is needed, refer to it by path (e.g., `step2_interview/data_samples/`).
 - Every generation prompt has a matching verification prompt that runs at the end of the step and produces a corrected canonical output.
 - Schema fields use `verdict` (consistent | inconsistent) and `gap` (true | false) as independent concepts. Resolution fields are populated only when an action is taken.
 
@@ -30,7 +29,7 @@ Every step folder follows the same structure:
 
 1. Create a new folder under `` following the naming pattern `stepN_<name>`.
 2. Add `prompt.txt`, `verification_prompt.txt` (if verification applies), `generator.py`, and `README.md`.
-3. Add `data_samples/input/` and `data_samples/output/`.
+3. Add `data_samples/`.
 4. Update the top-level `README.md` pipeline table to reference the new step.
 5. Update `Top_level_generator.py` to orchestrate the new step into the pipeline.
 
@@ -46,8 +45,8 @@ Run a single step for an existing persona:
 
 ```bash
 python step2_interview/generator.py \
-  --seed step1_seed/data_samples/output/{name}_seed.json \
-  --output step2_interview/data_samples/output/
+  --seed step1_seed/data_samples/{name}_seed.json \
+  --output step2_interview/data_samples/
 ```
 
 ## Code Style

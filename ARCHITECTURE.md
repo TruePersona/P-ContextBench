@@ -11,7 +11,7 @@ opens a fresh subscription CLI subprocess for each LLM call: `claude -p
 empty working directory with an ephemeral session for Codex. API mode uses the
 selected provider SDK with a fresh request per call. The script fills the
 prompt from `step{N}/prompt.txt`, sends it to the selected backend, and writes
-the response to `step{N}/data_samples/output/`.
+the response to `step{N}/data_samples/`.
 
 ## Step ordering
 
@@ -34,5 +34,5 @@ against it, run step 6 only:
 bash run_step.sh 6 <persona>
 ```
 
-Output lands in `step6_benchmark_runner/data_samples/output/`. Run three
+Output lands in `step6_benchmark_runner/data_samples/`. Run three
 times for a variance estimate.

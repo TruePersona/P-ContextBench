@@ -37,7 +37,7 @@ from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
 REPO_ROOT = STEP_DIR.parent
-STEP4_OUTPUT_DIR = REPO_ROOT / "step4_app_log_synthesizer" / "data_samples" / "output"
+STEP4_OUTPUT_DIR = REPO_ROOT / "step4_app_log_synthesizer" / "data_samples"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 
 DEFAULT_MODEL = "claude-opus-4-7"
@@ -706,7 +706,7 @@ def main() -> None:
         help="Path to {persona}_test_cases.json",
     )
     parser.add_argument(
-        "--output", type=Path, default=STEP_DIR / "data_samples" / "output",
+        "--output", type=Path, default=STEP_DIR / "data_samples",
     )
     parser.add_argument("--model-pass1", default=None)
     parser.add_argument("--model-pass2", default=None)

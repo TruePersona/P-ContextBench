@@ -62,12 +62,12 @@ Opus 4.7, the 2026-era frontier reasoning model, significantly exceeds this targ
 
 Every artifact required to reproduce these numbers is checked in:
 
-- `step2_interview/data_samples/output/{persona}_verification.json` — ground-truth hidden_facts registry (source of `ground_truth_label`)
-- `step3_social_circle/data_samples/output/{persona}_social_circle_verification.json` — social circle
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs.json` — the synthesized logs (raw context the evaluator saw)
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json` — per-fact reverse-inferability gate trace
-- `step5_testcases_synthesis/data_samples/output/{persona}_test_cases.json` — the 85-101 typed test cases
-- `step6_benchmark_runner/data_samples/output/{persona}_pass1_answers.json` — evaluator's answers
-- `step6_benchmark_runner/data_samples/output/{persona}_benchmark_results.json` — per-case scored report
+- `step2_interview/data_samples/{persona}_verification.json` — ground-truth hidden_facts registry (source of `ground_truth_label`)
+- `step3_social_circle/data_samples/{persona}_social_circle_verification.json` — social circle
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs.json` — the synthesized logs (raw context the evaluator saw)
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs_trace.json` — per-fact reverse-inferability gate trace
+- `step5_testcases_synthesis/data_samples/{persona}_test_cases.json` — the 85-101 typed test cases
+- `step6_benchmark_runner/data_samples/{persona}_pass1_answers.json` — evaluator's answers
+- `step6_benchmark_runner/data_samples/{persona}_benchmark_results.json` — per-case scored report
 
 See [RUNNING.md](RUNNING.md) for the three supported execution backends.

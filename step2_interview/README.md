@@ -16,13 +16,12 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 
 ## Inputs
 
-- Seed JSON (from `../step1_seed/data_samples/output/`)
-- Optional: additional inputs in `data_samples/input/`
+- Seed JSON (from `../step1_seed/data_samples/`)
 
 ## Outputs
 
-- `data_samples/output/{name}_interview.json` — interview transcript and draft extracted profile
-- `data_samples/output/{name}_verification.json` — verification report, corrected extracted profile, and hidden_facts registry
+- `data_samples/{name}_interview.json` — interview transcript and draft extracted profile
+- `data_samples/{name}_verification.json` — verification report, corrected extracted profile, and hidden_facts registry
 
 ## Extracted profile structure
 
@@ -68,8 +67,8 @@ preferences or summaries.
 
 ```bash
 python generator.py \
-  --seed data_samples/input/{name}_seed.json \
-  --output data_samples/output/
+  --seed data_samples/{name}_seed.json \
+  --output data_samples/
 ```
 
 ## Notes

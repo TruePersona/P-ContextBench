@@ -20,14 +20,14 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 
 ## Inputs
 
-- `data_samples/input/{persona}_verification.json` — corrected extracted profile with `hidden_facts` registry (from `../step2_interview/data_samples/output/`)
-- `data_samples/input/{persona}_app_logs.json` or `data_samples/input/{persona}_decoyN_app_logs.json` — merged messenger + calendar logs with its own `hidden_facts` array (from `../step4_app_log_synthesizer/data_samples/output/`). Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
-- `data_samples/input/{persona}_social_circle_verification.json` — corrected social circle (from `../step3_social_circle/data_samples/output/`)
+- `../step2_interview/data_samples/{persona}_verification.json` — corrected extracted profile with `hidden_facts` registry
+- `../step3_social_circle/data_samples/{persona}_social_circle_verification.json` — corrected social circle
+- `../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json` or `../step4_app_log_synthesizer/data_samples/{persona}_decoyN_app_logs.json` — merged messenger + calendar logs with its own `hidden_facts` array. Use the decoy-suffixed file when Step 4 was run with `--decoy-count N`.
 
 ## Outputs
 
-- `data_samples/output/{persona}_test_cases.json` — typed test cases with ground truth labels, evidence anchors, and coverage metadata
-- `data_samples/output/{persona}_test_cases_verification.json` — verification report and corrected test cases
+- `data_samples/{persona}_test_cases.json` — typed test cases with ground truth labels, evidence anchors, and coverage metadata
+- `data_samples/{persona}_test_cases_verification.json` — verification report and corrected test cases
 
 ## Test case types
 
@@ -63,14 +63,14 @@ Every `ground_truth` field is a literal copy of one (or more, joined with ` | `)
 
 ```bash
 python generator.py \
-  --profile     data_samples/input/{persona}_verification.json \
-  --app-logs    data_samples/input/{persona}_app_logs.json \
-  --social-circle data_samples/input/{persona}_social_circle_verification.json \
-  --output      data_samples/output/
+  --profile       ../step2_interview/data_samples/{persona}_verification.json \
+  --social-circle ../step3_social_circle/data_samples/{persona}_social_circle_verification.json \
+  --app-logs      ../step4_app_log_synthesizer/data_samples/{persona}_app_logs.json \
+  --output        data_samples/
 ```
 
 For decoy runs, pass the matching Step 4 file, for example
-`data_samples/input/{persona}_decoy12_app_logs.json`.
+`../step4_app_log_synthesizer/data_samples/{persona}_decoy12_app_logs.json`.
 
 ## Notes
 

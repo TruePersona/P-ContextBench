@@ -60,14 +60,14 @@ python openclaw_pipeline.py --persona julio_simmons --start 6 --stop 6 \
 ```bash
 python step1_seed/generator.py \
   --uuid 50f90a6f17de473f9ca15f00afdedf7a \
-  --output step1_seed/data_samples/output/
+  --output step1_seed/data_samples/
 ```
 
 **Steps 2-5: generate the dataset.** This produces the interview, social circle, app logs, and test cases:
 
 ```bash
 python openclaw_pipeline.py \
-  --seed step1_seed/data_samples/output/alicia_gonzalez_seed.json \
+  --seed step1_seed/data_samples/alicia_gonzalez_seed.json \
   --start 2 --stop 5 \
   --backend codex \
   --model gpt-5.5 \

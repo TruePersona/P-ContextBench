@@ -37,17 +37,16 @@ Fragments encode hidden facts through **behaviors and context**, never through c
 
 ## Inputs
 
-- `data_samples/input/{persona}_verification.json` — corrected extracted profile with `hidden_facts` registry (from `../step2_interview/data_samples/output/`)
-- `data_samples/input/{persona}_social_circle_verification.json` — corrected social circle (from `../step3_social_circle/data_samples/output/`)
-- Optional: `data_samples/input/news_events.json` — real news events within the log window for surprise weaving
+- `../step2_interview/data_samples/{persona}_verification.json` — corrected extracted profile with `hidden_facts` registry
+- `../step3_social_circle/data_samples/{persona}_social_circle_verification.json` — corrected social circle
 
 ## Outputs
 
-- `data_samples/output/{persona}_app_logs.json` — the final merged log with messenger sessions, calendar events, hidden_facts registry (mirrors Step 2 schema + adds verification + embedding_strategy blocks), cross_app_index, token_stats
-- `data_samples/output/{persona}_decoyN_app_logs.json` — the final merged log when `--decoy-count N` is greater than zero
-- `data_samples/output/{persona}_app_logs_trace.json` — per-cluster verification trace showing attempts made and whether every selected fact passed the gate
-- `data_samples/output/{persona}_verified_fragments.json` — verified fragment cache used by `--resume` and `--retry-failed`
-- `data_samples/output/{persona}_verified_decoys.json` — persona-specific decoy pool; when `--decoy-count` is set, Step 4 either loads this from `--verified-decoys` or generates it from `decoy_prompt.txt`
+- `data_samples/{persona}_app_logs.json` — the final merged log with messenger sessions, calendar events, hidden_facts registry (mirrors Step 2 schema + adds verification + embedding_strategy blocks), cross_app_index, token_stats
+- `data_samples/{persona}_decoyN_app_logs.json` — the final merged log when `--decoy-count N` is greater than zero
+- `data_samples/{persona}_app_logs_trace.json` — per-cluster verification trace showing attempts made and whether every selected fact passed the gate
+- `data_samples/{persona}_verified_fragments.json` — verified fragment cache used by `--resume` and `--retry-failed`
+- `data_samples/{persona}_verified_decoys.json` — persona-specific decoy pool; when `--decoy-count` is set, Step 4 either loads this from `--verified-decoys` or generates it from `decoy_prompt.txt`
 
 ## Rules baked into `prompt.txt`
 
@@ -64,17 +63,9 @@ The prompt encodes concrete rules addressing common failure modes in open-ended 
 
 ```bash
 python generator.py \
-  --profile        data_samples/input/{persona}_verification.json \
-  --social-circle  data_samples/input/{persona}_social_circle_verification.json \
-  --output         data_samples/output/ \
-  --model          claude-opus-4-7 \
-  --verifier-model claude-sonnet-4-6
-
-# Optional: add real news for surprise weaving
-python generator.py \
-  --profile        ... \
-  --social-circle  ... \
-  --news-events    data_samples/input/news_events.json \
+  --profile        ../step2_interview/data_samples/{persona}_verification.json \
+  --social-circle  ../step3_social_circle/data_samples/{persona}_social_circle_verification.json \
+  --output         data_samples/ \
   --model          claude-opus-4-7 \
   --verifier-model claude-sonnet-4-6
 ```
@@ -110,7 +101,7 @@ python generator.py \
   --social-circle    ... \
   --model            claude-opus-4-7 \
   --verifier-model   claude-sonnet-4-6 \
-  --verified-decoys  data_samples/output/{persona}_verified_decoys.json \
+  --verified-decoys  data_samples/{persona}_verified_decoys.json \
   --decoy-count      12
 ```
 
@@ -135,7 +126,7 @@ Filler is mundane logistics noise that the evaluator must sift through to find i
 Check the trace file. Every hidden fact should show `"passed": true`:
 
 ```bash
-python -c "import json; t=json.load(open('step4_app_log_synthesizer/data_samples/output/julio_simmons_app_logs_trace.json')); print(f'{sum(1 for x in t if x[\"passed\"])}/{len(t)} passed')"
+python -c "import json; t=json.load(open('step4_app_log_synthesizer/data_samples/julio_simmons_app_logs_trace.json')); print(f'{sum(1 for x in t if x[\"passed\"])}/{len(t)} passed')"
 ```
 
 ## Notes on reproducibility

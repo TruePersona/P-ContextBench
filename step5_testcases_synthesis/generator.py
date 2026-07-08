@@ -250,7 +250,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=STEP_DIR / "data_samples" / "output",
+        default=STEP_DIR / "data_samples",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--max-iterations", type=int, default=DEFAULT_MAX_ITERATIONS)

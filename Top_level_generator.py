@@ -30,7 +30,7 @@ STEP3_DIR = REPO_ROOT / "step3_social_circle"
 STEP4_DIR = REPO_ROOT / "step4_app_log_synthesizer"
 STEP5_DIR = REPO_ROOT / "step5_testcases_synthesis"
 STEP6_DIR = REPO_ROOT / "step6_benchmark_runner"
-STEP1_OUTPUT_DIR = STEP1_DIR / "data_samples" / "output"
+STEP1_OUTPUT_DIR = STEP1_DIR / "data_samples"
 
 
 def run_subprocess(cmd: list[str]) -> int:
@@ -82,7 +82,7 @@ def run_step2(
         "--seed",
         str(seed_path),
         "--output",
-        str(STEP2_DIR / "data_samples" / "output"),
+        str(STEP2_DIR / "data_samples"),
         "--model",
         model,
         "--max-iterations",
@@ -111,7 +111,7 @@ def run_step3(
         "--transcript",
         str(transcript_path),
         "--output",
-        str(STEP3_DIR / "data_samples" / "output"),
+        str(STEP3_DIR / "data_samples"),
         "--model",
         model,
         "--max-iterations",
@@ -147,7 +147,7 @@ def run_step4(
         "--social-circle",
         str(social_circle_path),
         "--output",
-        str(STEP4_DIR / "data_samples" / "output"),
+        str(STEP4_DIR / "data_samples"),
         "--model",
         model,
         "--verifier-model",
@@ -192,7 +192,7 @@ def run_step5(
         "--social-circle",
         str(social_circle_path),
         "--output",
-        str(STEP5_DIR / "data_samples" / "output"),
+        str(STEP5_DIR / "data_samples"),
         "--model",
         model,
         "--max-iterations",
@@ -223,7 +223,7 @@ def run_step6(
         "--test-cases",
         str(test_cases_path),
         "--output",
-        str(STEP6_DIR / "data_samples" / "output"),
+        str(STEP6_DIR / "data_samples"),
         "--model-pass1",
         model_pass1,
         "--model-pass2",
@@ -269,14 +269,14 @@ def run_pipeline(
 ) -> int:
     base = seed_path.stem.replace("_seed", "")
 
-    interview_path = STEP2_DIR / "data_samples" / "output" / f"{base}_interview.json"
-    verification_path = STEP2_DIR / "data_samples" / "output" / f"{base}_verification.json"
+    interview_path = STEP2_DIR / "data_samples" / f"{base}_interview.json"
+    verification_path = STEP2_DIR / "data_samples" / f"{base}_verification.json"
     social_circle_verification_path = (
-        STEP3_DIR / "data_samples" / "output" / f"{base}_social_circle_verification.json"
+        STEP3_DIR / "data_samples" / f"{base}_social_circle_verification.json"
     )
     app_logs_base = f"{base}_decoy{decoy_count}" if decoy_count > 0 else base
-    app_logs_path = STEP4_DIR / "data_samples" / "output" / f"{app_logs_base}_app_logs.json"
-    test_cases_path = STEP5_DIR / "data_samples" / "output" / f"{base}_test_cases.json"
+    app_logs_path = STEP4_DIR / "data_samples" / f"{app_logs_base}_app_logs.json"
+    test_cases_path = STEP5_DIR / "data_samples" / f"{base}_test_cases.json"
 
     if start <= 2 <= stop:
         rc = run_step2(

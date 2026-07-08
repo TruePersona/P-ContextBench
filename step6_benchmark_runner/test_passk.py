@@ -269,7 +269,7 @@ class PassKTests(unittest.TestCase):
             root = Path(tmp)
             app_logs = root / "sample_app_logs.json"
             test_cases = root / "sample_test_cases.json"
-            output_dir = root / "output"
+            output_dir = root
 
             write_json(
                 app_logs,
@@ -396,7 +396,7 @@ class PassKTests(unittest.TestCase):
             rc = openclaw_pipeline.run_step6(
                 Path("app_logs.json"),
                 Path("test_cases.json"),
-                Path("output"),
+                Path(""),
                 "codex",
                 "openai",
                 "low",
@@ -404,7 +404,7 @@ class PassKTests(unittest.TestCase):
                 model_pass1="gpt-5.4-mini",
                 model_pass2="gpt-5.5",
                 passk_runs=4,
-                passk_output=Path("output/pass4_summary.json"),
+                passk_output=Path("pass4_summary.json"),
                 passk_allow_missing=True,
             )
 
@@ -415,8 +415,7 @@ class PassKTests(unittest.TestCase):
         self.assertIn("--passk-output", cmd)
         self.assertEqual(
             cmd[cmd.index("--passk-output") + 1],
-            "output\\pass4_summary.json" if sys.platform == "win32"
-            else "output/pass4_summary.json",
+            "pass4_summary.json",
         )
         self.assertIn("--passk-allow-missing", cmd)
 

@@ -1898,7 +1898,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output", type=Path,
-        default=STEP_DIR / "data_samples" / "output",
+        default=STEP_DIR / "data_samples",
     )
     parser.add_argument("--model", required=True)
     parser.add_argument(

@@ -6,7 +6,7 @@ routed to a fresh CLI invocation so context does not leak between calls.
 
 Usage:
     # Single persona, steps 2-6
-    python openclaw_pipeline.py --seed step1_seed/data_samples/output/julio_simmons_seed.json
+    python openclaw_pipeline.py --seed step1_seed/data_samples/julio_simmons_seed.json
 
     # All 5 personas end-to-end
     python openclaw_pipeline.py --all --start 2 --stop 6
@@ -405,11 +405,11 @@ def run_pipeline(
     n = base(name)
     print(f"=== Pipeline for {name} (steps {start}-{stop}) ===")
 
-    step2_out = STEP2_DIR / "data_samples" / "output"
-    step3_out = STEP3_DIR / "data_samples" / "output"
-    step4_out = STEP4_DIR / "data_samples" / "output"
-    step5_out = STEP5_DIR / "data_samples" / "output"
-    step6_out = STEP6_DIR / "data_samples" / "output"
+    step2_out = STEP2_DIR / "data_samples"
+    step3_out = STEP3_DIR / "data_samples"
+    step4_out = STEP4_DIR / "data_samples"
+    step5_out = STEP5_DIR / "data_samples"
+    step6_out = STEP6_DIR / "data_samples"
     for d in (step2_out, step3_out, step4_out, step5_out, step6_out):
         d.mkdir(parents=True, exist_ok=True)
 
@@ -501,7 +501,7 @@ def main() -> None:
     parser.add_argument(
         "--persona", type=str, default=None,
         help="Persona name shorthand (e.g. julio_simmons); resolves to "
-        "step1_seed/data_samples/output/<persona>_seed.json. Mutually "
+        "step1_seed/data_samples/<persona>_seed.json. Mutually "
         "exclusive with --seed and --all.",
     )
     parser.add_argument(

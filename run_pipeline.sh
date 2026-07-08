@@ -17,7 +17,7 @@
 # To run a different model selection, edit the CONFIG block below or pass
 # the corresponding flags through to openclaw_pipeline.py directly.
 #
-# Outputs: each step writes to its own data_samples/output/ directory.
+# Outputs: each step writes to its own data_samples/ directory.
 
 set -euo pipefail
 
@@ -65,7 +65,7 @@ if [[ -z "$PERSONA" ]]; then
   echo "example: bash run_pipeline.sh julio_simmons" >&2
   echo "" >&2
   echo "available personas:" >&2
-  for f in step1_seed/data_samples/output/*_seed.json; do
+  for f in step1_seed/data_samples/*_seed.json; do
     echo "  $(basename "$f" _seed.json)" >&2
   done
   exit 2
@@ -73,8 +73,8 @@ fi
 
 cd "$(dirname "$0")"
 
-if [[ ! -f "step1_seed/data_samples/output/${PERSONA}_seed.json" ]]; then
-  echo "error: persona '${PERSONA}' has no seed at step1_seed/data_samples/output/${PERSONA}_seed.json" >&2
+if [[ ! -f "step1_seed/data_samples/${PERSONA}_seed.json" ]]; then
+  echo "error: persona '${PERSONA}' has no seed at step1_seed/data_samples/${PERSONA}_seed.json" >&2
   exit 2
 fi
 

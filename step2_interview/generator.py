@@ -207,7 +207,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=STEP_DIR / "data_samples" / "output",
+        default=STEP_DIR / "data_samples",
         help="Directory to write interview and verification outputs into",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL)

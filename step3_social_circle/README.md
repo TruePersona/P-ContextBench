@@ -20,13 +20,13 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 
 ## Inputs
 
-- Corrected extracted profile (from `../step2_interview/data_samples/output/`)
-- Interview transcript (from `../step2_interview/data_samples/output/`)
+- Corrected extracted profile (from `../step2_interview/data_samples/`)
+- Interview transcript (from `../step2_interview/data_samples/`)
 
 ## Outputs
 
-- `data_samples/output/{name}_social_circle.json` — draft social circle
-- `data_samples/output/{name}_social_circle_verification.json` — verification report plus corrected social circle
+- `data_samples/{name}_social_circle.json` — draft social circle
+- `data_samples/{name}_social_circle_verification.json` — verification report plus corrected social circle
 
 ## Social circle scope
 
@@ -36,7 +36,7 @@ The five members are the subject's closest PERSONAL messaging contacts. Work col
 
 ```bash
 python generator.py \
-  --profile ../step2_interview/data_samples/output/{name}_verification.json \
-  --transcript ../step2_interview/data_samples/output/{name}_interview.json \
-  --output data_samples/output/
+  --profile ../step2_interview/data_samples/{name}_verification.json \
+  --transcript ../step2_interview/data_samples/{name}_interview.json \
+  --output data_samples/
 ```

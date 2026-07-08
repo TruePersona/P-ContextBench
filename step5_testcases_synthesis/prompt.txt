@@ -19,11 +19,11 @@ You MUST return the specified amount of cases. Do NOT shorten.
 INPUT DATA
 ===============================================================================
 
-APP LOGS (read from data_samples/input/{persona}_app_logs.json — the merged messenger
+APP LOGS (read from data_samples/{persona}_app_logs.json — the merged messenger
 + calendar output, with its hidden_facts array as the canonical answer key):
 {{INSERT_APP_LOGS_JSON_HERE}}
 
-CORRECTED SOCIAL CIRCLE (read from data_samples/input/{persona}_social_circle_
+CORRECTED SOCIAL CIRCLE (read from data_samples/{persona}_social_circle_
 verification.json, field: corrected_social_circle). Used to reference contacts by
 name and relationship in test cases:
 {{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}
@@ -873,8 +873,8 @@ OUTPUT FORMAT
     "generation_date": "YYYY-MM-DD",
     "total_test_cases": N,
     "input_sources": {
-      "app_logs": "data_samples/input/{persona}_app_logs.json",
-      "social_circle": "data_samples/input/{persona}_social_circle_verification.json"
+      "app_logs": "data_samples/{persona}_app_logs.json",
+      "social_circle": "data_samples/{persona}_social_circle_verification.json"
     },
     "type_distribution": {
       "type_1_simple_fact_check": N1,
@@ -1046,7 +1046,7 @@ PROCESS
 6. Before final output, verify that every test case has
    `source_hidden_fact_requirements`, and that every ID in `source_hidden_fact_ids`
    appears exactly once in that field.
-7. Write the JSON output to data_samples/output/{persona}_test_cases.json.
+7. Write the JSON output to data_samples/{persona}_test_cases.json.
 8. Emit the coverage_report in metadata so the verification prompt can audit it.
 
 End of prompt.
