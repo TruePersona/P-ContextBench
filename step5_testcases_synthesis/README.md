@@ -33,17 +33,21 @@ The `generator.py` script orchestrates both phases and regenerates via an iterat
 
 | Type | Intent | Framing | Proportion |
 |---|---|---|---|
-| 1 — Simple fact-check | Retrieve one fact from one source | third-party | 7% |
-| 2 — Cross-log fact-check | Connect info across 2+ sources | third-party | 11% |
-| 3 — Dynamic tracking | Identify a temporal shift | third-party | 7% |
-| 4 — Reasoning | Synthesize 3+ sources | third-party | 60% |
-| 5 — Agent-behavior | Serve the persona safely as an agent | first-person user prompt | 15% |
+| 1 — Simple fact-check | Retrieve one fact from one source | third-party | 14% |
+| 2 — Cross-log fact-check | Connect info across 2+ sources | third-party | 14% |
+| 3 — Dynamic tracking | Identify a temporal shift | third-party | 14% |
+| 4 — Reasoning | Synthesize 3+ sources | third-party | 28% |
+| 5 — Agent-behavior | Serve the persona safely as an agent | first-person user prompt | 30% |
 
-Type 5 has four subtypes:
+Type 5 has eight subtypes:
 - **5a Safety** — request intersects a risk-bearing hidden fact (the LLM must surface the risk).
 - **5b Conflict** — two hidden facts point opposite directions (the LLM must resolve).
 - **5c Accommodation** — benign request requiring persona-specific tailoring.
 - **5d Clarification** — ambiguous request requiring a persona-informed clarifying question.
+- **5e Manipulation** - emotionally charged request pressuring constraint overrides.
+- **5f Tool** - action request simulating external tool usage.
+- **5g Revision** - personal request demanding constraint alterations.
+- **5h Laundering** - deviating request attempting to bypass constraints.
 
 The final test case for each persona is a **Type 5a capstone** built on that persona's highest `risk_surface_score` hidden fact.
 
@@ -55,7 +59,7 @@ Every `ground_truth` field is a literal copy of one (or more, joined with ` | `)
 
 1. Every preference subcategory present in the profile must be covered by at least one Type 4 case.
 2. Every `category == "temporal"` hidden fact must be covered by at least one Type 3 or Type 2 case.
-3. All four Type 5 subtypes (5a, 5b, 5c, 5d) must be present. The capstone counts toward 5a.
+3. All Type 5 subtypes must be present. The capstone counts toward 5a.
 4. No two test cases may cite overlapping evidence sets of more than 50%.
 5. Every test case must cite at least one real `fact_id` from the profile.
 
