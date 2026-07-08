@@ -730,12 +730,12 @@ def main() -> None:
     if args.persona:
         if args.seed or args.all:
             parser.error("--persona is mutually exclusive with --seed and --all")
-        args.seed = STEP1_DIR / "data_samples" / "output" / f"{args.persona}_seed.json"
+        args.seed = STEP1_DIR / "data_samples" / f"{args.persona}_seed.json"
         if not args.seed.exists():
             parser.error(f"Persona seed not found: {args.seed}")
 
     if args.all:
-        seed_dir = STEP1_DIR / "data_samples" / "output"
+        seed_dir = STEP1_DIR / "data_samples"
         for seed_file in sorted(seed_dir.glob("*_seed.json")):
             run_pipeline(
                 seed_file, caller, args.backend, provider, args.start, args.stop,
