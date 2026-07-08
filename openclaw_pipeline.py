@@ -335,10 +335,14 @@ def run_step6(
     provider: str,
     reasoning_pass1: str,
     reasoning_pass2: str,
+    backend_pass2: str | None = None,
+    provider_pass2: str | None = None,
     model_pass1: str | None = None, model_pass2: str | None = None,
     passk_runs: int = 1,
     passk_output: Path | None = None,
     passk_allow_missing: bool = False,
+    skip_pass1: bool = False,
+    skip_pass2: bool = False,
 ) -> int:
     """Delegate to step6_benchmark_runner/generator.py with the selected backend.
 
@@ -362,6 +366,14 @@ def run_step6(
         cmd += ["--model-pass1", model_pass1]
     if model_pass2:
         cmd += ["--model-pass2", model_pass2]
+    if backend_pass2:
+        cmd += ["--backend-pass2", backend_pass2]
+    if provider_pass2:
+        cmd += ["--provider-pass2", provider_pass2]
+    if skip_pass1:
+        cmd += ["--skip-pass1"]
+    if skip_pass2:
+        cmd += ["--skip-pass2"]
     if passk_runs > 1:
         cmd += ["--passk-runs", str(passk_runs)]
     if passk_output:
@@ -399,6 +411,10 @@ def run_pipeline(
     passk_runs: int = 1,
     passk_output: Path | None = None,
     passk_allow_missing: bool = False,
+    backend_pass2: str | None = None,
+    provider_pass2: str | None = None,
+    skip_pass1: bool = False,
+    skip_pass2: bool = False,
 ) -> None:
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
     name = extract_name(seed)
@@ -487,6 +503,10 @@ def run_pipeline(
                 passk_runs=passk_runs,
                 passk_output=passk_output,
                 passk_allow_missing=passk_allow_missing,
+                backend_pass2=backend_pass2,
+                provider_pass2=provider_pass2,
+                skip_pass1=skip_pass1,
+                skip_pass2=skip_pass2
             )
 
     print(f"=== Pipeline complete for {name} ===")
@@ -628,16 +648,47 @@ def main() -> None:
         default="low",
         help="OpenAI model (openai-api, codex) response (Step 6 Pass 1) reasoning effort."
     )
+    parser.add_argument(
+        "--skip-pass1",
+        action="store_true",
+        help="Skip Step 6 Pass 1 and reuse existing pass1_answers.json. Useful when "
+        "only the scoring prompt or judge model changed.",
+    )
+    parser.add_argument(
+        "--skip-pass2",
+        action="store_true",
+        help="Skip Step 6 Pass 2. Useful when preparing answers "
+        "for scoring with different backends.",
+    )
+    parser.add_argument(
+        "--backend-pass2",
+        default=None,
+        choices=API_BACKENDS + SUBSCRIPTION_BACKENDS,
+        help="(Step 6) Optional scoring backend: anthropic-api uses ANTHROPIC_API_KEY; "
+        "openai-api uses OPENAI_API_KEY; claude and codex use logged-in CLIs. "
+        "Defaults to match --backend.",
+    )
+    parser.add_argument(
+        "--provider-pass2",
+        default=None,
+        choices=("anthropic", "openai", "openrouter"),
+        help="Optional API provider override for compatibility (Step 6 Pass 2). "
+        "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
+    )
     args = parser.parse_args()
 
     if args.backend is None:
         if args.provider:
-            args.backend = f"{args.provider}-api"
+            args.backend = "anthropic-api" if args.provider == "anthropic" else "openai-api"
         else:
             args.backend = os.environ.get("PERSONABENCH_BACKEND", "claude")
     elif args.backend == "api":
         args.backend = f"{args.provider or 'anthropic'}-api"
-    provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
+
+    backend_pass2 = args.backend_pass2 or args.backend
+
+    provider = provider_for_backend(args.backend, args.provider) if args.backend in API_BACKENDS else (args.provider or "anthropic")
+    provider_pass2 = provider_for_backend(backend_pass2, args.provider_pass2) if backend_pass2 in API_BACKENDS else (args.provider_pass2 or provider)
 
     step6_only = args.start == 6 and args.stop == 6
     if args.model is None:
@@ -705,6 +756,10 @@ def main() -> None:
                 passk_runs=args.passk_runs,
                 passk_output=args.passk_output,
                 passk_allow_missing=args.passk_allow_missing,
+                backend_pass2=backend_pass2,
+                provider_pass2=provider_pass2,
+                skip_pass1=args.skip_pass1,
+                skip_pass2=args.skip_pass2,
             )
     elif args.seed:
         run_pipeline(
@@ -726,6 +781,10 @@ def main() -> None:
             passk_runs=args.passk_runs,
             passk_output=args.passk_output,
             passk_allow_missing=args.passk_allow_missing,
+            backend_pass2=backend_pass2,
+            provider_pass2=provider_pass2,
+            skip_pass1=args.skip_pass1,
+            skip_pass2=args.skip_pass2,
         )
     else:
         parser.error("Provide --persona <name>, --seed <path>, or --all")
