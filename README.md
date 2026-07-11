@@ -1,15 +1,15 @@
-# PersonaBench
+# ContextBench
 
 A benchmark for evaluating personalized AI behavior and user understanding.
 
 ## Goal
 
-PersonaBench measures whether an LLM can:
+ContextBench measures whether an LLM can:
 
 1. **Infer** a persona's identity, preferences, and life patterns from raw app logs alone.
 2. **Act** as a useful, safe personal agent for that persona given those inferred traits.
 
-Rather than testing generic task completion, PersonaBench probes deep user context — the kind of behavioral, relational, and safety-relevant signals that a personal assistant would need to serve a user well. A SOTA baseline is evaluated against the benchmark to expose current model limitations.
+Rather than testing generic task completion, ContextBench probes deep user context — the kind of behavioral, relational, and safety-relevant signals that a personal assistant would need to serve a user well. A SOTA baseline is evaluated against the benchmark to expose current model limitations.
 
 ## Pipeline
 

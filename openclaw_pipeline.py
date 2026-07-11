@@ -681,7 +681,7 @@ def main() -> None:
         if args.provider:
             args.backend = "anthropic-api" if args.provider == "anthropic" else "openai-api"
         else:
-            args.backend = os.environ.get("PERSONABENCH_BACKEND", "claude")
+            args.backend = os.environ.get("CONTEXTBENCH_BACKEND", "claude")
     elif args.backend == "api":
         args.backend = f"{args.provider or 'anthropic'}-api"
 

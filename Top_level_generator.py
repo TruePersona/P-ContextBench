@@ -1,4 +1,4 @@
-"""Top-level orchestrator for the PersonaBench pipeline.
+"""Top-level orchestrator for the ContextBench pipeline.
 
 Chains all six steps for a single persona:
 

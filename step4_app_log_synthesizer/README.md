@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Generate the messenger conversations and calendar events that the benchmark's evaluator LLM will see. The raw app log is the ONLY context the evaluator receives in Step 6 — so the encoding of every hidden fact into implicit behavioral signals is the structural heart of PersonaBench.
+Generate the messenger conversations and calendar events that the benchmark's evaluator LLM will see. The raw app log is the ONLY context the evaluator receives in Step 6 — so the encoding of every hidden fact into implicit behavioral signals is the structural heart of ContextBench.
 
 ## Architecture -- cluster verify-before-merge
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a single PersonaBench pipeline step for one persona.
+# Run a single ContextBench pipeline step for one persona.
 #
 # Each invocation is a separate OS subprocess (this script forks Python which
 # forks the selected model CLI per LLM call). The default backend is `claude`;
@@ -28,7 +28,7 @@ set -euo pipefail
 
 STEP="${1:-}"
 PERSONA="${2:-}"
-BACKEND="${3:-${PERSONABENCH_BACKEND:-claude}}"
+BACKEND="${3:-${CONTEXTBENCH_BACKEND:-claude}}"
 MODEL_ARG="${4:-}"
 
 if [[ -z "$STEP" || -z "$PERSONA" ]]; then

@@ -1,4 +1,4 @@
-# Contributing to PersonaBench
+# Contributing to ContextBench
 
 Thank you for your interest in contributing. This document covers repository layout, prompt conventions, the Developer Certificate of Origin, and expectations for AI-assisted contributions.
 
@@ -117,7 +117,7 @@ See the full [DCO text](DCO.txt) for details.
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://github.com/TruePersona/PersonaBench/issues) to report bugs or request features.
+- Use [GitHub Issues](https://github.com/TruePersona/ContextBench/issues) to report bugs or request features.
 - Check existing issues before opening a new one to avoid duplicates.
 
 ## Submitting Pull Requests
@@ -131,4 +131,4 @@ See the full [DCO text](DCO.txt) for details.
 
 ## License
 
-By contributing to PersonaBench, you agree that your contributions will be licensed under the [Apache 2.0 License](LICENSE).
+By contributing to ContextBench, you agree that your contributions will be licensed under the [Apache 2.0 License](LICENSE).

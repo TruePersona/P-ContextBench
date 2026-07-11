@@ -215,7 +215,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.backend is None:
-        args.backend = f"{args.provider or 'anthropic'}-api" if args.provider else os.environ.get("PERSONABENCH_BACKEND", "claude")
+        args.backend = f"{args.provider or 'anthropic'}-api" if args.provider else os.environ.get("CONTEXTBENCH_BACKEND", "claude")
     provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")

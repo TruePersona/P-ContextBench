@@ -10,7 +10,7 @@ This doc is for the repository maintainer. It explains how to activate DCO sign-
 
 ## One-time GitHub configuration
 
-After this directory is pushed to the `TruePersona/PersonaBench` repository, the maintainer must configure the branch ruleset so the DCO workflow is required before merge.
+After this directory is pushed to the `TruePersona/ContextBench` repository, the maintainer must configure the branch ruleset so the DCO workflow is required before merge.
 
 ### Steps (GitHub web UI)
 
@@ -65,4 +65,4 @@ git push --force-with-lease
 
 ## Why DCO, not CLA
 
-DCO is a lightweight certification on the commit itself — no external tooling, no agreement to sign outside of the commit log. It's the same mechanism used by the Linux kernel, Kubernetes, and vLLM. PersonaBench follows that convention so contributors from those communities have zero onboarding friction.
+DCO is a lightweight certification on the commit itself — no external tooling, no agreement to sign outside of the commit log. It's the same mechanism used by the Linux kernel, Kubernetes, and vLLM. ContextBench follows that convention so contributors from those communities have zero onboarding friction.

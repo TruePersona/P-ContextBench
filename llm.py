@@ -152,7 +152,7 @@ def call_claude_cli(
         cmd += ["--model", model]
 
     wrapped_prompt = (
-        "You are being used as a pure inference backend for PersonaBench. "
+        "You are being used as a pure inference backend for ContextBench. "
         "Do not inspect files, run commands, browse, or use tools. Read the "
         "instructions below in full and return ONLY the requested JSON output. "
         "No preamble, no commentary, no markdown fences.\n\n"
@@ -210,7 +210,7 @@ def call_codex_cli(
         "CODEX_REASONING_EFFORT", "high"
     )
     wrapped_prompt = (
-        "You are being used as a pure inference backend for PersonaBench. "
+        "You are being used as a pure inference backend for ContextBench. "
         "Do not inspect files, run commands, browse, or use tools. Read only "
         "the prompt below and return only the requested JSON.\n\n"
         + prompt
@@ -218,7 +218,7 @@ def call_codex_cli(
 
     last_stderr = ""
     for attempt in range(max_retries + 1):
-        with tempfile.TemporaryDirectory(prefix="personabench_codex_") as tmp_dir:
+        with tempfile.TemporaryDirectory(prefix="contextbench_codex_") as tmp_dir:
             tmp_path = Path(tmp_dir)
             prompt_path = tmp_path / "prompt.txt"
             out_path = tmp_path / "last_message.txt"

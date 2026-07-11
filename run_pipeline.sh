@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PersonaBench pipeline orchestrator.
+# ContextBench pipeline orchestrator.
 #
 # Walks Steps 2 through 6 for one persona. Each step is a fresh OS subprocess
 # invocation of the selected model CLI. The orchestrator (Python,
@@ -24,7 +24,7 @@ set -euo pipefail
 # ---- CONFIG ----------------------------------------------------------------
 # Model strings are pinned to exact versions, never aliases. Aliases drift
 # across CLI releases and break artifact reproducibility.
-BACKEND="${2:-${PERSONABENCH_BACKEND:-claude}}"
+BACKEND="${2:-${CONTEXTBENCH_BACKEND:-claude}}"
 MODEL_ARG="${3:-}"
 
 case "$BACKEND" in
@@ -78,7 +78,7 @@ if [[ ! -f "step1_seed/data_samples/${PERSONA}_seed.json" ]]; then
   exit 2
 fi
 
-echo "=== PersonaBench pipeline ==="
+echo "=== ContextBench pipeline ==="
 echo "persona:         ${PERSONA}"
 echo "backend:         ${BACKEND}"
 echo "generator_model: ${GENERATOR_MODEL}"
@@ -90,7 +90,7 @@ echo ""
 
 for STEP in 2 3 4 5 6; do
   echo "--- Step ${STEP} ---"
-  PERSONABENCH_BACKEND="${BACKEND}" \
+  CONTEXTBENCH_BACKEND="${BACKEND}" \
   GENERATOR_MODEL="${GENERATOR_MODEL}" \
   VERIFIER_MODEL="${VERIFIER_MODEL}" \
   JUDGE_MODEL="${JUDGE_MODEL}" \

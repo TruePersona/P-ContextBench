@@ -1,6 +1,6 @@
 # Benchmark Results
 
-First end-to-end run of the PersonaBench pipeline across 5 personas. Evaluator is **Anthropic Opus 4.7 (1M context)** — the frontier-class reasoning model at the time of run (2026-04-21).
+First end-to-end run of the ContextBench pipeline across 5 personas. Evaluator is **Anthropic Opus 4.7 (1M context)** — the frontier-class reasoning model at the time of run (2026-04-21).
 
 ## Headline numbers
 

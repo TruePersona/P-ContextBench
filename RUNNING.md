@@ -1,6 +1,6 @@
-# Running PersonaBench
+# Running ContextBench
 
-PersonaBench measures whether an LLM can infer a persona's identity from raw app logs and act safely as their personal assistant.
+ContextBench measures whether an LLM can infer a persona's identity from raw app logs and act safely as their personal assistant.
 
 ## Prerequisites
 

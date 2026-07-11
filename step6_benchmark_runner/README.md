@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Execute the PersonaBench evaluation against a frontier LLM using the generated app logs as the only persona context and the generated test cases as the probes.
+Execute the ContextBench evaluation against a frontier LLM using the generated app logs as the only persona context and the generated test cases as the probes.
 
 This is the final step of the pipeline. It measures two things:
 
