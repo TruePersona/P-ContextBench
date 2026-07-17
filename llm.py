@@ -5,11 +5,15 @@ imports make_client() and call_llm() from here.
 """
 
 from __future__ import annotations
+import os
+import sys
 
 SUPPORTED_PROVIDERS = ("anthropic", "openai", "openrouter")
 SUBSCRIPTION_BACKENDS = ("claude", "codex")
 API_BACKENDS = ("anthropic-api", "openai-api")
 SUPPORTED_BACKENDS = SUBSCRIPTION_BACKENDS + API_BACKENDS
+CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude")
+CODEX_CMD = os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex")
 
 
 def make_client(provider: str):
@@ -28,8 +32,21 @@ def make_client(provider: str):
         )
     raise ValueError(f"Unknown provider: {provider}")
 
-
 def call_llm(
+    client,
+    model: str,
+    prompt: str,
+    gpt_reasoning: str,
+    provider: str = "anthropic",
+    backend: str = "anthropic-api",
+    response_format: str | None = "text",
+) -> str:
+    if backend in SUBSCRIPTION_BACKENDS:
+        return call_subscription_cli(prompt, model, backend, gpt_reasoning)
+    return call_api(client, model, prompt, gpt_reasoning, provider, response_format)
+
+
+def call_api(
     client,
     model: str,
     prompt: str,
@@ -135,19 +152,14 @@ def provider_for_backend(backend: str, provider: str | None = None) -> str:
 def call_claude_cli(
     prompt: str,
     model: str | None = None,
-    claude_cmd: str | None = None,
     max_retries: int = 2,
 ) -> str:
     """Call `claude -p` as a pure text subprocess."""
-    import os
     import subprocess
     import sys
     import tempfile
 
-    cmd_name = claude_cmd or os.environ.get(
-        "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
-    )
-    cmd = [cmd_name, "-p", "--tools", ""]
+    cmd = [CLAUDE_CMD, "-p", "--tools", ""]
     if model:
         cmd += ["--model", model]
 
@@ -194,18 +206,15 @@ def call_claude_cli(
 def call_codex_cli(
     prompt: str,
     model: str | None = None,
-    codex_cmd: str | None = None,
     reasoning_effort: str | None = None,
     max_retries: int = 2,
 ) -> str:
     """Call `codex exec` as an isolated subscription-backed subprocess."""
-    import os
     import subprocess
     import sys
     import tempfile
     from pathlib import Path
 
-    cmd_name = codex_cmd or os.environ.get("CODEX_CMD", "codex")
     reasoning_effort = reasoning_effort or os.environ.get(
         "CODEX_REASONING_EFFORT", "high"
     )
@@ -223,7 +232,7 @@ def call_codex_cli(
             prompt_path = tmp_path / "prompt.txt"
             out_path = tmp_path / "last_message.txt"
             cmd = [
-                cmd_name,
+                CODEX_CMD,
                 "exec",
                 "--ephemeral",
                 "--skip-git-repo-check",
@@ -249,7 +258,7 @@ def call_codex_cli(
                 ps_script = (
                     "$ErrorActionPreference = 'Stop'; "
                     f"$prompt = Get-Content -Raw -LiteralPath {ps_quote(str(prompt_path))}; "
-                    f"$prompt | & {ps_quote(cmd_name)} exec --ephemeral "
+                    f"$prompt | & {ps_quote(CODEX_CMD)} exec --ephemeral "
                     "--skip-git-repo-check --ignore-rules --sandbox read-only "
                     f"-c {ps_quote('model_reasoning_effort=' + repr(reasoning_effort))} "
                     f"-C {ps_quote(str(tmp_path))} -o {ps_quote(str(out_path))}"
@@ -294,17 +303,14 @@ def call_subscription_cli(
     model: str | None,
     backend: str,
     gpt_reasoning: str | None = None,
-    claude_cmd: str | None = None,
-    codex_cmd: str | None = None,
     max_retries: int = 2,
 ) -> str:
     if backend == "claude":
-        return call_claude_cli(prompt, model, claude_cmd, max_retries=max_retries)
+        return call_claude_cli(prompt, model, max_retries=max_retries)
     if backend == "codex":
         return call_codex_cli(
             prompt,
             model,
-            codex_cmd,
             reasoning_effort=gpt_reasoning,
             max_retries=max_retries,
         )

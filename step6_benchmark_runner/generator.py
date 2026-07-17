@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -27,22 +26,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
     API_BACKENDS,
     SUBSCRIPTION_BACKENDS,
+    SUPPORTED_BACKENDS,
+    SUPPORTED_PROVIDERS,
     call_llm,
-    call_subscription_cli,
     check_api_key,
     make_client,
     provider_for_backend,
+    default_model_for_backend,
 )
+from utils import extract_json
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
 REPO_ROOT = STEP_DIR.parent
 STEP4_OUTPUT_DIR = REPO_ROOT / "step4_app_log_synthesizer" / "data_samples"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
-
-DEFAULT_MODEL = "claude-opus-4-7"
-DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
-
 
 # ----- prompt splitting ----------------------------------------------------
 
@@ -189,42 +187,6 @@ def strip_ground_truth(test_cases: dict[str, Any]) -> dict[str, Any]:
         )
     return stripped
 
-
-def extract_json(text: str) -> dict[str, Any]:
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    payload = fenced.group(1) if fenced else text
-    start = payload.find("{")
-    if start == -1:
-        raise ValueError("No JSON object found in LLM output")
-    raw = payload[start:]
-    decoder = json.JSONDecoder()
-    try:
-        obj, _ = decoder.raw_decode(raw)
-        return obj
-    except json.JSONDecodeError:
-        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
-        return obj
-
-
-def _fix_invalid_escapes(text: str) -> str:
-    valid = set('"\\/bfnrtu')
-    out = []
-    i = 0
-    while i < len(text):
-        if text[i] == "\\" and i + 1 < len(text):
-            if text[i + 1] in valid:
-                out.append(text[i])
-                out.append(text[i + 1])
-                i += 2
-            else:
-                out.append(text[i + 1])
-                i += 2
-        else:
-            out.append(text[i])
-            i += 1
-    return "".join(out)
-
-
 # ----- passes --------------------------------------------------------------
 
 def run_pass_1(
@@ -235,9 +197,7 @@ def run_pass_1(
     backend: str,
     provider: str,
     response_format: str,
-    reasoning_effort: str,
-    claude_cmd: str,
-    codex_cmd: str,
+    reasoning_effort: str
 ) -> dict[str, Any]:
     sections = load_prompt_sections()
     template = fill(sections["pass1"], "{{INSERT_RAW_LOGS_TEXT_HERE}}", raw_logs)
@@ -246,18 +206,9 @@ def run_pass_1(
         "{{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}",
         test_cases_stripped,
     )
-    if backend in SUBSCRIPTION_BACKENDS:
-        raw = call_subscription_cli(
-            template,
-            model,
-            backend,
-            reasoning_effort,
-            claude_cmd=claude_cmd,
-            codex_cmd=codex_cmd,
-        )
-    else:
-        assert client is not None
-        raw = call_llm(client, model, template, reasoning_effort, provider, response_format)
+    
+    raw = call_llm(client, model, template, reasoning_effort, provider, backend, response_format)
+
     return extract_json(raw)
 
 
@@ -271,8 +222,6 @@ def _call_pass2_single(
     provider: str,
     response_format: str,
     reasoning_effort: str,
-    claude_cmd: str,
-    codex_cmd: str,
     verified_fragments_path: Path | None = None
 ) -> dict[str, Any]:
     template = fill(
@@ -296,18 +245,8 @@ def _call_pass2_single(
         template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
     )
 
-    if backend in SUBSCRIPTION_BACKENDS:
-        raw = call_subscription_cli(
-            template,
-            model,
-            backend,
-            reasoning_effort,
-            claude_cmd=claude_cmd,
-            codex_cmd=codex_cmd,
-        )
-    else:
-        assert client is not None
-        raw = call_llm(client, model, template, reasoning_effort, provider, response_format)
+    raw = call_llm(client, model, template, reasoning_effort, provider, backend, response_format)
+
     return extract_json(raw)
 
 
@@ -320,8 +259,6 @@ def run_pass_2(
     provider: str,
     response_format: str,
     reasoning_effort: str,
-    claude_cmd: str,
-    codex_cmd: str,
     batch_size: int = 5,
     verified_fragments_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -334,8 +271,7 @@ def run_pass_2(
         return _call_pass2_single(
             sections, test_cases_full, pass1_answers,
             model, client, backend, provider, response_format,
-            reasoning_effort, claude_cmd, codex_cmd,
-            verified_fragments_path
+            reasoning_effort, verified_fragments_path
         )
 
     merged_evaluations: list[dict[str, Any]] = []
@@ -360,8 +296,7 @@ def run_pass_2(
                 result = _call_pass2_single(
                     sections, tc_batch, ans_batch,
                     model, client, backend, provider, response_format,
-                    reasoning_effort, claude_cmd, codex_cmd,
-                    verified_fragments_path,
+                    reasoning_effort, verified_fragments_path
                 )
                 evals = result.get("evaluations", [])
                 if not evals and isinstance(result, dict) and "test_case_id" in result:
@@ -466,8 +401,6 @@ def run_step_once(
     provider: str,
     provider_pass2: str,
     response_format: str,
-    claude_cmd: str,
-    codex_cmd: str,
     run_index: int | None = None,
     skip_pass1: bool = False,
     skip_pass2: bool = False,
@@ -542,8 +475,6 @@ def run_step_once(
             provider=provider,
             response_format=response_format,
             reasoning_effort=reasoning_pass1,
-            claude_cmd=claude_cmd,
-            codex_cmd=codex_cmd,
         )
         pass1_out.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
         pass1.setdefault("metadata", {})
@@ -570,8 +501,6 @@ def run_step_once(
         provider=provider_pass2,
         response_format=response_format,
         reasoning_effort=reasoning_pass2,
-        claude_cmd=claude_cmd,
-        codex_cmd=codex_cmd,
         verified_fragments_path=verified_fragments_path,
     )
     pass2 = recompute_benchmark_summary(pass2, test_cases, model_pass1, model_pass2)
@@ -596,8 +525,6 @@ def run_step(
     provider: str,
     provider_pass2: str,
     response_format: str,
-    claude_cmd: str,
-    codex_cmd: str,
     skip_pass1: bool = False,
     skip_pass2: bool = False,
     reasoning_pass1: str = "low",
@@ -614,8 +541,6 @@ def run_step(
         provider,
         provider_pass2,
         response_format,
-        claude_cmd,
-        codex_cmd,
         skip_pass1=skip_pass1,
         skip_pass2=skip_pass2,
         reasoning_pass1=reasoning_pass1,
@@ -635,8 +560,6 @@ def run_passk_step(
     provider: str,
     provider_pass2: str,
     response_format,
-    claude_cmd: str,
-    codex_cmd: str,
     runs: int,
     passk_output: Path | None = None,
     allow_missing: bool = False,
@@ -663,8 +586,6 @@ def run_passk_step(
                 provider,
                 provider_pass2,
                 response_format,
-                claude_cmd,
-                codex_cmd,
                 run_index=run_index,
                 skip_pass1=skip_pass1,
                 skip_pass2=skip_pass2,
@@ -715,14 +636,14 @@ def main() -> None:
     parser.add_argument(
         "--backend",
         default="anthropic-api",
-        choices=API_BACKENDS + SUBSCRIPTION_BACKENDS,
+        choices=SUPPORTED_BACKENDS,
         help="Inference backend: anthropic-api uses ANTHROPIC_API_KEY; "
         "openai-api uses OPENAI_API_KEY; claude and codex use logged-in CLIs.",
     )
     parser.add_argument(
         "--backend-pass2",
         default=None,
-        choices=API_BACKENDS + SUBSCRIPTION_BACKENDS,
+        choices=SUPPORTED_BACKENDS,
         help="Optional scoring backend: anthropic-api uses ANTHROPIC_API_KEY; "
         "openai-api uses OPENAI_API_KEY; claude and codex use logged-in CLIs. "
         "Defaults to match --backend.",
@@ -730,14 +651,14 @@ def main() -> None:
     parser.add_argument(
         "--provider",
         default=None,
-        choices=("anthropic", "openai", "openrouter"),
+        choices=SUPPORTED_PROVIDERS,
         help="Optional API provider override for compatibility (pass 1). "
         "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
     )
     parser.add_argument(
         "--provider-pass2",
         default=None,
-        choices=("anthropic", "openai", "openrouter"),
+        choices=SUPPORTED_PROVIDERS,
         help="Optional API provider override for compatibility (pass 2). "
         "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
     )
@@ -749,16 +670,6 @@ def main() -> None:
     parser.add_argument(
         "--openclaw", action="store_true",
         help="Deprecated alias for --backend claude.",
-    )
-    parser.add_argument(
-        "--claude-cmd",
-        default=os.environ.get(
-            "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
-        ),
-    )
-    parser.add_argument(
-        "--codex-cmd",
-        default=os.environ.get("CODEX_CMD", "codex"),
     )
     parser.add_argument(
         "--skip-pass1",
@@ -802,9 +713,9 @@ def main() -> None:
     response_format = "json_object" if args.json else "text"
 
     if args.model_pass1 is None:
-        args.model_pass1 = DEFAULT_MODEL if backend in {"anthropic-api", "claude"} else "gpt-5.4-mini"
+        args.model_pass1 = default_model_for_backend(backend, "evaluator")
     if args.model_pass2 is None:
-        args.model_pass2 = DEFAULT_JUDGE_MODEL if backend_pass2 in {"anthropic-api", "claude"} else "gpt-5.4"
+        args.model_pass2 = default_model_for_backend(backend_pass2, "judge")
 
     if backend in API_BACKENDS and not check_api_key(provider) and not args.skip_pass1:
         print(
@@ -832,8 +743,6 @@ def main() -> None:
                 provider,
                 provider_pass2,
                 response_format,
-                args.claude_cmd,
-                args.codex_cmd,
                 runs=args.passk_runs,
                 passk_output=args.passk_output,
                 allow_missing=args.passk_allow_missing,
@@ -856,8 +765,6 @@ def main() -> None:
             provider,
             provider_pass2,
             response_format,
-            args.claude_cmd,
-            args.codex_cmd,
             skip_pass1=args.skip_pass1,
             skip_pass2=args.skip_pass2,
             reasoning_pass1=args.reasoning_pass1,
