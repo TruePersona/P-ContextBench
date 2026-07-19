@@ -35,6 +35,7 @@ from llm import (
 from utils import (
     load_prompt,
     extract_json,
+    fill,
 )
 
 STEP_DIR = Path(__file__).parent
@@ -42,9 +43,6 @@ PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 
 DEFAULT_MAX_ITERATIONS = 3
-
-def fill_json_placeholder(template: str, placeholder: str, payload: Any) -> str:
-    return template.replace(placeholder, json.dumps(payload, indent=2, ensure_ascii=False))
 
 def fill_identity_placeholders(template: str, profile: dict[str, Any]) -> str:
     return template.replace("{{participant_id}}", profile.get("participant_id", "")).replace(
@@ -62,10 +60,10 @@ def run_generation(
 ) -> dict[str, Any]:
     template = load_prompt(PROMPT_PATH)
     template = fill_identity_placeholders(template, profile)
-    template = fill_json_placeholder(
+    template = fill(
         template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
     )
-    template = fill_json_placeholder(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", transcript)
+    template = fill(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", transcript)
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 
@@ -82,11 +80,11 @@ def run_verification(
 ) -> dict[str, Any]:
     template = load_prompt(VERIFICATION_PROMPT_PATH)
     template = fill_identity_placeholders(template, profile)
-    template = fill_json_placeholder(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", transcript)
-    template = fill_json_placeholder(
+    template = fill(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", transcript)
+    template = fill(
         template, "{{INSERT_CORRECTED_EXTRACTED_PROFILE_JSON_HERE}}", profile
     )
-    template = fill_json_placeholder(
+    template = fill(
         template, "{{INSERT_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
     )
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)

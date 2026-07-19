@@ -36,6 +36,7 @@ from llm import (
 from utils import (
     load_prompt,
     extract_json,
+    fill,
 )
 
 STEP_DIR = Path(__file__).parent
@@ -44,15 +45,6 @@ VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 
 DEFAULT_MAX_ITERATIONS = 3
 
-
-def load_prompt(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def fill_json(template: str, placeholder: str, payload: Any) -> str:
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
 
 def strip_filler_for_step5(app_logs: dict[str, Any]) -> dict[str, Any]:
     """Remove filler sessions from app logs before injecting into Step 5 prompt.
@@ -88,8 +80,8 @@ def run_generation(
 ) -> dict[str, Any]:
     template = load_prompt(PROMPT_PATH)
     logs_for_prompt = strip_filler_for_step5(app_logs)
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
-    template = fill_json(
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
+    template = fill(
         template,
         "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
         corrected_social_circle,
@@ -108,9 +100,9 @@ def run_verification(
     backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     template = load_prompt(VERIFICATION_PROMPT_PATH)
-    template = fill_json(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
+    template = fill(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
     logs_for_prompt = strip_filler_for_step5(app_logs)
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 

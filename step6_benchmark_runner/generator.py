@@ -34,7 +34,10 @@ from llm import (
     provider_for_backend,
     default_model_for_backend,
 )
-from utils import extract_json
+from utils import (
+    extract_json,
+    fill,
+)
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
@@ -55,15 +58,6 @@ def load_prompt_sections() -> dict[str, str]:
     pass1 = header + text[header_end:pass2_start]
     pass2 = header + text[pass2_start:]
     return {"pass1": pass1, "pass2": pass2}
-
-
-def fill(template: str, placeholder: str, payload: Any) -> str:
-    if isinstance(payload, str):
-        return template.replace(placeholder, payload)
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
-
 
 def resolve_verified_fragments_path(app_logs_path: Path) -> Path | None:
     """Locate Step 4 {persona}_verified_fragments.json for Pass 2 scoring."""
@@ -668,10 +662,6 @@ def main() -> None:
         help="Optional response format override for JSON outputs (openai-api).",
     )
     parser.add_argument(
-        "--openclaw", action="store_true",
-        help="Deprecated alias for --backend claude.",
-    )
-    parser.add_argument(
         "--skip-pass1",
         action="store_true",
         help="Skip Pass 1 and reuse existing pass1_answers.json. Useful when "
@@ -704,7 +694,7 @@ def main() -> None:
     if args.passk_runs < 1:
         parser.error("--passk-runs must be at least 1")
 
-    backend = "claude" if args.openclaw else args.backend
+    backend = args.backend
     backend_pass2 = args.backend_pass2 or backend
 
     provider = provider_for_backend(backend, args.provider) if backend in API_BACKENDS else (args.provider or "anthropic")

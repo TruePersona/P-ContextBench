@@ -40,6 +40,7 @@ from llm import (
 from utils import (
     load_prompt,
     extract_json,
+    fill,
 )
 try:
     from .decoys import (
@@ -63,14 +64,6 @@ CLUSTER_PROMPT_PATH = STEP_DIR / "cluster_prompt.txt"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 DECOY_PROMPT_PATH = STEP_DIR / "decoy_prompt.txt"
-
-def fill(template: str, placeholder: str, payload: Any) -> str:
-    if isinstance(payload, str):
-        return template.replace(placeholder, payload)
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
-
 
 # ---------------------------------------------------------------------------
 # Persona identity
@@ -1413,7 +1406,7 @@ def run_step_from_dicts(
     decoy_count: int = 0,
     decoy_pool_size: int = 40,
 ) -> int:
-    """Dict-based entry point for openclaw_pipeline.py integration."""
+    """Dict-based entry point for run.py integration."""
     client = make_client(provider) if backend in API_BACKENDS else None
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

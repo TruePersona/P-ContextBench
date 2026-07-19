@@ -37,6 +37,8 @@ from llm import (
 from utils import (
     load_prompt,
     extract_json,
+    fill_seed_placeholders,
+    fill,
 )
 
 STEP_DIR = Path(__file__).parent
@@ -44,44 +46,6 @@ PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 
 DEFAULT_MAX_ITERATIONS = 3
-
-def fill_seed_placeholders(template: str, seed: dict[str, Any]) -> str:
-    mapping = {
-        "{{participant_id}}": seed["uuid"],
-        "{{name}}": extract_name(seed),
-        "{{age}}": str(seed["age"]),
-        "{{sex}}": seed["sex"],
-        "{{marital_status}}": seed["marital_status"],
-        "{{education_level}}": seed["education_level"],
-        "{{occupation}}": seed["occupation"],
-        "{{city}}": seed["city"],
-        "{{state}}": seed["state"],
-        "{{zipcode}}": seed["zipcode"],
-        "{{country}}": seed["country"],
-        "{{professional_persona}}": seed["professional_persona"],
-        "{{sports_persona}}": seed["sports_persona"],
-        "{{arts_persona}}": seed["arts_persona"],
-        "{{travel_persona}}": seed["travel_persona"],
-        "{{culinary_persona}}": seed["culinary_persona"],
-        "{{persona}}": seed["persona"],
-        "{{cultural_background}}": seed["cultural_background"],
-        "{{skills_and_expertise}}": seed["skills_and_expertise"],
-        "{{hobbies_and_interests}}": seed["hobbies_and_interests"],
-        "{{career_goals_and_ambitions}}": seed["career_goals_and_ambitions"],
-    }
-    for key, value in mapping.items():
-        template = template.replace(key, value)
-    return template
-
-
-def extract_name(seed: dict[str, Any]) -> str:
-    persona_text = seed.get("persona", "") or seed.get("professional_persona", "")
-    match = re.match(r"\s*([A-Z][a-z]+\s+[A-Z][a-z]+)", persona_text)
-    return match.group(1) if match else seed["uuid"]
-
-def fill_json_placeholder(template: str, placeholder: str, payload: Any) -> str:
-    serialized = json.dumps(payload, indent=2, ensure_ascii=False)
-    return template.replace(placeholder, serialized)
 
 def run_generation(
     client, model: str, seed: dict[str, Any], gpt_reasoning: str,
@@ -102,11 +66,11 @@ def run_verification(
     backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     template = fill_seed_placeholders(load_prompt(VERIFICATION_PROMPT_PATH), seed)
-    template = fill_json_placeholder(template, "{{INSERT_SEED_JSON_HERE}}", seed)
-    template = fill_json_placeholder(
+    template = fill(template, "{{INSERT_SEED_JSON_HERE}}", seed)
+    template = fill(
         template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", interview["transcript"]
     )
-    template = fill_json_placeholder(
+    template = fill(
         template,
         "{{INSERT_EXTRACTED_PROFILE_JSON_HERE}}",
         interview["extracted_profile"],
@@ -178,7 +142,7 @@ def main() -> None:
     parser.add_argument("--backend", default="anthropic-api", choices=SUPPORTED_BACKENDS)
     args = parser.parse_args()
 
-    provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
+    provider = provider_for_backend(args.backend, args.provider) if args.backend in API_BACKENDS else (args.provider or "anthropic")
 
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")
