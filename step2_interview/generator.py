@@ -147,7 +147,7 @@ def main() -> None:
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")
     if args.verifier_model is None:
-        args.model = default_model_for_backend(args.backend, "verifier")
+        args.verifier_model = default_model_for_backend(args.backend, "verifier")
 
     if args.backend in API_BACKENDS and not check_api_key(provider):
         print(f"API key for {provider} is not set.", file=sys.stderr)
