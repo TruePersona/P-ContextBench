@@ -342,26 +342,42 @@ def _has_implicitness_leaks(verification: dict[str, Any]) -> bool:
     return any(c.get("fragments_that_leak_labels") for c in checks)
 
 
+# Cluster acceptance policy. "strict" enforces the verifier contract:
+# only a RECOVERED verdict with no leak-flagged fragments passes.
+# "lenient" reproduces the acceptance rule used to build the committed
+# data samples and must be selected explicitly.
+GATE_POLICY = "strict"
+
+
 def cluster_passed(
     verification: dict[str, Any],
     cluster_facts: list[dict[str, Any]],
+    policy: str | None = None,
 ) -> tuple[bool, list[dict[str, Any]]]:
     """Check if the cluster verification gate passes.
 
-    Primary gate: RECOVERED passes unconditionally.
+    strict (default): only RECOVERED passes, and only when no fragment
+    is leak-flagged and the shared-evidence checks did not fail. This is
+    the acceptance predicate the verifier prompt documents.
 
-    Production override: AMBIGUOUS also passes only when every recovered
-    candidate is HIGH confidence, shared-evidence checks did not fail, and
-    the ambiguity came from implicitness leakage (realistic logistical
-    anchors). Rejects weak, missing, or structurally bad recovery.
+    lenient: RECOVERED passes unconditionally, and AMBIGUOUS also passes
+    when every candidate is HIGH confidence and leak flags are present.
+    This preserves the rule the committed data samples were built with
+    so they remain reproducible; it does not satisfy the strict
+    predicate and is opt-in via --gate-policy lenient.
 
     Returns (passed, matched_pairs) for trace recording.
     """
+    policy = policy or GATE_POLICY
     if _shared_evidence_failed(verification):
         return (False, [])
 
     verdict = verification.get("verdict")
-    if verdict == "RECOVERED":
+    if policy == "strict":
+        if verdict != "RECOVERED" or _has_implicitness_leaks(verification):
+            return (False, [])
+        gate_reason = "recovered_no_leaks"
+    elif verdict == "RECOVERED":
         gate_reason = "recovered"
     elif (
         verdict == "AMBIGUOUS"
@@ -377,6 +393,7 @@ def cluster_passed(
         "accepted_as": "RECOVERED",
         "original_verdict": verdict,
         "reason": gate_reason,
+        "policy": policy,
     }
 
     # Passed the primary gate. Now build matched_pairs for traceability.
@@ -1875,7 +1892,16 @@ def main() -> None:
         "--decoy-pool-size", type=int, default=40,
         help="Number of decoy candidates to generate when --verified-decoys is omitted",
     )
+    parser.add_argument(
+        "--gate-policy", choices=("strict", "lenient"), default="strict",
+        help="Cluster acceptance policy. strict enforces the documented "
+        "predicate (RECOVERED, no leak flags). lenient reproduces the rule "
+        "the committed data samples were built with.",
+    )
     args = parser.parse_args()
+
+    global GATE_POLICY
+    GATE_POLICY = args.gate_policy
 
     backend = args.backend
     provider = (
