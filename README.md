@@ -10,7 +10,7 @@ Rather than testing generic task completion, P-ContextBench probes deep user con
 ## Pipeline
 
 Each persona is constructed through a six-step pipeline. Every step has its own generator and verifier.
-Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
+Shared model and backend dispatch helpers live in [`llm.py`](llm.py); shared seed parsing helpers live in [`utils.py`](utils.py).
 
 | Step | What it does |
 |---|---|
@@ -34,6 +34,10 @@ Generated persona artifacts are tracked under each step's
 - `step4_app_log_synthesizer/data_samples/{persona}_app_logs.json`
 - `step4_app_log_synthesizer/data_samples/{persona}_app_logs_trace.json`
 - `step4_app_log_synthesizer/data_samples/{persona}_verified_fragments.json`
+- `step5_testcases_synthesis/data_samples/{persona}_test_cases.json`
+- `step5_testcases_synthesis/data_samples/{persona}_test_cases_verification.json`
+
+Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time.
 
 ## Getting started
 
@@ -127,7 +131,15 @@ python run.py \
 ```
 
 
-For further detail, refer to [CONFIG.md](CONFIG.md)
+For the full flag reference, defaults, and failure semantics, see [CONFIG.md](CONFIG.md).
+
+### Tests
+
+```bash
+python -m pytest test_pipeline.py step4_app_log_synthesizer step6_benchmark_runner -q
+```
+
+[`test_pipeline.py`](test_pipeline.py) covers the runner and stage gates; the step-level suites cover decoy safety and Pass^k aggregation.
 
 ## Model independence
 
