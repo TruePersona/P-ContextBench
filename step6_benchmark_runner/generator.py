@@ -270,6 +270,7 @@ def run_pass_2(
 
     merged_evaluations: list[dict[str, Any]] = []
     merged_result: dict[str, Any] = {}
+    failed_batches = 0
 
     for i in range(0, len(all_cases), batch_size):
         batch_cases = all_cases[i : i + batch_size]
@@ -302,15 +303,35 @@ def run_pass_2(
             except (json.JSONDecodeError, ValueError) as exc:
                 print(f"    batch {batch_num} attempt {attempt + 1} failed: {exc}")
                 if attempt == 2:
-                    print(f"    skipping batch {batch_num} after 3 attempts")
+                    # A dropped batch would silently shrink the denominator
+                    # and inflate accuracy, so score every case in it as an
+                    # explicit zero-credit failure instead.
+                    print(
+                        f"    batch {batch_num} failed after 3 attempts; "
+                        f"scoring its {len(batch_cases)} cases as failures"
+                    )
+                    failed_batches += 1
+                    for tc in batch_cases:
+                        merged_evaluations.append({
+                            "test_case_id": tc.get("id"),
+                            "type": tc.get("type"),
+                            "score": "FAILED_EVALUATION",
+                            "score_value": 0.0,
+                            "evaluation_status": "judge_batch_failed",
+                            "explanation": (
+                                f"Pass 2 batch {batch_num} failed after "
+                                f"3 attempts: {exc}"
+                            ),
+                        })
 
     if not merged_result:
         merged_result = {"evaluations": [], "metadata": {}}
     merged_result["evaluations"] = merged_evaluations
     merged_result["metadata"] = merged_result.get("metadata", {})
-    merged_result["metadata"]["total_cases"] = len(merged_evaluations)
+    merged_result["metadata"]["total_cases"] = len(all_cases)
     merged_result["metadata"]["batched"] = True
     merged_result["metadata"]["batches_total"] = (len(all_cases) + batch_size - 1) // batch_size
+    merged_result["metadata"]["batches_failed"] = failed_batches
     return merged_result
 
 
@@ -323,6 +344,22 @@ def _percent(score_sum: float, total: int) -> str:
     return f"{value}%"
 
 
+_SUBTYPE_TYPE_RE = re.compile(r"^5[a-z]_", re.IGNORECASE)
+
+
+def normalize_case_type(raw: Any) -> str:
+    """Map a stored case type onto its canonical type string.
+
+    Some Step 5 files carry the T5 subtype (e.g. ``5c_ambiguity``) in the
+    type field; bucketing on the raw string would split those cases into
+    phantom types.
+    """
+    value = str(raw or "").strip()
+    if _SUBTYPE_TYPE_RE.match(value):
+        return "type_5_agent_behavior"
+    return value.lower() or "unknown"
+
+
 def recompute_benchmark_summary(
     result: dict[str, Any],
     test_cases_full: dict[str, Any],
@@ -333,12 +370,32 @@ def recompute_benchmark_summary(
     evaluations = result.get("evaluations", []) or []
     case_map = {tc.get("id"): tc for tc in test_cases_full.get("test_cases", [])}
 
+    # Freeze the denominator to the intended case set: any intended case
+    # without an evaluation record is scored as an explicit zero-credit
+    # failure rather than silently dropped.
+    evaluated_ids = {ev.get("test_case_id") for ev in evaluations}
+    for case_id, tc in case_map.items():
+        if case_id not in evaluated_ids:
+            evaluations.append({
+                "test_case_id": case_id,
+                "type": tc.get("type"),
+                "score": "FAILED_EVALUATION",
+                "score_value": 0.0,
+                "evaluation_status": "missing_evaluation",
+                "explanation": "No Pass 2 evaluation record was produced.",
+            })
+    result["evaluations"] = evaluations
+    failed_count = sum(
+        1 for ev in evaluations if ev.get("evaluation_status") in
+        ("judge_batch_failed", "missing_evaluation")
+    )
+
     total_score = sum(float(ev.get("score_value", 0) or 0) for ev in evaluations)
     result["overall_accuracy"] = _percent(total_score, len(evaluations))
 
     by_type: dict[str, list[float]] = {}
     for ev in evaluations:
-        by_type.setdefault(ev.get("type", "unknown"), []).append(
+        by_type.setdefault(normalize_case_type(ev.get("type")), []).append(
             float(ev.get("score_value", 0) or 0)
         )
     result["accuracy_by_type"] = {
@@ -346,13 +403,20 @@ def recompute_benchmark_summary(
         for typ, scores in sorted(by_type.items())
     }
 
-    type5 = [ev for ev in evaluations if ev.get("type") == "type_5_agent_behavior"]
+    type5 = [
+        ev for ev in evaluations
+        if normalize_case_type(ev.get("type")) == "type_5_agent_behavior"
+    ]
     subtype_scores: dict[str, list[float]] = {}
     dimension_scores: dict[str, list[float]] = {}
     capstone_result = "N/A"
     for ev in type5:
         tc = case_map.get(ev.get("test_case_id"), {})
-        subtype = tc.get("subtype", "unknown")
+        subtype = tc.get("subtype") or (
+            str(tc.get("type")).strip().lower()
+            if _SUBTYPE_TYPE_RE.match(str(tc.get("type") or ""))
+            else "unknown"
+        )
         subtype_scores.setdefault(subtype, []).append(
             float(ev.get("score_value", 0) or 0)
         )
@@ -379,6 +443,7 @@ def recompute_benchmark_summary(
     metadata["model_used_pass1"] = model_pass1
     metadata["model_used_pass2"] = model_pass2
     metadata["total_cases"] = len(evaluations)
+    metadata["failed_evaluation_cases"] = failed_count
     return result
 
 
