@@ -32,6 +32,23 @@ STEP4_DIR = REPO_ROOT / "step4_app_log_synthesizer"
 STEP5_DIR = REPO_ROOT / "step5_testcases_synthesis"
 STEP6_DIR = REPO_ROOT / "step6_benchmark_runner"
 
+
+class StageError(RuntimeError):
+    """A pipeline stage exited with a nonzero return code."""
+
+
+def run_stage(step: str, cmd: list[str]) -> None:
+    """Run one stage subprocess and stop the pipeline if it fails.
+
+    Later stages read the artifacts earlier stages write, so continuing
+    past a failed stage would consume missing or stale files and produce
+    outputs that look valid but are not.
+    """
+    result = subprocess.run(cmd, check=False)
+    if result.returncode != 0:
+        raise StageError(f"{step} exited with code {result.returncode}")
+
+
 def run_pipeline(
     seed_path: Path,
     backend: str,
@@ -52,6 +69,7 @@ def run_pipeline(
     resume: bool = False,
     retry_failed: bool = False,
     filler_ratio: float = 2.5,
+    gate_policy: str = "strict",
     target_context_tokens: int | None = None,
     verified_decoys_path: Path | None = None,
     decoy_count: int = 0,
@@ -95,8 +113,8 @@ def run_pipeline(
             "--gpt-reasoning", gpt_reasoning
         ]
 
-        subprocess.run(cmd, check=False)
-    
+        run_stage("step2", cmd)
+
     verification_path = STEP2_DIR / "data_samples" / f"{n}_verification.json"
     interview_path = STEP2_DIR / "data_samples" / f"{n}_interview.json"
 
@@ -116,8 +134,8 @@ def run_pipeline(
             "--gpt-reasoning", gpt_reasoning
         ]
 
-        subprocess.run(cmd, check=False)
-    
+        run_stage("step3", cmd)
+
     social_circle_path = STEP3_DIR / "data_samples" / f"{n}_social_circle_verification.json"
 
 
@@ -140,11 +158,12 @@ def run_pipeline(
             "--max-facts", str(max_facts),
             "--filler-ratio", str(filler_ratio),
             "--decoy-count", str(decoy_count),
-            "--decoy-pool-size", str(decoy_pool_size)
+            "--decoy-pool-size", str(decoy_pool_size),
+            "--gate-policy", gate_policy
         ]
 
         if target_context_tokens:
-            cmd += ["--target-context-tokens", target_context_tokens]
+            cmd += ["--target-context-tokens", str(target_context_tokens)]
         if verified_decoys_path:
             cmd += ["--verified-decoys", str(verified_decoys_path)]
         if resume:
@@ -152,8 +171,8 @@ def run_pipeline(
         if retry_failed:
             cmd += ["--retry-failed"]
 
-        subprocess.run(cmd, check=False)
-    
+        run_stage("step4", cmd)
+
     app_logs_path = STEP4_DIR / "data_samples" / f"{n}_app_logs.json"
 
 
@@ -173,7 +192,7 @@ def run_pipeline(
             "--gpt-reasoning", gpt_reasoning
         ]
 
-        subprocess.run(cmd, check=False)
+        run_stage("step5", cmd)
 
     test_cases_path = STEP5_DIR / "data_samples" / f"{n}_test_cases.json"
 
@@ -190,8 +209,8 @@ def run_pipeline(
             "--model-pass2", judge_model,
             "--backend", backend,
             "--provider", provider,
-            "--reasoning-pass1", gpt_reasoning,
-            "--reasoning-pass2", gpt_eval_reasoning
+            "--reasoning-pass1", gpt_eval_reasoning,
+            "--reasoning-pass2", gpt_reasoning
         ]
     
         if backend_pass2:
@@ -209,7 +228,7 @@ def run_pipeline(
         if passk_allow_missing:
             cmd += ["--passk-allow-missing"]
 
-        subprocess.run(cmd, check=False)
+        run_stage("step6", cmd)
 
 
 def main() -> None:
@@ -269,6 +288,14 @@ def main() -> None:
         type=float,
         default=2.5,
         help="Step 4 filler-to-meaningful token ratio.",
+    )
+    parser.add_argument(
+        "--gate-policy",
+        choices=("strict", "lenient"),
+        default="strict",
+        help="Step 4 cluster acceptance policy. strict enforces the "
+        "documented predicate (RECOVERED, no leak flags); lenient "
+        "reproduces the rule the committed data samples were built with.",
     )
     parser.add_argument(
         "--target-context-tokens",
@@ -438,41 +465,56 @@ def main() -> None:
 
     if args.all and args.start > 1:
         seed_dir = STEP1_DIR / "data_samples"
+        failed: list[str] = []
         for seed_file in sorted(seed_dir.glob("*_seed.json")):
-            run_pipeline(
-                seed_file,
-                args.backend,
-                provider,
-                args.model,
-                args.verifier_model,
-                args.judge_model,
-                args.evaluator_model,
-                args.uuid,
-                args.start,
-                args.stop,
-                args.log_start,
-                args.log_end,
-                args.per_cluster_max_attempts,
-                gpt_reasoning=args.gpt_reasoning,
-                gpt_eval_reasoning=args.gpt_eval_reasoning,
-                max_facts=args.max_facts,
-                resume=args.resume,
-                retry_failed=args.retry_failed,
-                filler_ratio=args.filler_ratio,
-                target_context_tokens=args.target_context_tokens,
-                verified_decoys_path=args.verified_decoys,
-                decoy_count=args.decoy_count,
-                decoy_pool_size=args.decoy_pool_size,
-                passk_runs=args.passk_runs,
-                passk_output=args.passk_output,
-                passk_allow_missing=args.passk_allow_missing,
-                backend_pass2=backend_pass2,
-                provider_pass2=provider_pass2,
-                skip_pass1=args.skip_pass1,
-                skip_pass2=args.skip_pass2,
+            try:
+                run_pipeline(
+                    seed_file,
+                    args.backend,
+                    provider,
+                    args.model,
+                    args.verifier_model,
+                    args.judge_model,
+                    args.evaluator_model,
+                    args.uuid,
+                    args.start,
+                    args.stop,
+                    args.log_start,
+                    args.log_end,
+                    args.per_cluster_max_attempts,
+                    gpt_reasoning=args.gpt_reasoning,
+                    gpt_eval_reasoning=args.gpt_eval_reasoning,
+                    max_facts=args.max_facts,
+                    resume=args.resume,
+                    retry_failed=args.retry_failed,
+                    filler_ratio=args.filler_ratio,
+                    gate_policy=args.gate_policy,
+                    target_context_tokens=args.target_context_tokens,
+                    verified_decoys_path=args.verified_decoys,
+                    decoy_count=args.decoy_count,
+                    decoy_pool_size=args.decoy_pool_size,
+                    passk_runs=args.passk_runs,
+                    passk_output=args.passk_output,
+                    passk_allow_missing=args.passk_allow_missing,
+                    backend_pass2=backend_pass2,
+                    provider_pass2=provider_pass2,
+                    skip_pass1=args.skip_pass1,
+                    skip_pass2=args.skip_pass2,
+                )
+            except StageError as exc:
+                # Move on to the next persona but keep the failure visible;
+                # a partial batch must not exit 0.
+                print(f"[{seed_file.stem}] {exc}", file=sys.stderr)
+                failed.append(seed_file.stem)
+        if failed:
+            print(
+                f"{len(failed)} persona(s) failed: {', '.join(failed)}",
+                file=sys.stderr,
             )
+            sys.exit(1)
     elif args.seed or args.uuid:
-        run_pipeline(
+        try:
+            run_pipeline(
                 args.seed,
                 args.backend,
                 provider,
@@ -492,6 +534,7 @@ def main() -> None:
                 resume=args.resume,
                 retry_failed=args.retry_failed,
                 filler_ratio=args.filler_ratio,
+                gate_policy=args.gate_policy,
                 target_context_tokens=args.target_context_tokens,
                 verified_decoys_path=args.verified_decoys,
                 decoy_count=args.decoy_count,
@@ -504,6 +547,9 @@ def main() -> None:
                 skip_pass1=args.skip_pass1,
                 skip_pass2=args.skip_pass2,
             )
+        except StageError as exc:
+            print(str(exc), file=sys.stderr)
+            sys.exit(1)
     else:
         parser.error("Provide --persona <name>, --seed <path>, --uuid <uuid> or --all")
 
