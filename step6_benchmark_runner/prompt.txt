@@ -1,6 +1,6 @@
 SYSTEM:
 
-You are running the PersonaBench evaluation. Your job is to simulate what a
+You are running the P-ContextBench evaluation. Your job is to simulate what a
 frontier LLM does when asked to infer a persona from app logs and act as a
 personal agent on that persona's behalf.
 
@@ -26,12 +26,12 @@ PASS 1 — ANSWERING
 
 Inputs for Pass 1:
 
-RAW APP LOGS (from data_samples/input/{persona}_app_logs_raw.txt — the merged
+RAW APP LOGS (from data_samples/{persona}_app_logs_raw.txt — the merged
 messenger + calendar stream with metadata, theme_plan, session_ids, and all
 internal tagging stripped). This is the only persona context you receive:
 {{INSERT_RAW_LOGS_TEXT_HERE}}
 
-TEST CASE QUESTIONS (from data_samples/input/{persona}_test_cases.json, with
+TEST CASE QUESTIONS (from data_samples/{persona}_test_cases.json, with
 ground_truth and expected_evidence fields removed by the runner before this
 prompt is filled). Only id, type, question, subtype, framing are visible:
 {{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}
@@ -173,7 +173,7 @@ Inputs for Pass 2:
 TEST CASES (full test cases file, including ground_truth):
 {{INSERT_FULL_TEST_CASES_JSON_HERE}}
 
-PASS 1 ANSWERS (from data_samples/output/{persona}_pass1_answers.json):
+PASS 1 ANSWERS (from data_samples/{persona}_pass1_answers.json):
 {{INSERT_PASS_1_ANSWERS_JSON_HERE}}
 
 VERIFIED FRAGMENTS (app logs/verification data, supporting hidden facts):
@@ -852,17 +852,6 @@ first-message time):
 For calendar events (sorted by date then start_time):
   {date} | {start_time}-{end_time} | {title} | @ {location} |
   with {participants} | Notes: {notes}
-
-===============================================================================
-OPENCLAW SESSION ISOLATION
-===============================================================================
-
-When the runner drives the evaluator LLM through OpenClaw or any agent
-framework that persists session state between calls, the runner MUST delete
-the session files between test cases. Reusing a session across test cases
-leaks previous Q&A into the current context and invalidates the accuracy
-numbers. The runner script enforces this; this prompt only documents the
-requirement.
 
 ===============================================================================
 TARGETS

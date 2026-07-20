@@ -18,67 +18,33 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
-    API_BACKENDS, SUBSCRIPTION_BACKENDS, SUPPORTED_BACKENDS,
-    make_client, call_llm as _call_llm, call_subscription_cli,
-    check_api_key, provider_for_backend, default_model_for_backend,
+    API_BACKENDS,
+    SUPPORTED_BACKENDS,
+    make_client,
+    call_llm,
+    check_api_key,
+    provider_for_backend,
+    default_model_for_backend,
     SUPPORTED_PROVIDERS,
+)
+from utils import (
+    load_prompt,
+    extract_json,
+    fill,
 )
 
 STEP_DIR = Path(__file__).parent
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 
-DEFAULT_MODEL = None
 DEFAULT_MAX_ITERATIONS = 3
 
-
-def load_prompt(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def fill_json(template: str, placeholder: str, payload: Any) -> str:
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
-
-
-CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude")
-CODEX_CMD = os.environ.get("CODEX_CMD", "codex.exe" if sys.platform == "win32" else "codex")
-
-
-def call_llm(client, model: str, prompt: str, gpt_reasoning: str,
-             provider: str = "anthropic", backend: str = "anthropic-api") -> str:
-    if backend in SUBSCRIPTION_BACKENDS:
-        return call_subscription_cli(prompt, model, backend, gpt_reasoning,
-                                     claude_cmd=CLAUDE_CMD, codex_cmd=CODEX_CMD)
-    return _call_llm(client, model, prompt, gpt_reasoning, provider=provider)
-
-
-def _fix_invalid_escapes(text: str) -> str:
-    valid = set('"\\/bfnrtu')
-    out = []
-    i = 0
-    while i < len(text):
-        if text[i] == "\\" and i + 1 < len(text):
-            if text[i + 1] in valid:
-                out.append(text[i])
-                out.append(text[i + 1])
-                i += 2
-            else:
-                out.append(text[i + 1])
-                i += 2
-        else:
-            out.append(text[i])
-            i += 1
-    return "".join(out)
 
 def strip_filler_for_step5(app_logs: dict[str, Any]) -> dict[str, Any]:
     """Remove filler sessions from app logs before injecting into Step 5 prompt.
@@ -103,23 +69,6 @@ def strip_filler_for_step5(app_logs: dict[str, Any]) -> dict[str, Any]:
     trimmed.pop("metadata", None)
     return trimmed
 
-
-def extract_json(text: str) -> dict[str, Any]:
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    payload = fenced.group(1) if fenced else text
-    start = payload.find("{")
-    if start == -1:
-        raise ValueError("No JSON object found in LLM output")
-    raw = payload[start:]
-    decoder = json.JSONDecoder()
-    try:
-        obj, _ = decoder.raw_decode(raw)
-        return obj
-    except json.JSONDecodeError:
-        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
-        return obj
-
-
 def run_generation(
     client,
     model: str,
@@ -131,8 +80,8 @@ def run_generation(
 ) -> dict[str, Any]:
     template = load_prompt(PROMPT_PATH)
     logs_for_prompt = strip_filler_for_step5(app_logs)
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
-    template = fill_json(
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
+    template = fill(
         template,
         "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}",
         corrected_social_circle,
@@ -151,9 +100,9 @@ def run_verification(
     backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     template = load_prompt(VERIFICATION_PROMPT_PATH)
-    template = fill_json(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
+    template = fill(template, "{{INSERT_TEST_CASES_JSON_HERE}}", test_cases)
     logs_for_prompt = strip_filler_for_step5(app_logs)
-    template = fill_json(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
+    template = fill(template, "{{INSERT_APP_LOGS_JSON_HERE}}", logs_for_prompt)
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 
@@ -176,13 +125,12 @@ def run_step(
     social_circle_path: Path,
     output_dir: Path,
     model: str,
+    verifier_model: str,
     max_iterations: int,
     gpt_reasoning: str,
     provider: str = "anthropic",
     backend: str = "anthropic-api",
 ) -> int:
-    corrected_profile_file = json.loads(profile_path.read_text(encoding="utf-8"))
-    corrected_profile = corrected_profile_file["corrected_extracted_profile"]
     app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
     social_circle_file = json.loads(social_circle_path.read_text(encoding="utf-8"))
     corrected_social_circle = social_circle_file["corrected_social_circle"]
@@ -206,7 +154,7 @@ def run_step(
 
         print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}")
         verification = run_verification(
-            client, model, test_cases, app_logs,
+            client, verifier_model, test_cases, app_logs,
             gpt_reasoning, provider=provider, backend=backend,
         )
         verification_out.write_text(
@@ -250,9 +198,13 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=STEP_DIR / "data_samples" / "output",
+        default=STEP_DIR / "data_samples",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model", default=None)
+    parser.add_argument(
+        "--verifier-model", default=None,
+        help="Independent model for the reverse-inferability gate",
+    )
     parser.add_argument("--max-iterations", type=int, default=DEFAULT_MAX_ITERATIONS)
     parser.add_argument(
         "--gpt-reasoning",
@@ -260,15 +212,15 @@ def main() -> None:
         help="OpenAI model (openai-api, codex) reasoning effort."
     )
     parser.add_argument("--provider", default=None, choices=SUPPORTED_PROVIDERS)
-    parser.add_argument("--backend", default=None, choices=SUPPORTED_BACKENDS)
+    parser.add_argument("--backend", default="anthropic-api", choices=SUPPORTED_BACKENDS)
     args = parser.parse_args()
 
-    if args.backend is None:
-        args.backend = f"{args.provider or 'anthropic'}-api" if args.provider else os.environ.get("PERSONABENCH_BACKEND", "claude")
-    provider = provider_for_backend(args.backend, args.provider or "anthropic") if args.backend in API_BACKENDS else (args.provider or "anthropic")
+    provider = provider_for_backend(args.backend, args.provider) if args.backend in API_BACKENDS else (args.provider or "anthropic")
 
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")
+    if args.verifier_model is None:
+        args.verifier_model = default_model_for_backend(args.backend, "verifier")
 
     if args.backend in API_BACKENDS and not check_api_key(provider):
         print(f"API key not set for provider {provider}.", file=sys.stderr)
@@ -281,6 +233,7 @@ def main() -> None:
             args.social_circle,
             args.output,
             args.model,
+            args.verifier_model,
             args.max_iterations,
             args.gpt_reasoning,
             provider=provider,

@@ -1,20 +1,16 @@
-# PersonaBench
+# P-ContextBench: A Benchmark for Evaluating Personalized AI Behavior and User Understanding
 
-A benchmark for evaluating personalized AI behavior and user understanding.
-
-## Goal
-
-PersonaBench measures whether an LLM can:
+P-ContextBench measures whether an LLM can:
 
 1. **Infer** a persona's identity, preferences, and life patterns from raw app logs alone.
 2. **Act** as a useful, safe personal agent for that persona given those inferred traits.
 
-Rather than testing generic task completion, PersonaBench probes deep user context — the kind of behavioral, relational, and safety-relevant signals that a personal assistant would need to serve a user well. A SOTA baseline is evaluated against the benchmark to expose current model limitations.
+Rather than testing generic task completion, P-ContextBench probes deep user context — the kind of behavioral, relational, and safety-relevant signals that a personal assistant would need to serve a user well. A SOTA baseline is evaluated against the benchmark to expose current model limitations.
 
 ## Pipeline
 
-Each persona is constructed through a six-step pipeline. Every step has its own generator, verifier, and README.
-Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
+Each persona is constructed through a six-step pipeline. Every step has its own generator and verifier.
+Shared model and backend dispatch helpers live in [`llm.py`](llm.py); shared seed parsing helpers live in [`utils.py`](utils.py).
 
 | Step | What it does |
 |---|---|
@@ -28,47 +24,146 @@ Shared model and backend dispatch helpers live in [`llm.py`](llm.py).
 ## Generated Samples
 
 Generated persona artifacts are tracked under each step's
-`data_samples/output/` directory. The file naming convention is:
+`data_samples/` directory. The file naming convention is:
 
-- `step1_seed/data_samples/output/{persona}_seed.json`
-- `step2_interview/data_samples/output/{persona}_interview.json`
-- `step2_interview/data_samples/output/{persona}_verification.json`
-- `step3_social_circle/data_samples/output/{persona}_social_circle.json`
-- `step3_social_circle/data_samples/output/{persona}_social_circle_verification.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_app_logs_trace.json`
-- `step4_app_log_synthesizer/data_samples/output/{persona}_verified_fragments.json`
+- `step1_seed/data_samples/{persona}_seed.json`
+- `step2_interview/data_samples/{persona}_interview.json`
+- `step2_interview/data_samples/{persona}_verification.json`
+- `step3_social_circle/data_samples/{persona}_social_circle.json`
+- `step3_social_circle/data_samples/{persona}_social_circle_verification.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_app_logs_trace.json`
+- `step4_app_log_synthesizer/data_samples/{persona}_verified_fragments.json`
+- `step5_testcases_synthesis/data_samples/{persona}_test_cases.json`
+- `step5_testcases_synthesis/data_samples/{persona}_test_cases_verification.json`
 
-This output batch adds 40 new personas through Step 4:
-
-`alicia_mosquera`, `alina_acosta`, `andrew_black`,
-`angel_diaz`, `antonio_gonzalez`, `baljinder_simmons`,
-`brian_martin`, `carolyn_amos`, `catherine_denis`, `chol_tran`,
-`christopher_montero`, `david_mckethan`, `debra_reeves`,
-`donovan_munoz`, `ellias_chand`, `hanh_gunasekara`,
-`irene_tangarife`, `iris_trujillo`, `james_lee`,
-`jennifer_cuzzort`, `jose_bonnet`, `joseph_giordano`,
-`judith_castillo`, `kailea_rubel`, `katherine_holder`,
-`keith_moore`, `kerri_wilson`, `lashonda_brazzell`,
-`laura_bost`, `miguel_perezramos`, `mikala_langley`,
-`pedro_jimenez`, `raki_roseberry`, `saba_guevara`,
-`sandi_chapman`, `sarada_mongru`, `sean_buckley`, `shoba_mehta`,
-`terri_maxson`, and `tyler_brizendine`.
-
-## Scope
-
-This batch is scoped to 40 new personas through Step 4 app logs. Step 5 test
-cases and Step 6 benchmark runs are generated and reviewed separately.
+Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time.
 
 ## Getting started
 
-See [RUNNING.md](RUNNING.md) for three supported execution backends:
+### Prerequisites
 
-- **Direct API** — `python Top_level_generator.py` with an Anthropic API key
-- **Vendor CLI** — `python openclaw_pipeline.py` running against a CLI subscription
-- **AI coding agent with subagents** — orchestrate inside Claude Code, CodenX, Antigravity, Cursor Agents, or any agent that exposes a Task / subagent tool
+```
+Python 3.10+
+pip install anthropic openai datasets
+```
 
-All three produce equivalent outputs given the same seed and model.
+### Authentication
+
+**Subscription CLI** (no API key needed): install and log in to the Claude Code CLI (`claude -p`) or the Codex CLI (`codex exec`). Select with `--backend claude` or `--backend codex`.
+
+**API key** (metered): set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your environment. Select with `--backend anthropic-api` or `--backend openai-api`.
+
+**OpenRouter** (metered, OpenAI-compatible): set `OPENROUTER_API_KEY` and pass `--backend openai-api --provider openrouter`. Requests route through the OpenAI SDK against the OpenRouter endpoint and currently target reasoning-capable models.
+
+Verify your backend works before starting a long run: `python run.py --help`.
+
+## Run
+
+### Score a model against the existing dataset
+
+```bash
+# Benchmark GPT-5.4 mini with GPT-5.4 as judge (Codex subscription)
+python run.py --persona julio_simmons \
+  --start 6 --stop 6 \
+  --backend codex \
+  --evaluator-model gpt-5.4-mini \
+  --judge-model gpt-5.4
+
+# Evaluate through all personas at once
+python run.py --all \
+  --start 6 --stop 6 \
+  --backend codex \
+  --evaluator-model gpt-5.4-mini \
+  --judge-model gpt-5.4
+```
+
+*To repeat Step 6 for reliability, add `--passk-runs`:*
+
+```bash
+python run.py --persona julio_simmons \
+  --start 6 --stop 6 \
+  --backend codex \
+  --evaluator-model gpt-5.4-mini \
+  --judge-model gpt-5.4 \
+  --passk-runs 3
+```
+
+#### Using separate answering/scoring backends:
+
+```bash
+python run.py --persona julio_simmons \
+  --start 6 --stop 6 \
+  --backend anthropic-api \
+  --evaluator-model claude-haiku-4-5 \
+  --backend-pass2 codex \
+  --judge-model gpt-5.4
+
+# Using OpenRouter:
+python run.py --persona julio_simmons \
+  --start 6 --stop 6 \
+  --backend openai-api \
+  --provider openrouter \
+  --evaluator-model google/gemini-3-flash-preview \
+  --backend-pass2 ... \
+  --judge-model ...
+```
+
+### Run the entire pipeline end-to-end
+
+```bash
+python run.py \
+  --uuid 50f90a6f17de473f9ca15f00afdedf7a \
+  --start 1 --stop 6 \
+  --backend claude \
+  --evaluator-model claude-haiku-4-5
+```
+
+#### Generate data for a seeded persona:
+
+```bash
+python run.py \
+  --persona alicia_gonzalez \
+  --start 2 --stop 5 \
+  --backend codex \
+  --model gpt-5.5 \
+  --verifier-model gpt-5.4
+```
+
+
+For the full flag reference, defaults, and failure semantics, see [CONFIG.md](CONFIG.md).
+
+### Tests
+
+```bash
+python -m pytest test_pipeline.py step4_app_log_synthesizer step6_benchmark_runner -q
+```
+
+[`test_pipeline.py`](test_pipeline.py) covers the runner and stage gates; the step-level suites cover decoy safety and Pass^k aggregation.
+
+## Model independence
+
+The pipeline uses four model roles. Three independence boundaries prevent systematic bias:
+
+| Boundary | Requirement | Why |
+|---|---|---|
+| Generator differs from Verifier | The model that creates app log fragments must not verify its own output. | A model pattern-matching its own generation is not an independent recoverability test. |
+| Evaluator differs from Judge | The model being benchmarked must not grade its own answers. | Same-model self-grading inflates scores by ~27% (empirically measured). |
+| Generator differs from Judge | The model that created the test cases must not grade answers to them. | Shared systematic biases in question construction and answer evaluation. |
+
+**Default model assignments:**
+
+| Role | Claude | GPT | Flag |
+|---|---|---|---|
+| Generator | `claude-opus-4-7` | `gpt-5.5` | `--model` |
+| Verifier | `claude-sonnet-4-6` | `gpt-5.4` | `--verifier-model` |
+| Evaluator | `claude-haiku-4-5` | `gpt-5.4-mini` | `--evaluator-model` |
+| Judge | `claude-sonnet-4-6` | `gpt-5.4` | `--judge-model` |
+
+**OpenAI backend (openai-api, codex) reasoning defaults:**
+
+- Generation steps (Steps 2-5, Step 6 Pass 2) use `high` reasoning effort.
+- Evaluated responses (Step 6 Pass 1) use `low` reasoning effort.
 
 ## References
 

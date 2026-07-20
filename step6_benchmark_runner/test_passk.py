@@ -21,7 +21,7 @@ from step6_benchmark_runner.passk import (  # noqa: E402
     load_evaluations,
     score_value,
 )
-import openclaw_pipeline  # noqa: E402
+import run as pipeline  # noqa: E402
 
 
 PASSK_SCRIPT = REPO_ROOT / "step6_benchmark_runner" / "passk.py"
@@ -350,6 +350,7 @@ class PassKTests(unittest.TestCase):
                     "anthropic",
                     "claude",
                     "codex",
+                    "json",
                     runs=2,
                     reasoning_pass1="low",
                     reasoning_pass2="high",
@@ -387,29 +388,32 @@ class PassKTests(unittest.TestCase):
         self.assertEqual(summary["overall"]["strict_pass_k_count"], 1)
         self.assertEqual(summary["hard_failures"][0]["test_case_id"], "TC-02")
 
-    def test_openclaw_pipeline_forwards_passk_flags_to_step6(self) -> None:
-        with patch.object(
-            openclaw_pipeline.subprocess,
-            "run",
-            return_value=SimpleNamespace(returncode=0),
-        ) as proc:
-            rc = openclaw_pipeline.run_step6(
-                Path("app_logs.json"),
-                Path("test_cases.json"),
-                Path("output"),
-                "codex",
-                "openai",
-                "low",
-                "high",
-                model_pass1="gpt-5.4-mini",
-                model_pass2="gpt-5.5",
-                passk_runs=4,
-                passk_output=Path("output/pass4_summary.json"),
-                passk_allow_missing=True,
-            )
+    def test_pipeline_forwards_passk_flags_to_step6(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            seed_path = Path(tmp) / "test_persona_seed.json"
+            write_json(seed_path, {"persona": "Test Persona teaches.", "uuid": "u-1"})
+            with patch.object(
+                pipeline.subprocess,
+                "run",
+                return_value=SimpleNamespace(returncode=0),
+            ) as proc:
+                pipeline.run_pipeline(
+                    seed_path,
+                    "codex",
+                    "openai",
+                    "gpt-5.5",
+                    "gpt-5.5",
+                    "gpt-5.5",
+                    "gpt-5.4-mini",
+                    None,
+                    6,
+                    6,
+                    passk_runs=4,
+                    passk_output=Path("output/pass4_summary.json"),
+                    passk_allow_missing=True,
+                )
 
         cmd = proc.call_args.args[0]
-        self.assertEqual(rc, 0)
         self.assertIn("--passk-runs", cmd)
         self.assertEqual(cmd[cmd.index("--passk-runs") + 1], "4")
         self.assertIn("--passk-output", cmd)
@@ -419,6 +423,13 @@ class PassKTests(unittest.TestCase):
             else "output/pass4_summary.json",
         )
         self.assertIn("--passk-allow-missing", cmd)
+        # The evaluated model answers Pass 1; the judge scores Pass 2.
+        self.assertEqual(cmd[cmd.index("--model-pass1") + 1], "gpt-5.4-mini")
+        self.assertEqual(cmd[cmd.index("--model-pass2") + 1], "gpt-5.5")
+        # Pass 1 uses the evaluation reasoning effort, Pass 2 the
+        # generation/judge effort, matching the documented defaults.
+        self.assertEqual(cmd[cmd.index("--reasoning-pass1") + 1], "low")
+        self.assertEqual(cmd[cmd.index("--reasoning-pass2") + 1], "high")
 
 
 if __name__ == "__main__":

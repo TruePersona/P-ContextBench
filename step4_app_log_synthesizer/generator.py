@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -30,13 +29,18 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
     API_BACKENDS,
-    SUBSCRIPTION_BACKENDS,
     SUPPORTED_PROVIDERS,
-    call_llm as _raw_call_llm,
-    call_subscription_cli,
+    SUPPORTED_BACKENDS,
+    call_llm,
     check_api_key,
     make_client,
     provider_for_backend,
+    default_model_for_backend,
+)
+from utils import (
+    load_prompt,
+    extract_json,
+    fill,
 )
 try:
     from .decoys import (
@@ -60,84 +64,6 @@ CLUSTER_PROMPT_PATH = STEP_DIR / "cluster_prompt.txt"
 PROMPT_PATH = STEP_DIR / "prompt.txt"
 VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 DECOY_PROMPT_PATH = STEP_DIR / "decoy_prompt.txt"
-
-CLAUDE_CMD = os.environ.get(
-    "CLAUDE_CMD", "claude.cmd" if sys.platform == "win32" else "claude"
-)
-CODEX_CMD = os.environ.get(
-    "CODEX_CMD", "codex"
-)
-
-
-# ---------------------------------------------------------------------------
-# Utility: LLM dispatch, JSON extraction, template filling
-# ---------------------------------------------------------------------------
-
-
-def _call_llm(
-    client,
-    model: str,
-    prompt: str,
-    provider: str = "anthropic",
-    backend: str = "anthropic-api",
-) -> str:
-    """Unified LLM dispatch for both subscription and API backends."""
-    if backend in SUBSCRIPTION_BACKENDS:
-        return call_subscription_cli(
-            prompt, model, backend,
-            claude_cmd=CLAUDE_CMD, codex_cmd=CODEX_CMD,
-        )
-    return _raw_call_llm(client, model, prompt, provider=provider)
-
-
-def _fix_invalid_escapes(text: str) -> str:
-    """Strip invalid JSON escape sequences while preserving valid ones."""
-    VALID = set('"\\/bfnrtu')
-    out = []
-    i = 0
-    while i < len(text):
-        if text[i] == '\\' and i + 1 < len(text):
-            if text[i + 1] in VALID:
-                out.append(text[i])
-                out.append(text[i + 1])
-                i += 2
-            else:
-                out.append(text[i + 1])
-                i += 2
-        else:
-            out.append(text[i])
-            i += 1
-    return ''.join(out)
-
-
-def extract_json(text: str) -> dict[str, Any]:
-    """Extract the first JSON object from LLM output, tolerating fences."""
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    payload = fenced.group(1) if fenced else text
-    start = payload.find("{")
-    if start == -1:
-        raise ValueError("No JSON object found in LLM output")
-    raw = payload[start:]
-    decoder = json.JSONDecoder()
-    try:
-        obj, _ = decoder.raw_decode(raw)
-        return obj
-    except json.JSONDecodeError:
-        obj, _ = decoder.raw_decode(_fix_invalid_escapes(raw))
-        return obj
-
-
-def load_prompt(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def fill(template: str, placeholder: str, payload: Any) -> str:
-    if isinstance(payload, str):
-        return template.replace(placeholder, payload)
-    return template.replace(
-        placeholder, json.dumps(payload, indent=2, ensure_ascii=False)
-    )
-
 
 # ---------------------------------------------------------------------------
 # Persona identity
@@ -223,13 +149,14 @@ def cluster_hidden_facts(
     client,
     model: str,
     hidden_facts: list[dict[str, Any]],
+    gpt_reasoning: str,
     provider: str,
     backend: str,
 ) -> dict[str, Any]:
     """Cluster hidden facts into groups of 2-3 related facts."""
     template = load_prompt(CLUSTER_PROMPT_PATH)
     template = fill(template, "{{INSERT_HIDDEN_FACTS_JSON_HERE}}", hidden_facts)
-    raw = _call_llm(client, model, template, provider=provider, backend=backend)
+    raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     result = extract_json(raw)
 
     fact_ids_expected = {
@@ -298,6 +225,7 @@ def generate_cluster_fragments(
     log_start: str,
     log_end: str,
     contact_usage: dict[str, int],
+    gpt_reasoning: str,
     provider: str,
     backend: str,
 ) -> dict[str, Any]:
@@ -321,7 +249,7 @@ def generate_cluster_fragments(
     template = fill(
         template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
     )
-    raw = _call_llm(client, model, template, provider=provider, backend=backend)
+    raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 
 
@@ -336,6 +264,7 @@ def verify_cluster(
     fragments: list[dict[str, Any]],
     persona: dict[str, Any],
     num_facts: int,
+    gpt_reasoning: str,
     provider: str,
     backend: str,
 ) -> dict[str, Any]:
@@ -366,7 +295,7 @@ def verify_cluster(
     template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
     template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
     template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
-    raw = _call_llm(client, verifier_model, template, provider=provider, backend=backend)
+    raw = call_llm(client, verifier_model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 
 
@@ -413,26 +342,42 @@ def _has_implicitness_leaks(verification: dict[str, Any]) -> bool:
     return any(c.get("fragments_that_leak_labels") for c in checks)
 
 
+# Cluster acceptance policy. "strict" enforces the verifier contract:
+# only a RECOVERED verdict with no leak-flagged fragments passes.
+# "lenient" reproduces the acceptance rule used to build the committed
+# data samples and must be selected explicitly.
+GATE_POLICY = "strict"
+
+
 def cluster_passed(
     verification: dict[str, Any],
     cluster_facts: list[dict[str, Any]],
+    policy: str | None = None,
 ) -> tuple[bool, list[dict[str, Any]]]:
     """Check if the cluster verification gate passes.
 
-    Primary gate: RECOVERED passes unconditionally.
+    strict (default): only RECOVERED passes, and only when no fragment
+    is leak-flagged and the shared-evidence checks did not fail. This is
+    the acceptance predicate the verifier prompt documents.
 
-    Production override: AMBIGUOUS also passes only when every recovered
-    candidate is HIGH confidence, shared-evidence checks did not fail, and
-    the ambiguity came from implicitness leakage (realistic logistical
-    anchors). Rejects weak, missing, or structurally bad recovery.
+    lenient: RECOVERED passes unconditionally, and AMBIGUOUS also passes
+    when every candidate is HIGH confidence and leak flags are present.
+    This preserves the rule the committed data samples were built with
+    so they remain reproducible; it does not satisfy the strict
+    predicate and is opt-in via --gate-policy lenient.
 
     Returns (passed, matched_pairs) for trace recording.
     """
+    policy = policy or GATE_POLICY
     if _shared_evidence_failed(verification):
         return (False, [])
 
     verdict = verification.get("verdict")
-    if verdict == "RECOVERED":
+    if policy == "strict":
+        if verdict != "RECOVERED" or _has_implicitness_leaks(verification):
+            return (False, [])
+        gate_reason = "recovered_no_leaks"
+    elif verdict == "RECOVERED":
         gate_reason = "recovered"
     elif (
         verdict == "AMBIGUOUS"
@@ -448,6 +393,7 @@ def cluster_passed(
         "accepted_as": "RECOVERED",
         "original_verdict": verdict,
         "reason": gate_reason,
+        "policy": policy,
     }
 
     # Passed the primary gate. Now build matched_pairs for traceability.
@@ -1413,13 +1359,13 @@ def _upsert_trace_entry(
 def run_step(
     profile_path: Path,
     social_circle_path: Path,
-    news_events_path: Path | None,
     output_dir: Path,
     model: str,
     verifier_model: str,
     per_cluster_max_attempts: int,
     log_start: str,
     log_end: str,
+    gpt_reasoning: str,
     provider: str,
     backend: str,
     max_facts: int = 100,
@@ -1443,8 +1389,7 @@ def run_step(
     return run_step_from_dicts(
         corrected_profile, corrected_social_circle, hidden_facts,
         output_dir, model, verifier_model, per_cluster_max_attempts,
-        log_start, log_end, provider, backend,
-        news_events_path=news_events_path,
+        log_start, log_end, gpt_reasoning, provider, backend,
         base_name=profile_path.stem.replace("_verification", ""),
         resume=resume,
         retry_failed=retry_failed,
@@ -1466,9 +1411,9 @@ def run_step_from_dicts(
     per_cluster_max_attempts: int,
     log_start: str,
     log_end: str,
+    gpt_reasoning: str,
     provider: str,
     backend: str,
-    news_events_path: Path | str | None = None,
     base_name: str | None = None,
     resume: bool = False,
     retry_failed: bool = False,
@@ -1478,7 +1423,7 @@ def run_step_from_dicts(
     decoy_count: int = 0,
     decoy_pool_size: int = 40,
 ) -> int:
-    """Dict-based entry point for openclaw_pipeline.py integration."""
+    """Dict-based entry point for run.py integration."""
     client = make_client(provider) if backend in API_BACKENDS else None
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1503,10 +1448,6 @@ def run_step_from_dicts(
     contact_usage: dict[str, int] = {}
     trace: list[dict[str, Any]] = []
 
-    # News events
-    news_events: list[dict[str, Any]] = []
-    if news_events_path and Path(news_events_path).exists():
-        news_events = json.loads(Path(news_events_path).read_text(encoding="utf-8"))
     verified_decoy_pool = load_verified_decoys(verified_decoys_path)
     decoy_prompt_cache: str | None = None
 
@@ -1519,8 +1460,8 @@ def run_step_from_dicts(
             decoy_prompt_cache = load_prompt(DECOY_PROMPT_PATH)
 
         def call_decoy_model(prompt: str) -> str:
-            return _call_llm(
-                client, model, prompt, provider=provider, backend=backend,
+            return call_llm(
+                client, model, prompt, gpt_reasoning, provider=provider, backend=backend
             )
 
         verified_decoy_pool = resolve_verified_decoy_pool(
@@ -1678,7 +1619,7 @@ def run_step_from_dicts(
     # Phase 1: Cluster
     if clusters is None:
         print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
-        cluster_result = cluster_hidden_facts(client, model, hidden_facts, provider, backend)
+        cluster_result = cluster_hidden_facts(client, model, hidden_facts, gpt_reasoning, provider, backend)
         clusters = cluster_result.get("clusters", [])
         print(f"[step4] formed {len(clusters)} clusters")
 
@@ -1725,13 +1666,13 @@ def run_step_from_dicts(
                 bundle = generate_cluster_fragments(
                     client, model, cluster_input, cluster_facts,
                     corrected_social_circle, log_start, log_end,
-                    contact_usage, provider, backend,
+                    contact_usage, gpt_reasoning, provider, backend
                 )
                 fragments = bundle.get("fragments", [])
 
                 verification = verify_cluster(
                     client, verifier_model, fragments, persona,
-                    len(cluster_facts), provider, backend,
+                    len(cluster_facts), gpt_reasoning, provider, backend,
                 )
                 last_fragments = fragments
                 last_verification = verification
@@ -1893,16 +1834,12 @@ def main() -> None:
         help="Path to {persona}_social_circle_verification.json from step3",
     )
     parser.add_argument(
-        "--news-events", type=Path, default=None,
-        help="Optional path to news events JSON for surprise weaving",
-    )
-    parser.add_argument(
         "--output", type=Path,
-        default=STEP_DIR / "data_samples" / "output",
+        default=STEP_DIR / "data_samples",
     )
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model", default=None)
     parser.add_argument(
-        "--verifier-model", required=True,
+        "--verifier-model", default=None,
         help="Independent model for the reverse-inferability gate",
     )
     parser.add_argument(
@@ -1911,8 +1848,13 @@ def main() -> None:
     parser.add_argument("--log-start", default="2026-03-01")
     parser.add_argument("--log-end", default="2026-03-31")
     parser.add_argument(
-        "--backend", default="claude",
-        choices=list(SUBSCRIPTION_BACKENDS) + list(API_BACKENDS),
+        "--gpt-reasoning",
+        default="high",
+        help="OpenAI model (openai-api, codex) reasoning effort."
+    )
+    parser.add_argument(
+        "--backend", default="anthropic-api",
+        choices=SUPPORTED_BACKENDS,
         help="claude/codex for subscription CLI, anthropic-api/openai-api for metered API.",
     )
     parser.add_argument(
@@ -1950,14 +1892,28 @@ def main() -> None:
         "--decoy-pool-size", type=int, default=40,
         help="Number of decoy candidates to generate when --verified-decoys is omitted",
     )
+    parser.add_argument(
+        "--gate-policy", choices=("strict", "lenient"), default="strict",
+        help="Cluster acceptance policy. strict enforces the documented "
+        "predicate (RECOVERED, no leak flags). lenient reproduces the rule "
+        "the committed data samples were built with.",
+    )
     args = parser.parse_args()
+
+    global GATE_POLICY
+    GATE_POLICY = args.gate_policy
 
     backend = args.backend
     provider = (
-        provider_for_backend(backend, args.provider or "anthropic")
+        provider_for_backend(backend, args.provider)
         if backend in API_BACKENDS
         else (args.provider or "anthropic")
     )
+
+    if args.model is None:
+        args.model = default_model_for_backend(backend, "generator")
+    if args.verifier_model is None:
+        args.verifier_model = default_model_for_backend(backend, "verifier")
 
     if backend in API_BACKENDS and not check_api_key(provider):
         print(f"API key for {provider} is not set.", file=sys.stderr)
@@ -1967,13 +1923,13 @@ def main() -> None:
         run_step(
             args.profile,
             args.social_circle,
-            args.news_events,
             args.output,
             args.model,
             args.verifier_model,
             args.per_cluster_max_attempts,
             args.log_start,
             args.log_end,
+            args.gpt_reasoning,
             provider=provider,
             backend=backend,
             max_facts=args.max_facts,

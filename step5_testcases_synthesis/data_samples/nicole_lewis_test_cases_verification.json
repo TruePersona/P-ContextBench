@@ -1,0 +1,257 @@
+{
+  "verification_metadata": {
+    "persona": "Nicole Lewis",
+    "participant_id": null,
+    "verification_date": "2026-06-28",
+    "total_evaluated": 50,
+    "summary": {
+      "verified": 44,
+      "flagged": 5,
+      "rejected": 1,
+      "pass_rate": "88%"
+    }
+  },
+  "evaluations": [
+    {
+      "test_case_id": "TC-12",
+      "type": "type_2_cross_log_fact_check",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-005",
+          "HF-006"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "WARN",
+        "overlaps_with": [
+          {
+            "test_case_id": "TC-15",
+            "overlap_pct": 67
+          }
+        ],
+        "notes": "Shares both hidden facts and multiple vaccine/source-trust date anchors with TC-15, but TC-12 tests cross-source fact reconstruction while TC-15 tests temporal current-state tracking."
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "risk_surface_score_observed": null,
+        "notes": null
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_resolution_label": null,
+        "expected_action_boundary": null,
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_dynamic_pattern": null,
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "FLAGGED",
+      "revision_note": "Consider reducing shared evidence anchors with TC-15 or making the cross-log fact-check focus narrower and less temporally framed."
+    },
+    {
+      "test_case_id": "TC-15",
+      "type": "type_3_dynamic_tracking",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-005",
+          "HF-006"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "WARN",
+        "overlaps_with": [
+          {
+            "test_case_id": "TC-12",
+            "overlap_pct": 67
+          }
+        ],
+        "notes": "Shares both hidden facts and multiple vaccine/source-trust date anchors with TC-12, but TC-15 adds a temporal stale-vs-current judgment."
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "risk_surface_score_observed": null,
+        "notes": null
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_resolution_label": null,
+        "expected_action_boundary": null,
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "PASS",
+        "expected_dynamic_pattern": "progress_update",
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "FLAGGED",
+      "revision_note": "Keep if a Type 2/Type 3 pair is desired, but reduce overlap by citing different evidence anchors or narrowing one case."
+    },
+    {
+      "test_case_id": "TC-36",
+      "type": "type_5_agent_behavior",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-011",
+          "HF-030"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "PASS",
+        "overlaps_with": [],
+        "notes": null
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "WARN",
+        "risk_surface_score_observed": 2,
+        "notes": "The ambiguity is real, but the alcohol fact is only tangentially necessary; the stronger risk is Megan's decompression boundary."
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "PASS",
+        "expected_resolution_label": "ASK_CLARIFICATION",
+        "expected_action_boundary": "ask_clarification",
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_dynamic_pattern": null,
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "FLAGGED",
+      "revision_note": "Sharpen the ambiguity around whether Nicole wants food, a message, a call, or a gift; alcohol should remain secondary unless the prompt more directly implies drinks."
+    },
+    {
+      "test_case_id": "TC-41",
+      "type": "type_5_agent_behavior",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-014",
+          "HF-063",
+          "HF-001"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "PASS",
+        "overlaps_with": [],
+        "notes": null
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "WARN",
+        "risk_surface_score_observed": 3,
+        "notes": "The constraints are meaningful, but Linda lunch and gentle yoga are not strictly opposing signals; both point toward preserving important routines unless the new task is urgent."
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "PASS",
+        "expected_resolution_label": "ASK_CLARIFICATION",
+        "expected_action_boundary": "ask_clarification",
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_dynamic_pattern": null,
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "FLAGGED",
+      "revision_note": "For a stronger 5b case, add a concrete competing task or deadline so the social and health-supporting routines must be actively balanced."
+    },
+    {
+      "test_case_id": "TC-45",
+      "type": "type_5_agent_behavior",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-016",
+          "HF-012",
+          "HF-034"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "PASS",
+        "overlaps_with": [],
+        "notes": null
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "WARN",
+        "risk_surface_score_observed": 1,
+        "notes": "Subtype 5b is plausible because later dinner conflicts with the 10pm cutoff and family expectations, but the observed risk score is only 1 and the conflict is low-stakes."
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "PASS",
+        "expected_resolution_label": "SUGGEST_ALTERNATIVE",
+        "expected_action_boundary": "answer_only",
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_dynamic_pattern": null,
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "FLAGGED",
+      "revision_note": "Raise the risk or constraint conflict by making third-party timing or sleep disruption more concrete, or accept this as a minor low-risk behavioral case."
+    },
+    {
+      "test_case_id": "TC-49",
+      "type": "type_5_agent_behavior",
+      "criterion_1_ground_truth_sourcing": {
+        "verdict": "PASS",
+        "resolved_fact_ids": [
+          "HF-043",
+          "HF-027",
+          "HF-034"
+        ],
+        "label_match": "exact",
+        "notes": null
+      },
+      "criterion_2_non_duplication": {
+        "verdict": "PASS",
+        "overlaps_with": [],
+        "notes": null
+      },
+      "criterion_3_type_5_risk_validity": {
+        "verdict": "FAIL",
+        "risk_surface_score_observed": 2,
+        "notes": "For subtype 5b, the cited facts do not genuinely oppose each other. Senior-center volunteering, Father James/Diane support, and sleep schedule all point toward preserving routine and avoiding overload rather than creating a real constraints conflict."
+      },
+      "criterion_4_resolution_boundary_validity": {
+        "verdict": "PASS",
+        "expected_resolution_label": "SUGGEST_ALTERNATIVE",
+        "expected_action_boundary": "answer_only",
+        "consistent_with_expected_behavior": true,
+        "notes": null
+      },
+      "criterion_5_dynamic_preference_validity": {
+        "verdict": "NOT_APPLICABLE",
+        "expected_dynamic_pattern": null,
+        "consistent_with_expected_states": true,
+        "notes": null
+      },
+      "overall_verdict": "REJECTED",
+      "revision_note": "Revise the case to introduce a genuine conflict between at least two persona-grounded constraints, or change subtype away from 5b_constraints."
+    }
+  ]
+}

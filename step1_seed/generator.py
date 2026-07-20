@@ -86,7 +86,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).parent / "data_samples" / "output",
+        default=Path(__file__).parent / "data_samples",
         help="Directory to write the seed JSON into",
     )
     args = parser.parse_args()
