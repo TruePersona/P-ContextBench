@@ -118,11 +118,11 @@ def default_model_for_backend(backend: str, role: str = "generator") -> str:
     if backend in {"claude", "anthropic-api"}:
         if role in {"verifier", "judge"}:
             return "claude-sonnet-4-6"
-        if role == "evaluator":
+        if role == "answer":
             return "claude-haiku-4-5"
         return "claude-opus-4-7"
     if backend in {"codex", "openai-api"}:
-        if role == "evaluator":
+        if role == "answer":
             return "gpt-5.4-mini"
         if role == "judge":
             return "gpt-5.4"

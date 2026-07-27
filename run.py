@@ -56,7 +56,7 @@ def run_pipeline(
     model: str,
     verifier_model: str,
     judge_model: str,
-    evaluator_model: str,
+    answer_model: str,
     uuid: str | None = None,
     start: int = 1,
     stop: int = 6,
@@ -205,7 +205,7 @@ def run_pipeline(
             str(STEP6_DIR / "generator.py"),
             "--app-logs", str(app_logs_path),
             "--test-cases", str(test_cases_path),
-            "--model-pass1", evaluator_model,
+            "--model-pass1", answer_model,
             "--model-pass2", judge_model,
             "--backend", backend,
             "--provider", provider,
@@ -348,14 +348,14 @@ def main() -> None:
         "the verifier is independent.",
     )
     parser.add_argument(
-        "--evaluator-model", default=None,
-        help="Evaluator model for Step 6 Pass 1 answering. MUST be "
+        "--answer-model", default=None,
+        help="Answer model for Step 6 Pass 1 answering. MUST be "
         "an exact pinned string.",
     )
     parser.add_argument(
         "--judge-model", default=None,
         help="Judge model for Step 6 Pass 2 scoring. MUST be an exact pinned "
-        "string. Should differ from --evaluator-model when possible to keep the scorer "
+        "string. Should differ from --answer-model when possible to keep the scorer "
         "independent of the answerer.",
     )
     parser.add_argument(
@@ -423,15 +423,15 @@ def main() -> None:
         args.model = default_model_for_backend(args.backend, "generator")
     if args.verifier_model is None:
         args.verifier_model = default_model_for_backend(args.backend, "verifier")
-    if args.evaluator_model is None:
-        args.evaluator_model = default_model_for_backend(args.backend, "evaluator")
+    if args.answer_model is None:
+        args.answer_model = default_model_for_backend(args.backend, "answer")
     if args.judge_model is None:
         args.judge_model = default_model_for_backend(args.backend, "judge")
 
     for flag, val in [
         ("--model", args.model),
         ("--verifier-model", args.verifier_model),
-        ("--evaluator-model", args.evaluator_model),
+        ("--answer-model", args.answer_model),
         ("--judge-model", args.judge_model),
     ]:
         if val in {"opus", "sonnet", "haiku"}:
@@ -475,7 +475,7 @@ def main() -> None:
                     args.model,
                     args.verifier_model,
                     args.judge_model,
-                    args.evaluator_model,
+                    args.answer_model,
                     args.uuid,
                     args.start,
                     args.stop,
@@ -521,7 +521,7 @@ def main() -> None:
                 args.model,
                 args.verifier_model,
                 args.judge_model,
-                args.evaluator_model,
+                args.answer_model,
                 args.uuid,
                 args.start,
                 args.stop,

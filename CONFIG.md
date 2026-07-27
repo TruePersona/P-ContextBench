@@ -28,14 +28,26 @@ A stage that exits nonzero stops the pipeline for that persona. With `--all`, re
 | `--provider` | | API provider when the backend is API based; `openrouter` routes the OpenAI SDK through OpenRouter. |
 | `--model` | per backend | Generator model. Exact pinned string, never an alias. |
 | `--verifier-model` | per backend | Verifier model for construction gates. Should differ from `--model`. |
-| `--evaluator-model` | per backend | Step 6 Pass 1 answering model. |
-| `--judge-model` | per backend | Step 6 Pass 2 scoring model. Should differ from `--evaluator-model`. |
+| `--answer-model` | per backend | Step 6 Pass 1 answering model. |
+| `--judge-model` | per backend | Step 6 Pass 2 scoring model. Should differ from `--answer-model`. |
 | `--backend-pass2` | matches `--backend` | Separate scoring backend for Step 6. |
 | `--provider-pass2` | | Provider override for the scoring backend. |
 | `--gpt-reasoning` | `high` | Reasoning effort for generation and verification (Steps 2 to 5) and Step 6 Pass 2 scoring. |
 | `--gpt-eval-reasoning` | `low` | Reasoning effort for Step 6 Pass 1 answering. |
 
-Default model assignments per backend are listed in the README under Model independence.
+**Default model assignments:**
+
+| Role | Claude | GPT |
+|---|---|---|
+| Generator | `claude-opus-4-7` | `gpt-5.5` |
+| Verifier | `claude-sonnet-4-6` | `gpt-5.4` |
+| Answer | `claude-haiku-4-5` | `gpt-5.4-mini` |
+| Judge | `claude-sonnet-4-6` | `gpt-5.4` |
+
+**OpenAI backend (openai-api, codex) reasoning defaults:**
+
+- Generation steps (Steps 2-5, Step 6 Pass 2) use `high` reasoning effort.
+- Evaluated responses (Step 6 Pass 1) use `low` reasoning effort.
 
 ## Step 4 app log synthesis
 

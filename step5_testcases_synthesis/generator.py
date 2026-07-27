@@ -49,7 +49,7 @@ DEFAULT_MAX_ITERATIONS = 3
 def strip_filler_for_step5(app_logs: dict[str, Any]) -> dict[str, Any]:
     """Remove filler sessions from app logs before injecting into Step 5 prompt.
 
-    Filler sessions exist to challenge the evaluator in Step 6 (they are noise
+    Filler sessions exist to challenge the answer model in Step 6 (they are noise
     the model must sift through). Step 5 only needs meaningful sessions and
     hidden_facts to build evidence anchors and test cases. Stripping filler
     reduces the prompt from ~826K tokens to ~185K tokens.

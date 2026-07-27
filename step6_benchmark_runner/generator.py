@@ -1,6 +1,6 @@
 """Step 6 — Benchmark runner (two-pass: answering then scoring).
 
-Pass 1: evaluator LLM sees raw app logs + questions only. No ground_truth in
+Pass 1: answering LLM sees raw app logs + questions only. No ground_truth in
         context. Writes pass1 answers.
 
 Pass 2: scorer LLM sees test cases (with ground_truth) + Pass 1 answers.
@@ -87,7 +87,7 @@ def resolve_verified_fragments_path(app_logs_path: Path) -> Path | None:
 # ----- raw log preparation -------------------------------------------------
 
 def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
-    """Flatten messenger + calendar into a plain text stream for the evaluator."""
+    """Flatten messenger + calendar into a plain text stream for the answering model."""
     lines: list[str] = []
     messenger = app_logs.get("messenger", {})
     sessions: list[dict[str, Any]] = []
@@ -768,7 +768,7 @@ def main() -> None:
     response_format = "json_object" if args.json else "text"
 
     if args.model_pass1 is None:
-        args.model_pass1 = default_model_for_backend(backend, "evaluator")
+        args.model_pass1 = default_model_for_backend(backend, "answer")
     if args.model_pass2 is None:
         args.model_pass2 = default_model_for_backend(backend_pass2, "judge")
 
