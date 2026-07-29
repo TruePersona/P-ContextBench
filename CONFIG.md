@@ -9,7 +9,10 @@ All flags below belong to `run.py`, the single pipeline entry point. Each step g
 | `--persona NAME` | | Shorthand for `step1_seed/data_samples/NAME_seed.json`. |
 | `--seed PATH` | | Explicit seed JSON path. |
 | `--uuid UUID` | | Nemotron-Personas-USA record id. Required for Step 1. |
-| `--all` | | Run every seed in `step1_seed/data_samples/`. |
+| `--all`* | | Run every seed in `step1_seed/selected_personas.json`. |
+| `--random-count N`* | 30 | Pool size to seed a new random persona group when other selection flags are omitted. |
+
+**See **[Step 1: Seed](#step-1-seed)** below for more information about `--start 1` and random seeding when persona selection flags are omitted*
 
 ## Pipeline range
 
@@ -35,7 +38,7 @@ A stage that exits nonzero stops the pipeline for that persona. With `--all`, re
 | `--gpt-reasoning` | `high` | Reasoning effort for generation and verification (Steps 2 to 5) and Step 6 Pass 2 scoring. |
 | `--gpt-eval-reasoning` | `low` | Reasoning effort for Step 6 Pass 1 answering. |
 
-**Default model assignments:**
+**Default model assignments per backend:**
 
 | Role | Claude | GPT |
 |---|---|---|
@@ -49,7 +52,22 @@ A stage that exits nonzero stops the pipeline for that persona. With `--all`, re
 - Generation steps (Steps 2-5, Step 6 Pass 2) use `high` reasoning effort.
 - Evaluated responses (Step 6 Pass 1) use `low` reasoning effort.
 
-## Step 4 app log synthesis
+## Step 1: Seed
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--random-count N` | 30 | Pool size to seed a new random persona group when other selection flags are omitted. |
+| `--min-age` | 0 | Minimum age of selected personas |
+| `--max-age` | 106 | Maximum age of selected personas |
+| `--sex` | `Female`, `Male` | Field filter (sex) for random selection pool |
+| `--marital-status` | `never_married`, `married_present`, `divorced`, `widowed`, `separated` | Field filter (marital_status) for random selection pool |
+| `education_level` | `less_than_9th`, `high_school`, `some_college`, `bachelors`, `graduate`, `associates`, `9th_12th_no_diploma` | Field filter (education_level) for random selection pool |
+
+Filter flags are applied when no persona selection flags (`--seed`, `--persona`, `--uuid`, `--all`) are present. Default filters keep all entries eligible for selection. Newly generated seeds (with `--random-count`) are written to `step1_seed/data_samples/` and `step1_seed/selected_personas.json`. When `--all` is present with `--start 1`, seeds are generated from `step1_seed/selected_personas.json`. However, if `step1_seed/selected_personas.json` does not exist, the random selection process is used in its place. Seeds generated with `--all` or `--random-count` overwrite all existing seed data.
+
+*For reproducibility in tests, the dataset's shuffling seed (360) is currently constant.*
+
+## Step 4: App Log Synthesis
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -66,7 +84,7 @@ A stage that exits nonzero stops the pipeline for that persona. With `--all`, re
 | `--decoy-count` | 0 | Verified messenger decoys to place. |
 | `--decoy-pool-size` | 40 | Decoy candidates to generate when no pool is supplied. |
 
-## Step 6 benchmark
+## Step 6: Benchmark
 
 | Flag | Default | Meaning |
 |---|---|---|

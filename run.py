@@ -20,8 +20,9 @@ from utils import (
     base
 )
 from step1_seed.generator import (
-    fetch_record,
-    emit_seed,
+    fetch_single,
+    fetch_selected,
+    select_random,
 )
 
 REPO_ROOT = Path(__file__).parent
@@ -87,10 +88,7 @@ def run_pipeline(
     # Step 1: Seed
 
     if start <= 1 <= stop and uuid:
-        record = fetch_record(uuid)
-        seed_path = emit_seed(record, STEP1_DIR / "data_samples")
-        start = 2
-        print(f"Wrote seed: {seed_path}")
+        seed_path = fetch_single(uuid, STEP1_DIR / "data_samples")
 
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
     name = extract_name(seed)
@@ -249,7 +247,13 @@ def main() -> None:
         "exclusive with --seed and --all.",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Run against every seed JSON in step1_seed/"
+        "--all", action="store_true", help="Run against every persona listed in step1_seed/selected_personas.json"
+    )
+    parser.add_argument(
+        "--random-count",
+        type=int,
+        default=30,
+        help="Optional pool size to generate and run against randomly selected personas",
     )
     parser.add_argument("--start", type=int, default=1, choices=[1, 2, 3, 4, 5, 6])
     parser.add_argument("--stop", type=int, default=6, choices=[1, 2, 3, 4, 5, 6])
@@ -412,6 +416,43 @@ def main() -> None:
         help="Optional API provider override for compatibility (Step 6 Pass 2). "
         "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
     )
+    parser.add_argument(
+        "--min-age",
+        type=int,
+        default=0,
+        help="Minimum age for random selection pool",
+    )
+    parser.add_argument(
+        "--max-age",
+        type=int,
+        default=0,
+        help="Maximum age for random selection pool",
+    )
+    parser.add_argument(
+        "--sex",
+        type=str,
+        default=["Male", "Female"],
+        nargs="+",
+        choices=["Male", "Female"],
+        help="Field filter (sex) for random selection pool",
+    )
+    parser.add_argument(
+        "--marital-status",
+        type=str,
+        default=["never_married", "married_present", "divorced", "widowed", "separated"],
+        nargs="+",
+        choices=["never_married", "married_present", "divorced", "widowed", "separated"],
+        help="Field filter (marital_status) for random selection pool",
+    )
+    parser.add_argument(
+        "--education-level",
+        type=str,
+        default=["less_than_9th", "high_school", "some_college", "bachelors", "graduate", "associates", "9th_12th_no_diploma"],
+        nargs="+",
+        choices=["less_than_9th", "high_school", "some_college", "bachelors", "graduate", "associates", "9th_12th_no_diploma"],
+        help="Field filter (education_level) for random selection pool",
+    )
+
     args = parser.parse_args()
 
     backend_pass2 = args.backend_pass2 or args.backend
@@ -446,11 +487,11 @@ def main() -> None:
     if args.passk_runs < 1:
         parser.error("--passk-runs must be at least 1")
 
-    if args.backend in API_BACKENDS and not check_api_key(provider):
+    if args.stop != 1 and args.backend in API_BACKENDS and not check_api_key(provider):
         parser.error(f"{provider.upper()}_API_KEY is not set")
 
-    if (args.start == 1) == (args.uuid is None):
-        parser.error("--start 1 and --uuid require each other.")
+    if args.start != 1 and args.uuid:
+        parser.error("--uuid requires --start 1")
 
     if args.seed and args.uuid:
         parser.error("--seed is mutually exclusive with --uuid")
@@ -462,11 +503,36 @@ def main() -> None:
         args.seed = STEP1_DIR / "data_samples" / f"{args.persona}_seed.json"
         if not args.seed.exists():
             parser.error(f"Persona seed not found: {args.seed}")
+    
+    if args.start == 1 and args.seed:
+        parser.error("--start must be <= 2 with --persona or --seed")
 
-    if args.all and args.start > 1:
+    if args.all:
         seed_dir = STEP1_DIR / "data_samples"
+        selected_path = STEP1_DIR / "selected_personas.json"
+
+        if args.start == 1:
+            if selected_path.is_file():
+                fetch_selected(seed_dir)
+            else:
+                print("No file found for selected_personas.json. Generating {args.random_count} random persona(s)...")
+                select_random(
+                    args.random_count,
+                    args.min_age,
+                    args.max_age,
+                    args.sex,
+                    args.marital_status,
+                    args.education_level,
+                    seed_dir
+                )
+            if args.stop == 1:
+                return
+            args.start = 2
+        
+        selected_personas = json.loads(selected_path.read_text(encoding="utf-8"))
         failed: list[str] = []
-        for seed_file in sorted(seed_dir.glob("*_seed.json")):
+        for seed_name in selected_personas.values():
+            seed_file = seed_dir / f"{seed_name}_seed.json"
             try:
                 run_pipeline(
                     seed_file,
@@ -551,7 +617,74 @@ def main() -> None:
             print(str(exc), file=sys.stderr)
             sys.exit(1)
     else:
-        parser.error("Provide --persona <name>, --seed <path>, --uuid <uuid> or --all")
+        print(f"Generating {args.random_count} random persona(s)")
+        seed_dir = STEP1_DIR / "data_samples"
+        selected_path = STEP1_DIR / "selected_personas.json"
+
+        if args.start == 1:
+            select_random(
+                args.random_count,
+                args.min_age,
+                args.max_age,
+                args.sex,
+                args.marital_status,
+                args.education_level,
+                seed_dir
+            )
+            if args.stop == 1:
+                return
+            args.start = 2
+        
+        selected_personas = json.loads(selected_path.read_text(encoding="utf-8"))
+        failed: list[str] = []
+        for seed_name in selected_personas.values():
+            seed_file = seed_dir / f"{seed_name}_seed.json"
+            try:
+                run_pipeline(
+                    seed_file,
+                    args.backend,
+                    provider,
+                    args.model,
+                    args.verifier_model,
+                    args.judge_model,
+                    args.answer_model,
+                    args.uuid,
+                    args.start,
+                    args.stop,
+                    args.log_start,
+                    args.log_end,
+                    args.per_cluster_max_attempts,
+                    gpt_reasoning=args.gpt_reasoning,
+                    gpt_eval_reasoning=args.gpt_eval_reasoning,
+                    max_facts=args.max_facts,
+                    resume=args.resume,
+                    retry_failed=args.retry_failed,
+                    filler_ratio=args.filler_ratio,
+                    gate_policy=args.gate_policy,
+                    target_context_tokens=args.target_context_tokens,
+                    verified_decoys_path=args.verified_decoys,
+                    decoy_count=args.decoy_count,
+                    decoy_pool_size=args.decoy_pool_size,
+                    passk_runs=args.passk_runs,
+                    passk_output=args.passk_output,
+                    passk_allow_missing=args.passk_allow_missing,
+                    backend_pass2=backend_pass2,
+                    provider_pass2=provider_pass2,
+                    skip_pass1=args.skip_pass1,
+                    skip_pass2=args.skip_pass2,
+                )
+            except StageError as exc:
+                # Move on to the next persona but keep the failure visible;
+                # a partial batch must not exit 0.
+                print(f"[{seed_file.stem}] {exc}", file=sys.stderr)
+                failed.append(seed_file.stem)
+        if failed:
+            print(
+                f"{len(failed)} persona(s) failed: {', '.join(failed)}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
 
 
 if __name__ == "__main__":

@@ -47,6 +47,8 @@ Generated persona artifacts are tracked under each step's
 
 Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time.
 
+Seeded personas are automatically listed in [`step1_seed/selected_personas.json`](step1_seed/selected_personas.json) by name and UUID. This file is used during batch generation (e.g. when calling `--all`). Due to size limitations, sample data includes 30 personas. The complete 100 persona list is provided at [`step1_seed/original_selected_personas.json`](step1_seed/original_selected_personas.json) for reference.
+
 **Provided samples use GPT-5.5 for generation (`--model`) and GPT-5.4 for verification/scoring (`--verifier-model`, `judge-model`).**
 
 ## Getting started
@@ -140,6 +142,21 @@ python run.py \
   --verifier-model gpt-5.4
 ```
 
+### Seed a new population
+```bash
+# Using defaults (--random-count 30, no filters)
+python run.py --start 1 --stop 1
+
+# Filter specific demographics
+python run.py \
+  --start 1 --stop 1 \
+  --random-count 40 \
+  --min-age 40 \
+  --max-age 60 \
+  --sex Male \
+  --marital-status married_present \
+  --education-level high_school some_college bachelors
+```
 
 For the full flag reference, defaults, and failure semantics, see [CONFIG.md](CONFIG.md).
 
