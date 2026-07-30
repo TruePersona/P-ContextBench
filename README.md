@@ -17,17 +17,17 @@ agents.
 
 ## Pipeline
 
-Each persona is constructed through a six-step pipeline. Every step has its own generator and verifier.
+Each persona is constructed through a six-step pipeline. Every LLM-based generation step (2-5) has its own verification process to ensure consistency and quality in generated samples. These steps utilize two separate models for generation (`--model`) and verification (`--verifier-model`).
 Shared model and backend dispatch helpers live in [`llm.py`](llm.py); shared seed parsing helpers live in [`utils.py`](utils.py).
 
 | Step | What it does |
 |---|---|
 | [step1_seed](step1_seed) | Pull baseline demographics from the NVIDIA Nemotron-Personas-USA dataset. |
-| [step2_interview](step2_interview) | Generate a 109-question life-history interview and a structured profile with a `hidden_facts` registry (60-150 atomic facts per persona). |
+| [step2_interview](step2_interview) | Generate a 109-question life-history interview and a structured profile with a `hidden_facts` registry. |
 | [step3_social_circle](step3_social_circle) | Synthesize the people with whom the persona most frequently exchanges personal text messages. |
 | [step4_app_log_synthesizer](step4_app_log_synthesizer) | Generate mobile app activity logs (messenger + calendar) that implicitly encode each hidden fact through behavioral signals distributed across multiple sources. |
 | [step5_testcases_synthesis](step5_testcases_synthesis) | Construct typed test cases (five types, including agent-behavior scenarios) grounded in the hidden_facts registry. |
-| [step6_benchmark_runner](step6_benchmark_runner) | Execute the benchmark against a frontier LLM using a two-pass design that prevents ground-truth leakage; includes Pass^k aggregation for repeated-run reliability. |
+| [step6_benchmark_runner](step6_benchmark_runner) | Execute the benchmark against a frontier LLM using a two-pass design that prevents ground-truth leakage; includes Pass^k aggregation for repeated-run reliability. Pass 1 responds to test cases using `--answer-model`. Pass 2 scores the model's answers using `--judge-model`. |
 
 ## Generated Samples
 
@@ -45,9 +45,9 @@ Generated persona artifacts are tracked under each step's
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases.json`
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases_verification.json`
 
-Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time.
+Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time. Additionally, using `--passk-runs` returns `{persona}_passk_summary.json`, providing in-depth scoring metrics. 
 
-Seeded personas are automatically listed in [`step1_seed/selected_personas.json`](step1_seed/selected_personas.json) by name and UUID. This file is used during batch generation (e.g. when calling `--all`). Due to size limitations, sample data includes 30 personas. The complete 100 persona list is provided at [`step1_seed/original_selected_personas.json`](step1_seed/original_selected_personas.json) for reference.
+Seeded personas are automatically listed in [`step1_seed/selected_personas.json`](step1_seed/selected_personas.json) by name and UUID. This file is used during batch generation (e.g. when calling `--all`; refer to examples under **[Run](#run)**). Due to size limitations, sample data includes 30 personas. The complete 100 persona list is provided at [`step1_seed/original_selected_personas.json`](step1_seed/original_selected_personas.json) for reference.
 
 **Provided samples use GPT-5.5 for generation (`--model`) and GPT-5.4 for verification/scoring (`--verifier-model`, `judge-model`).**
 
@@ -75,8 +75,20 @@ Verify your backend works before starting a long run: `python run.py --help`.
 ### Score a model against the existing dataset
 
 ```bash
+# Standard benchmark (used in provided data samples)
+python run.py --all \
+  --start 6 --stop 6 \
+  --backend codex \
+  --answer-model <ANSWER_MODEL> \
+  --judge-model gpt-5.4 \
+  --passk-runs 3
+```
+
+#### Basic examples:
+
+```bash
 # Benchmark GPT-5.4 mini with GPT-5.4 as judge (Codex subscription)
-python run.py --persona julio_simmons \
+python run.py --persona carlos_mercedes \
   --start 6 --stop 6 \
   --backend codex \
   --answer-model gpt-5.4-mini \
@@ -93,7 +105,7 @@ python run.py --all \
 *To repeat Step 6 for reliability, add `--passk-runs`:*
 
 ```bash
-python run.py --persona julio_simmons \
+python run.py --persona carlos_mercedes \
   --start 6 --stop 6 \
   --backend codex \
   --answer-model gpt-5.4-mini \
@@ -104,21 +116,21 @@ python run.py --persona julio_simmons \
 #### Using separate answering/scoring backends:
 
 ```bash
-python run.py --persona julio_simmons \
+python run.py --persona carlos_mercedes \
   --start 6 --stop 6 \
   --backend anthropic-api \
   --answer-model claude-haiku-4-5 \
   --backend-pass2 codex \
   --judge-model gpt-5.4
 
-# Using OpenRouter:
-python run.py --persona julio_simmons \
+# Using OpenRouter
+python run.py --persona carlos_mercedes \
   --start 6 --stop 6 \
   --backend openai-api \
   --provider openrouter \
   --answer-model google/gemini-3-flash-preview \
-  --backend-pass2 ... \
-  --judge-model ...
+  --backend-pass2 codex \
+  --judge-model gpt-5.4
 ```
 
 ### Run the entire pipeline end-to-end

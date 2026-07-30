@@ -29,8 +29,8 @@ A stage that exits nonzero stops the pipeline for that persona. With `--all`, re
 |---|---|---|
 | `--backend` | `anthropic-api` | `claude` and `codex` use the logged-in subscription CLIs; `anthropic-api` and `openai-api` use metered API keys. |
 | `--provider` | | API provider when the backend is API based; `openrouter` routes the OpenAI SDK through OpenRouter. |
-| `--model` | per backend | Generator model. Exact pinned string, never an alias. |
-| `--verifier-model` | per backend | Verifier model for construction gates. Should differ from `--model`. |
+| `--model` | per backend | Generator model for persona data construction (Steps 2 to 5). Exact pinned string, never an alias. |
+| `--verifier-model` | per backend | Verifier model for construction gates (Steps 2 to 5). Should differ from `--model`. |
 | `--answer-model` | per backend | Step 6 Pass 1 answering model. |
 | `--judge-model` | per backend | Step 6 Pass 2 scoring model. Should differ from `--answer-model`. |
 | `--backend-pass2` | matches `--backend` | Separate scoring backend for Step 6. |
