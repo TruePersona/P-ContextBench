@@ -45,7 +45,7 @@ Generated persona artifacts are tracked under each step's
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases.json`
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases_verification.json`
 
-Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time. Additionally, using `--passk-runs` returns `{persona}_passk_summary.json`, providing in-depth scoring metrics. 
+Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time. Additionally, using `--passk-runs` returns `{persona}_passk_summary.json`, providing in-depth scoring metrics. Step 6 benchmark sample data is stored in separate folders by model.
 
 Seeded personas are automatically listed in [`step1_seed/selected_personas.json`](step1_seed/selected_personas.json) by name and UUID. This file is used during batch generation (e.g. when calling `--all`; refer to examples under **[Run](#run)**). Due to size limitations, sample data includes 30 personas. The complete 100 persona list is provided at [`step1_seed/original_selected_personas.json`](step1_seed/original_selected_personas.json) for reference.
 
