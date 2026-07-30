@@ -44,12 +44,15 @@ Generated persona artifacts are tracked under each step's
 - `step4_app_log_synthesizer/data_samples/{persona}_verified_fragments.json`
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases.json`
 - `step5_testcases_synthesis/data_samples/{persona}_test_cases_verification.json`
+- `step6_benchmark_runner/data_samples/{persona}_pass1_answers.json`
+- `step6_benchmark_runner/data_samples/{persona}_benchmark_results.json`
+- `step6_benchmark_runner/data_samples/{persona}_app_logs_raw.txt` 
 
-Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`, and `{persona}_app_logs_raw.txt` into its output directory at benchmark time. Additionally, using `--passk-runs` returns `{persona}_passk_summary.json`, providing in-depth scoring metrics. Step 6 benchmark sample data is stored in separate folders by model.
+Using `--passk-runs` returns `step6_benchmark_runner/data_samples/{persona}_passk_summary.json`, providing in-depth scoring metrics. `strict_pass_k` refers to test cases where all *k* runs recieve full credit. `min_score_k` refers to the lowest score received among all *k* runs for a given test case.
 
 Seeded personas are automatically listed in [`step1_seed/selected_personas.json`](step1_seed/selected_personas.json) by name and UUID. This file is used during batch generation (e.g. when calling `--all`; refer to examples under **[Run](#run)**). Due to size limitations, sample data includes 30 personas. The complete 100 persona list is provided at [`step1_seed/original_selected_personas.json`](step1_seed/original_selected_personas.json) for reference.
 
-**Provided samples use GPT-5.5 for generation (`--model`) and GPT-5.4 for verification/scoring (`--verifier-model`, `judge-model`).**
+**Provided samples use GPT-5.5 for generation (`--model`) and GPT-5.4 for verification/scoring (`--verifier-model`, `judge-model`). Step 6 benchmark sample data is separated in its directory per `--answer-model`.**
 
 ## Getting started
 
