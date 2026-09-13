@@ -38,6 +38,7 @@ from utils import (
     extract_json,
     fill,
 )
+from step6_benchmark_runner import t5_scoring
 from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
@@ -360,15 +361,128 @@ def normalize_case_type(raw: Any) -> str:
     return value.lower() or "unknown"
 
 
+def apply_t5_scoring(
+    evaluations: list[dict[str, Any]],
+    case_map: dict[Any, dict[str, Any]],
+    pass1_answers: dict[str, Any] | None = None,
+) -> dict[str, int]:
+    """Replace the judge's Type 5 arithmetic with the deterministic rules.
+
+    For every Type 5 evaluation that has a matching test case and numeric
+    dimension scores, dimension B, ``resolution_match``, ``score_value`` and
+    the verdict are recomputed from the labels, A, C and the applied
+    penalties. The judge's original values are kept under ``judge_reported``
+    so disagreements stay visible. Returns counters for the metadata block.
+    """
+    # The label the evaluator chose is in its own Pass 1 answer. The judge
+    # echoes it in type_5_label_comparison, but the echo is a copy made by a
+    # second model; prefer the source when we have it.
+    actual_labels: dict[Any, Any] = {}
+    for answer in (pass1_answers or {}).get("answers", []) or []:
+        if not isinstance(answer, dict):
+            continue
+        summary = answer.get("type_5_action_summary")
+        # Evaluators sometimes emit the summary as a list or a string; only
+        # a dict with the label counts as a usable answer.
+        if isinstance(summary, dict) and summary.get("intended_resolution_label") is not None:
+            actual_labels[answer.get("test_case_id")] = summary["intended_resolution_label"]
+
+    # Reported under metadata.type_5_scoring so a reader of the results file
+    # can see how often the judge's own arithmetic differed from the rules.
+    counters = {
+        "type_5_recomputed": 0,
+        "type_5_not_recomputed": 0,
+        "type_5_score_value_changed": 0,
+        "type_5_verdict_changed": 0,
+        "type_5_resolution_label_changed": 0,
+    }
+    for ev in evaluations:
+        if normalize_case_type(ev.get("type")) != "type_5_agent_behavior":
+            continue
+        # Zero-credit placeholders written for failed batches or missing
+        # records carry no judge output to recompute from.
+        if ev.get("evaluation_status") in ("judge_batch_failed", "missing_evaluation"):
+            continue
+        case_id = ev.get("test_case_id")
+        test_case = case_map.get(case_id)
+        derived = (
+            t5_scoring.score_type5(ev, test_case, actual_labels.get(case_id))
+            if test_case is not None
+            else None
+        )
+        if derived is None:
+            # No test case, or the judge left A or C non-numeric. The record
+            # is kept as the judge wrote it and counted, not dropped.
+            counters["type_5_not_recomputed"] += 1
+            continue
+
+        # Replace malformed (non-dict) blocks so the derived values have a
+        # place to go; score_type5 already treated them as empty.
+        if not isinstance(ev.get("type_5_dimensions"), dict):
+            ev["type_5_dimensions"] = {}
+        if not isinstance(ev.get("type_5_label_comparison"), dict):
+            ev["type_5_label_comparison"] = {}
+        dimensions = ev["type_5_dimensions"]
+        comparison = ev["type_5_label_comparison"]
+        # Results written before dimension B was renamed use the old key.
+        judge_b = dimensions.get(t5_scoring.DIMENSION_B)
+        if judge_b is None:
+            judge_b = dimensions.get(t5_scoring.DIMENSION_B_LEGACY)
+        # Keep what the judge wrote next to what the rules produce, so a
+        # disagreement is visible in the record rather than silently fixed.
+        ev["judge_reported"] = {
+            "score": ev.get("score"),
+            "score_value": ev.get("score_value"),
+            "resolution_label": judge_b,
+            "resolution_match": comparison.get("resolution_match"),
+        }
+
+        # Compare on the 15-point scale so a judge that wrote 0.73 for 11/15
+        # is not counted as a change.
+        try:
+            judge_total = round(float(ev.get("score_value")) * t5_scoring.MAX_SCORE_15)
+        except (TypeError, ValueError):
+            judge_total = None
+        counters["type_5_recomputed"] += 1
+        counters["type_5_score_value_changed"] += judge_total != derived["final_score_15"]
+        counters["type_5_verdict_changed"] += ev.get("score") != derived["score"]
+        counters["type_5_resolution_label_changed"] += judge_b != derived["resolution_label"]
+
+        # Write the derived values back under the current schema names. The
+        # label pair is also rewritten so the record shows the labels the
+        # comparison was actually made from.
+        dimensions.pop(t5_scoring.DIMENSION_B_LEGACY, None)
+        dimensions[t5_scoring.DIMENSION_B] = derived["resolution_label"]
+        if derived["resolution_match"] is not None:
+            comparison["resolution_match"] = derived["resolution_match"]
+        if case_id in actual_labels:
+            comparison["actual_resolution_label"] = actual_labels[case_id]
+        if test_case.get("expected_resolution_label") is not None:
+            comparison["expected_resolution_label"] = test_case["expected_resolution_label"]
+        # failure_modes keeps every key the judge listed (unapplied ones as 0)
+        # with applied penalties as negative integers, whatever sign the
+        # judge used.
+        ev["failure_modes"] = {
+            name: derived["penalties"].get(name, 0)
+            for name in t5_scoring._as_dict(ev.get("failure_modes"))
+        } | derived["penalties"]
+        ev["final_score_15"] = derived["final_score_15"]
+        ev["score_value"] = derived["score_value"]
+        ev["score"] = derived["score"]
+    return counters
+
+
 def recompute_benchmark_summary(
     result: dict[str, Any],
     test_cases_full: dict[str, Any],
     model_pass1: str,
     model_pass2: str,
+    pass1_answers: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Recompute headline metrics after batched scoring merges evaluations."""
     evaluations = result.get("evaluations", []) or []
     case_map = {tc.get("id"): tc for tc in test_cases_full.get("test_cases", [])}
+    t5_counters = apply_t5_scoring(evaluations, case_map, pass1_answers)
 
     # Freeze the denominator to the intended case set: any intended case
     # without an evaluation record is scored as an explicit zero-credit
@@ -444,6 +558,7 @@ def recompute_benchmark_summary(
     metadata["model_used_pass2"] = model_pass2
     metadata["total_cases"] = len(evaluations)
     metadata["failed_evaluation_cases"] = failed_count
+    metadata["type_5_scoring"] = t5_counters
     return result
 
 
@@ -562,7 +677,9 @@ def run_step_once(
         reasoning_effort=reasoning_pass2,
         verified_fragments_path=verified_fragments_path,
     )
-    pass2 = recompute_benchmark_summary(pass2, test_cases, model_pass1, model_pass2)
+    pass2 = recompute_benchmark_summary(
+        pass2, test_cases, model_pass1, model_pass2, pass1_answers=pass1
+    )
     pass2.setdefault("metadata", {})
     pass2["metadata"]["reasoning_effort_pass1"] = reasoning_pass1
     pass2["metadata"]["reasoning_effort_pass2"] = reasoning_pass2
