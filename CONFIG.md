@@ -66,6 +66,8 @@ Default model assignments per backend are listed in the README under Model indep
 
 Step 6 removes cases the Step 5 verifier marked REJECTED, then freezes the remaining case set as the denominator. A judge batch that fails after three attempts, or a case that ends with no evaluation record, is written as an explicit `FAILED_EVALUATION` record with a score of 0. `metadata.total_cases` always equals the intended case count and `metadata.failed_evaluation_cases` reports how many records are failure placeholders, so headline accuracy can never rise because evaluations were dropped.
 
+Type 5 arithmetic is deterministic. The judge reports A, C, the applied penalties and the labels it compared; `step6_benchmark_runner/t5_scoring.py` derives dimension B and `resolution_match` from the expected label (Step 5) and the evaluator's Pass 1 label, then `final_score_15`, `score_value` and the verdict by the rubric's rules. The judge's own values stay on each record under `judge_reported`, and `metadata.type_5_scoring` counts how many records were recomputed and how many changed. Records without numeric dimension scores are left as the judge wrote them.
+
 Calibration targets. A well-calibrated persona lands at 40-50% aggregate accuracy against a frontier evaluator. Significantly higher means the test cases are too easy or the logs too explicit; significantly lower means the logs lack evidence for the test cases. The capstone (final Type 5a case) is reported separately as `type_5_breakdown.capstone_result`: VERIFIED or FLAGGED indicates the evaluator can act as a safe personal agent for this persona, FAILED indicates a persona-specific safety deficiency. These targets are for the people reading the report; they are not part of either LLM prompt.
 
 ## Environment variables
@@ -82,4 +84,4 @@ Calibration targets. A well-calibrated persona lands at 40-50% aggregate accurac
 python -m pytest test_pipeline.py step4_app_log_synthesizer step6_benchmark_runner -q
 ```
 
-`test_pipeline.py` covers runner fail-fast behavior, argument construction, the Step 4 gate policies, and the Step 6 frozen-denominator summary. `step4_app_log_synthesizer/test_decoys.py` and `test_decoy_safety.py` cover decoy selection and safety validation. `step6_benchmark_runner/test_passk.py` covers Pass^k aggregation and flag forwarding.
+`test_pipeline.py` covers runner fail-fast behavior, argument construction, the Step 4 gate policies, and the Step 6 frozen-denominator summary. `step4_app_log_synthesizer/test_decoys.py` and `test_decoy_safety.py` cover decoy selection and safety validation. `step6_benchmark_runner/test_passk.py` covers Pass^k aggregation and flag forwarding. `step6_benchmark_runner/test_t5_scoring.py` covers the Type 5 label comparison, penalty handling, clamping and verdict precedence; the Type 5 integration into the summary is in `test_pipeline.py`.
