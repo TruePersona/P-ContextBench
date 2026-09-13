@@ -455,5 +455,132 @@ class Type5ScoringIntegrationTests(unittest.TestCase):
         self.assertEqual(counters["type_5_not_recomputed"], 1)
 
 
+def _judge_record(case_id: str, **overrides: object) -> dict[str, object]:
+    record: dict[str, object] = {
+        "test_case_id": case_id,
+        "type": "type_5_agent_behavior",
+        "score": "VERIFIED",
+        "score_value": 1.0,
+        "type_5_dimensions": {
+            "constraint_recognition_applicability": 5,
+            "resolution_label": 5,
+            "evidence_grounding_specificity": 5,
+        },
+        "type_5_label_comparison": {
+            "expected_resolution_label": "REFUSE",
+            "actual_resolution_label": "REFUSE",
+            "resolution_match": "exact",
+        },
+        "failure_modes": {"blind_compliance": 0},
+    }
+    for key, value in overrides.items():
+        block, _, field = key.partition("__")
+        if field:
+            record[block][field] = value  # type: ignore[index]
+        else:
+            record[key] = value
+    return record
+
+
+_SCHEMA_CASES = {
+    "test_cases": [
+        _t5_case("TC-40", "REFUSE"),
+        _t5_case("TC-41", "REFUSE"),
+        {"id": "TC-01", "type": "type_1_simple_fact_check"},
+    ]
+}
+_SCHEMA_ANSWERS = {"answers": [{"test_case_id": "TC-40"}, {"test_case_id": "TC-41"}]}
+
+
+class JudgeSchemaRetryTests(unittest.TestCase):
+    """run_pass_2 checks Type 5 records against the rubric's value lists."""
+
+    CASES = _SCHEMA_CASES
+    ANSWERS = _SCHEMA_ANSWERS
+
+    def _run(self, responses: list[object], backend: str = "anthropic-api") -> tuple[dict, list]:
+        calls: list[dict] = []
+
+        def fake_call(sections, tc_batch, ans_batch, **kwargs):
+            calls.append({"ids": [c["id"] for c in tc_batch["test_cases"]], **kwargs})
+            response = responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        with patch.object(step6, "_call_pass2_single", side_effect=fake_call), patch.object(
+            step6, "load_prompt_sections", return_value={"pass2": ""}
+        ):
+            result = step6.run_pass_2(
+                self.CASES, self.ANSWERS, "judge", None, backend, "anthropic", "text", "high"
+            )
+        return result, calls
+
+    def test_off_schema_record_is_retried_with_the_problems_listed(self) -> None:
+        first = {
+            "evaluations": [
+                _judge_record("TC-40", type_5_label_comparison__resolution_match="adjacent_safe"),
+                _judge_record("TC-41"),
+                {"test_case_id": "TC-01", "type": "type_1_simple_fact_check", "score": "CORRECT", "score_value": 1.0},
+            ]
+        }
+        second = {"evaluations": [_judge_record("TC-40"), _judge_record("TC-41"), first["evaluations"][2]]}
+        result, calls = self._run([first, second])
+        self.assertEqual(len(calls), 2)
+        self.assertIsNone(calls[0]["correction"])
+        self.assertIn("TC-40", calls[1]["correction"])
+        self.assertIn("'adjacent_safe'", calls[1]["correction"])
+        self.assertNotIn("TC-41", calls[1]["correction"])
+        statuses = [ev.get("evaluation_status") for ev in result["evaluations"]]
+        self.assertEqual(statuses, [None, None, None])
+        self.assertEqual(result["metadata"]["off_schema_cases"], 0)
+
+    def test_record_still_off_schema_becomes_a_placeholder(self) -> None:
+        bad = _judge_record("TC-40", type_5_label_comparison__actual_resolution_label="DECLINE")
+        response = {"evaluations": [bad, _judge_record("TC-41")]}
+        result, calls = self._run([response, response])
+        self.assertEqual(len(calls), 2)  # one retry, not three
+        by_id = {ev["test_case_id"]: ev for ev in result["evaluations"]}
+        self.assertEqual(by_id["TC-40"]["score"], "FAILED_EVALUATION")
+        self.assertEqual(by_id["TC-40"]["evaluation_status"], "judge_output_off_schema")
+        self.assertEqual(by_id["TC-40"]["score_value"], 0.0)
+        self.assertIn("'DECLINE'", by_id["TC-40"]["explanation"])
+        self.assertEqual(by_id["TC-40"]["judge_reported"], bad)
+        self.assertEqual(by_id["TC-41"]["score"], "VERIFIED")  # the good record is kept
+        self.assertEqual(by_id["TC-01"]["evaluation_status"], "judge_output_off_schema")
+        self.assertEqual(result["metadata"]["off_schema_cases"], 2)
+        self.assertEqual(result["metadata"]["batches_failed"], 0)
+
+    def test_placeholders_are_skipped_by_scoring_and_counted_as_failed(self) -> None:
+        bad = _judge_record("TC-40", type_5_dimensions__constraint_recognition_applicability=4)
+        response = {"evaluations": [bad, _judge_record("TC-41")]}
+        result, _ = self._run([response, response])
+        summary = step6.recompute_benchmark_summary(result, self.CASES, "a", "b")
+        by_id = {ev["test_case_id"]: ev for ev in summary["evaluations"]}
+        self.assertEqual(by_id["TC-40"]["score_value"], 0.0)
+        self.assertEqual(by_id["TC-40"]["judge_reported"], bad)  # not overwritten by scoring
+        self.assertEqual(summary["metadata"]["failed_evaluation_cases"], 2)
+        self.assertEqual(summary["metadata"]["type_5_scoring"]["type_5_recomputed"], 1)
+
+    def test_api_backend_gets_the_same_retry_policy(self) -> None:
+        good = {"evaluations": [_judge_record("TC-40"), _judge_record("TC-41"),
+                                {"test_case_id": "TC-01", "type": "type_1_simple_fact_check"}]}
+        result, calls = self._run([ValueError("not json"), good], backend="openai-api")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["ids"], ["TC-40", "TC-41", "TC-01"])  # one call, all cases
+        self.assertFalse(result["metadata"]["batched"])
+        self.assertEqual(result["metadata"]["batches_failed"], 0)
+        self.assertEqual(len(result["evaluations"]), 3)
+
+    def test_unparseable_batch_after_three_attempts_is_all_failures(self) -> None:
+        errors = [ValueError("bad"), ValueError("bad"), ValueError("bad")]
+        result, calls = self._run(errors)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(
+            {ev["evaluation_status"] for ev in result["evaluations"]}, {"judge_batch_failed"}
+        )
+        self.assertEqual(result["metadata"]["batches_failed"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

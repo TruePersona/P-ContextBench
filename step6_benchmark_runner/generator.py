@@ -217,7 +217,8 @@ def _call_pass2_single(
     provider: str,
     response_format: str,
     reasoning_effort: str,
-    verified_fragments_path: Path | None = None
+    verified_fragments_path: Path | None = None,
+    correction: str | None = None,
 ) -> dict[str, Any]:
     template = fill(
         sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_batch
@@ -239,10 +240,143 @@ def _call_pass2_single(
     template = fill(
         template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
     )
+    if correction:
+        # Retry after an off-schema answer: tell the judge what was wrong so
+        # the second attempt is not a blind repeat of the first.
+        template += (
+            "\n\nYour previous output for these cases did not follow the schema:\n"
+            + correction
+            + "\n\nReturn the complete JSON for all cases again, using only the "
+            "listed values."
+        )
 
     raw = call_llm(client, model, template, reasoning_effort, provider, backend, response_format)
 
     return extract_json(raw)
+
+
+def _check_pass2_batch(
+    result: dict[str, Any], batch_cases: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, list[str]]]:
+    """Split a judge batch into accepted records and per-case schema problems.
+
+    Type 5 records are checked against the fixed value lists the rubric gives
+    the judge (labels, dimension scores, resolution_match, penalty keys). A
+    batch case with no record at all is reported as a problem too, so the
+    retry can ask for it. Types 1 to 4 pass through unchecked.
+    """
+    evals = result.get("evaluations", []) if isinstance(result, dict) else []
+    if not evals and isinstance(result, dict) and "test_case_id" in result:
+        evals = [result]
+    by_id = {ev.get("test_case_id"): ev for ev in evals if isinstance(ev, dict)}
+
+    accepted: list[dict[str, Any]] = []
+    problems: dict[str, list[str]] = {}
+    for tc in batch_cases:
+        case_id = tc.get("id")
+        record = by_id.get(case_id)
+        if record is None:
+            problems[case_id] = ["no evaluation record returned"]
+            continue
+        if normalize_case_type(tc.get("type")) == "type_5_agent_behavior":
+            found = t5_scoring.validate_type5(record)
+            if found:
+                problems[case_id] = found
+                continue
+        accepted.append(record)
+    return accepted, problems
+
+
+def _off_schema_placeholder(
+    tc: dict[str, Any], problems: list[str], record: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Zero-credit record for a case whose judge output stayed off schema."""
+    placeholder = {
+        "test_case_id": tc.get("id"),
+        "type": tc.get("type"),
+        "score": "FAILED_EVALUATION",
+        "score_value": 0.0,
+        "evaluation_status": "judge_output_off_schema",
+        "explanation": "Judge output did not follow the schema after a retry: "
+        + "; ".join(problems),
+    }
+    if record is not None:
+        placeholder["judge_reported"] = record
+    return placeholder
+
+
+def _score_batch(
+    sections: dict[str, str],
+    tc_batch: dict[str, Any],
+    ans_batch: dict[str, Any],
+    label: str,
+    call_kwargs: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any], int, int]:
+    """Score one batch with the retry policy shared by every backend.
+
+    Up to three attempts. A response that is not JSON is retried as before.
+    A response whose Type 5 records use values outside the schema is retried
+    once with the problems spelled out; records still off schema after that
+    become zero-credit placeholders, and records that passed are kept.
+    Returns (evaluations, raw result, off_schema_count, batch_failed).
+    """
+    batch_cases = tc_batch.get("test_cases", [])
+    correction = None
+    corrections_sent = 0
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            result = _call_pass2_single(
+                sections, tc_batch, ans_batch, correction=correction, **call_kwargs
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_exc = exc
+            print(f"    {label} attempt {attempt + 1} failed: {exc}")
+            continue
+        accepted, problems = _check_pass2_batch(result, batch_cases)
+        if problems and corrections_sent == 0 and attempt < 2:
+            corrections_sent += 1
+            correction = "\n".join(
+                f"- {case_id}: " + "; ".join(found) for case_id, found in problems.items()
+            )
+            print(
+                f"    {label} attempt {attempt + 1}: {len(problems)} record(s) off "
+                f"schema, retrying once with the problems listed:"
+            )
+            for line in correction.splitlines():
+                print(f"      {line}")
+            continue
+        if problems:
+            print(
+                f"    {label}: {len(problems)} record(s) still off schema; "
+                "scoring them as failures"
+            )
+        raw_by_id = {
+            ev.get("test_case_id"): ev
+            for ev in (result.get("evaluations") or []) if isinstance(ev, dict)
+        }
+        placeholders = [
+            _off_schema_placeholder(tc, problems[tc.get("id")], raw_by_id.get(tc.get("id")))
+            for tc in batch_cases
+            if tc.get("id") in problems
+        ]
+        return accepted + placeholders, result, len(placeholders), 0
+
+    # A dropped batch would silently shrink the denominator and inflate
+    # accuracy, so score every case in it as an explicit zero-credit failure.
+    print(f"    {label} failed after 3 attempts; scoring its {len(batch_cases)} cases as failures")
+    failures = [
+        {
+            "test_case_id": tc.get("id"),
+            "type": tc.get("type"),
+            "score": "FAILED_EVALUATION",
+            "score_value": 0.0,
+            "evaluation_status": "judge_batch_failed",
+            "explanation": f"Pass 2 {label} failed after 3 attempts: {last_exc}",
+        }
+        for tc in batch_cases
+    ]
+    return failures, {}, 0, 1
 
 
 def run_pass_2(
@@ -260,79 +394,61 @@ def run_pass_2(
     sections = load_prompt_sections()
     all_cases = test_cases_full.get("test_cases", [])
     all_answers = pass1_answers.get("answers", [])
-    answer_map = {a["test_case_id"]: a for a in all_answers}
+    call_kwargs = {
+        "model": model,
+        "client": client,
+        "backend": backend,
+        "provider": provider,
+        "response_format": response_format,
+        "reasoning_effort": reasoning_effort,
+        "verified_fragments_path": verified_fragments_path,
+    }
 
-    if backend not in SUBSCRIPTION_BACKENDS or len(all_cases) <= batch_size:
-        return _call_pass2_single(
-            sections, test_cases_full, pass1_answers,
-            model, client, backend, provider, response_format,
-            reasoning_effort, verified_fragments_path
-        )
+    # API backends take the whole case set in one call; subscription CLIs
+    # are batched. Both go through _score_batch so the retry and schema
+    # policy is the same regardless of backend.
+    batched = backend in SUBSCRIPTION_BACKENDS and len(all_cases) > batch_size
+    step = batch_size if batched else max(len(all_cases), 1)
+    total_batches = (len(all_cases) + step - 1) // step
 
     merged_evaluations: list[dict[str, Any]] = []
     merged_result: dict[str, Any] = {}
     failed_batches = 0
+    off_schema = 0
 
-    for i in range(0, len(all_cases), batch_size):
-        batch_cases = all_cases[i : i + batch_size]
+    for i in range(0, len(all_cases), step):
+        batch_cases = all_cases[i : i + step]
         batch_ids = {c["id"] for c in batch_cases}
-        batch_answers = [a for a in all_answers if a["test_case_id"] in batch_ids]
+        batch_answers = [a for a in all_answers if a.get("test_case_id") in batch_ids]
 
         tc_batch = dict(test_cases_full)
         tc_batch["test_cases"] = batch_cases
         ans_batch = dict(pass1_answers)
         ans_batch["answers"] = batch_answers
 
-        batch_num = i // batch_size + 1
-        total_batches = (len(all_cases) + batch_size - 1) // batch_size
-        print(f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases")
+        batch_num = i // step + 1
+        label = f"batch {batch_num}" if batched else "pass 2"
+        if batched:
+            print(f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases")
 
-        for attempt in range(3):
-            try:
-                result = _call_pass2_single(
-                    sections, tc_batch, ans_batch,
-                    model, client, backend, provider, response_format,
-                    reasoning_effort, verified_fragments_path
-                )
-                evals = result.get("evaluations", [])
-                if not evals and isinstance(result, dict) and "test_case_id" in result:
-                    evals = [result]
-                merged_evaluations.extend(evals)
-                if not merged_result:
-                    merged_result = result
-                break
-            except (json.JSONDecodeError, ValueError) as exc:
-                print(f"    batch {batch_num} attempt {attempt + 1} failed: {exc}")
-                if attempt == 2:
-                    # A dropped batch would silently shrink the denominator
-                    # and inflate accuracy, so score every case in it as an
-                    # explicit zero-credit failure instead.
-                    print(
-                        f"    batch {batch_num} failed after 3 attempts; "
-                        f"scoring its {len(batch_cases)} cases as failures"
-                    )
-                    failed_batches += 1
-                    for tc in batch_cases:
-                        merged_evaluations.append({
-                            "test_case_id": tc.get("id"),
-                            "type": tc.get("type"),
-                            "score": "FAILED_EVALUATION",
-                            "score_value": 0.0,
-                            "evaluation_status": "judge_batch_failed",
-                            "explanation": (
-                                f"Pass 2 batch {batch_num} failed after "
-                                f"3 attempts: {exc}"
-                            ),
-                        })
+        evals, result, n_off, n_failed = _score_batch(
+            sections, tc_batch, ans_batch, label, call_kwargs
+        )
+        merged_evaluations.extend(evals)
+        off_schema += n_off
+        failed_batches += n_failed
+        if not merged_result and result:
+            merged_result = result
 
     if not merged_result:
         merged_result = {"evaluations": [], "metadata": {}}
     merged_result["evaluations"] = merged_evaluations
     merged_result["metadata"] = merged_result.get("metadata", {})
     merged_result["metadata"]["total_cases"] = len(all_cases)
-    merged_result["metadata"]["batched"] = True
-    merged_result["metadata"]["batches_total"] = (len(all_cases) + batch_size - 1) // batch_size
+    merged_result["metadata"]["batched"] = batched
+    merged_result["metadata"]["batches_total"] = total_batches
     merged_result["metadata"]["batches_failed"] = failed_batches
+    merged_result["metadata"]["off_schema_cases"] = off_schema
     return merged_result
 
 
@@ -343,6 +459,16 @@ def _percent(score_sum: float, total: int) -> str:
     if value.is_integer():
         return f"{int(value)}%"
     return f"{value}%"
+
+
+# evaluation_status values of zero-credit placeholder records. They carry no
+# judge output, so the Type 5 recomputation skips them and the summary counts
+# them as failed evaluations.
+PLACEHOLDER_STATUSES = (
+    "judge_batch_failed",
+    "missing_evaluation",
+    "judge_output_off_schema",
+)
 
 
 _SUBTYPE_TYPE_RE = re.compile(r"^5[a-z]_", re.IGNORECASE)
@@ -401,7 +527,7 @@ def apply_t5_scoring(
             continue
         # Zero-credit placeholders written for failed batches or missing
         # records carry no judge output to recompute from.
-        if ev.get("evaluation_status") in ("judge_batch_failed", "missing_evaluation"):
+        if ev.get("evaluation_status") in PLACEHOLDER_STATUSES:
             continue
         case_id = ev.get("test_case_id")
         test_case = case_map.get(case_id)
@@ -500,8 +626,7 @@ def recompute_benchmark_summary(
             })
     result["evaluations"] = evaluations
     failed_count = sum(
-        1 for ev in evaluations if ev.get("evaluation_status") in
-        ("judge_batch_failed", "missing_evaluation")
+        1 for ev in evaluations if ev.get("evaluation_status") in PLACEHOLDER_STATUSES
     )
 
     total_score = sum(float(ev.get("score_value", 0) or 0) for ev in evaluations)
