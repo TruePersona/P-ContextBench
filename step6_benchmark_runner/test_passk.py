@@ -198,7 +198,8 @@ class PassKTests(unittest.TestCase):
         ][0]
         self.assertEqual(tc2["scores"], [1.0, 0.0])
         self.assertEqual(tc2["missing_from_runs"], [2])
-        self.assertTrue(tc2["hard_failure"])
+        self.assertFalse(tc2["hard_failure"])
+        self.assertTrue(tc2["evaluation_error_runs"])
 
     def test_duplicate_evaluation_ids_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

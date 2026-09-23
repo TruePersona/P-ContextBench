@@ -19,6 +19,7 @@ import argparse
 import json
 import re
 import sys
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -30,16 +31,16 @@ from llm import (
     SUPPORTED_PROVIDERS,
     call_llm,
     check_api_key,
+    default_model_for_backend,
     make_client,
     provider_for_backend,
-    default_model_for_backend,
 )
+from step6_benchmark_runner import t5_contract, t5_scoring
+from step6_benchmark_runner.passk import aggregate_passk
 from utils import (
     extract_json,
     fill,
 )
-from step6_benchmark_runner import t5_scoring
-from step6_benchmark_runner.passk import aggregate_passk
 
 STEP_DIR = Path(__file__).parent
 REPO_ROOT = STEP_DIR.parent
@@ -136,6 +137,8 @@ def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
 
 FIELDS_HIDDEN_FROM_PASS1 = {
     "ground_truth",
+    "type_5_contract",
+    "acceptable_resolution_labels",
     "evidence_type",
     "expected_evidence",
     "is_capstone",
@@ -170,7 +173,7 @@ FIELDS_HIDDEN_FROM_PASS1 = {
 
 def strip_ground_truth(test_cases: dict[str, Any]) -> dict[str, Any]:
     """Return a shallow copy of test_cases with answer-key fields removed.
-    Questions, ids, types, subtype, framing remain visible to Pass 1."""
+    Questions, ids, types and framing remain visible to Pass 1."""
     stripped = {"metadata": test_cases.get("metadata", {}), "test_cases": []}
     for tc in test_cases.get("test_cases", []):
         stripped["test_cases"].append(
@@ -256,33 +259,57 @@ def _call_pass2_single(
 
 
 def _check_pass2_batch(
-    result: dict[str, Any], batch_cases: list[dict[str, Any]]
+    result: dict[str, Any],
+    batch_cases: list[dict[str, Any]],
+    answers: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, list[str]]]:
-    """Split a judge batch into accepted records and per-case schema problems.
-
-    Type 5 records are checked against the fixed value lists the rubric gives
-    the judge (labels, dimension scores, resolution_match, penalty keys). A
-    batch case with no record at all is reported as a problem too, so the
-    retry can ask for it. Types 1 to 4 pass through unchecked.
-    """
+    """Bind judge observations to canonical cases; reject ambiguous duplicate IDs."""
     evals = result.get("evaluations", []) if isinstance(result, dict) else []
     if not evals and isinstance(result, dict) and "test_case_id" in result:
         evals = [result]
-    by_id = {ev.get("test_case_id"): ev for ev in evals if isinstance(ev, dict)}
+    if not isinstance(evals, list):
+        evals = []
+    by_id: dict[str, list[dict[str, Any]]] = {}
+    for ev in evals:
+        if isinstance(ev, dict) and isinstance(ev.get("test_case_id"), str):
+            by_id.setdefault(ev["test_case_id"], []).append(ev)
 
     accepted: list[dict[str, Any]] = []
     problems: dict[str, list[str]] = {}
     for tc in batch_cases:
-        case_id = tc.get("id")
-        record = by_id.get(case_id)
-        if record is None:
-            problems[case_id] = ["no evaluation record returned"]
+        case_id = tc["id"]
+        records = by_id.get(case_id, [])
+        if len(records) != 1:
+            problems[case_id] = ["expected exactly one evaluation record for this ID"]
             continue
+        record = deepcopy(records[0])
         if normalize_case_type(tc.get("type")) == "type_5_agent_behavior":
-            found = t5_scoring.validate_type5(record)
+            found = (
+                t5_contract.validate_observations(
+                    record, tc, (answers or {}).get(case_id)
+                )
+                if "type_5_contract" in tc
+                else t5_scoring.validate_type5(record)
+            )
             if found:
                 problems[case_id] = found
                 continue
+            # Never trust audit/scorer-owned fields supplied by the judge.
+            raw = deepcopy(record)
+            for key in (
+                "raw_judgment",
+                "scoring_history",
+                "scoring_provenance",
+                "judge_reported",
+                "rubric_version",
+                "behavioral_success",
+                "evaluation_status",
+            ):
+                record.pop(key, None)
+            record["raw_judgment"] = raw
+        record["type"] = normalize_case_type(tc.get("type"))
+        record["subtype"] = tc.get("subtype")
+        record["is_capstone"] = bool(tc.get("is_capstone"))
         accepted.append(record)
     return accepted, problems
 
@@ -316,67 +343,85 @@ def _score_batch(
 
     Up to three attempts. A response that is not JSON is retried as before.
     A response whose Type 5 records use values outside the schema is retried
-    once with the problems spelled out; records still off schema after that
-    become zero-credit placeholders, and records that passed are kept.
+    once with the problems spelled out. Keep the first valid record per ID;
+    send only pending IDs on later attempts. Unresolved cases become explicit
+    evaluation-error placeholders after the bounded retry budget.
     Returns (evaluations, raw result, off_schema_count, batch_failed).
     """
     batch_cases = tc_batch.get("test_cases", [])
+    answers = {
+        a["test_case_id"]: a
+        for a in ans_batch.get("answers", [])
+        if isinstance(a, dict) and isinstance(a.get("test_case_id"), str)
+    }
+    accepted: dict[str, dict[str, Any]] = {}
+    problems: dict[str, list[str]] = {}
+    raw_by_id: dict[str, dict[str, Any]] = {}
+    result: dict[str, Any] = {}
     correction = None
     corrections_sent = 0
     last_exc: Exception | None = None
     for attempt in range(3):
+        pending = [tc for tc in batch_cases if tc["id"] not in accepted]
+        pending_ids = {tc["id"] for tc in pending}
         try:
-            result = _call_pass2_single(
-                sections, tc_batch, ans_batch, correction=correction, **call_kwargs
+            current = _call_pass2_single(
+                sections,
+                {**tc_batch, "test_cases": pending},
+                {
+                    **ans_batch,
+                    "answers": [a for cid, a in answers.items() if cid in pending_ids],
+                },
+                correction=correction,
+                **call_kwargs,
             )
-        except (json.JSONDecodeError, ValueError) as exc:
+        except (ValueError, RuntimeError) as exc:
             last_exc = exc
             print(f"    {label} attempt {attempt + 1} failed: {exc}")
             continue
-        accepted, problems = _check_pass2_batch(result, batch_cases)
-        if problems and corrections_sent == 0 and attempt < 2:
-            corrections_sent += 1
-            correction = "\n".join(
-                f"- {case_id}: " + "; ".join(found) for case_id, found in problems.items()
-            )
-            print(
-                f"    {label} attempt {attempt + 1}: {len(problems)} record(s) off "
-                f"schema, retrying once with the problems listed:"
-            )
-            for line in correction.splitlines():
-                print(f"      {line}")
-            continue
-        if problems:
-            print(
-                f"    {label}: {len(problems)} record(s) still off schema; "
-                "scoring them as failures"
-            )
-        raw_by_id = {
-            ev.get("test_case_id"): ev
-            for ev in (result.get("evaluations") or []) if isinstance(ev, dict)
-        }
-        placeholders = [
-            _off_schema_placeholder(tc, problems[tc.get("id")], raw_by_id.get(tc.get("id")))
-            for tc in batch_cases
-            if tc.get("id") in problems
-        ]
-        return accepted + placeholders, result, len(placeholders), 0
+        if isinstance(current, dict):
+            result = current
+        valid, problems = _check_pass2_batch(current, pending, answers)
+        for record in valid:
+            accepted.setdefault(record["test_case_id"], record)
+        raw = current.get("evaluations", []) if isinstance(current, dict) else []
+        if not raw and isinstance(current, dict) and "test_case_id" in current:
+            raw = [current]
+        for ev in raw if isinstance(raw, list) else []:
+            if isinstance(ev, dict) and isinstance(ev.get("test_case_id"), str):
+                raw_by_id[ev["test_case_id"]] = ev
+        if not problems:
+            break
+        if corrections_sent or attempt == 2:
+            break
+        corrections_sent += 1
+        correction = "\n".join(
+            f"- {cid}: " + "; ".join(found) for cid, found in problems.items()
+        )
+        print(f"    {label}: retrying {len(problems)} unresolved record(s)")
 
-    # A dropped batch would silently shrink the denominator and inflate
-    # accuracy, so score every case in it as an explicit zero-credit failure.
-    print(f"    {label} failed after 3 attempts; scoring its {len(batch_cases)} cases as failures")
-    failures = [
-        {
-            "test_case_id": tc.get("id"),
-            "type": tc.get("type"),
-            "score": "FAILED_EVALUATION",
-            "score_value": 0.0,
-            "evaluation_status": "judge_batch_failed",
-            "explanation": f"Pass 2 {label} failed after 3 attempts: {last_exc}",
-        }
-        for tc in batch_cases
-    ]
-    return failures, {}, 0, 1
+    off_schema = 0
+    failed = 0
+    for tc in batch_cases:
+        cid = tc["id"]
+        if cid in accepted:
+            continue
+        if cid in problems:
+            accepted[cid] = _off_schema_placeholder(
+                tc, problems[cid], raw_by_id.get(cid)
+            )
+            off_schema += 1
+        else:
+            accepted[cid] = {
+                "test_case_id": cid,
+                "type": tc.get("type"),
+                "score": "FAILED_EVALUATION",
+                "score_value": 0.0,
+                "evaluation_status": "judge_batch_failed",
+                "explanation": f"Pass 2 {label} failed after 3 attempts: {last_exc}",
+            }
+            failed = 1
+    return [accepted[tc["id"]] for tc in batch_cases], result, off_schema, failed
 
 
 def run_pass_2(
@@ -393,6 +438,15 @@ def run_pass_2(
 ) -> dict[str, Any]:
     sections = load_prompt_sections()
     all_cases = test_cases_full.get("test_cases", [])
+    _canonical_map(all_cases, "id")
+    _canonical_map(pass1_answers.get("answers", []), "test_case_id")
+    for tc in all_cases:
+        if "type_5_contract" in tc:
+            problems = t5_contract.validate_contract(tc)
+            if problems:
+                raise ValueError(
+                    f"Invalid contract for {tc['id']}: {'; '.join(problems)}"
+                )
     all_answers = pass1_answers.get("answers", [])
     call_kwargs = {
         "model": model,
@@ -429,7 +483,9 @@ def run_pass_2(
         batch_num = i // step + 1
         label = f"batch {batch_num}" if batched else "pass 2"
         if batched:
-            print(f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases")
+            print(
+                f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases"
+            )
 
         evals, result, n_off, n_failed = _score_batch(
             sections, tc_batch, ans_batch, label, call_kwargs
@@ -443,7 +499,8 @@ def run_pass_2(
     if not merged_result:
         merged_result = {"evaluations": [], "metadata": {}}
     merged_result["evaluations"] = merged_evaluations
-    merged_result["metadata"] = merged_result.get("metadata", {})
+    merged_result["metadata"] = t5_scoring._as_dict(merged_result.get("metadata"))
+    merged_result["metadata"].pop("evaluation_manifest", None)
     merged_result["metadata"]["total_cases"] = len(all_cases)
     merged_result["metadata"]["batched"] = batched
     merged_result["metadata"]["batches_total"] = total_batches
@@ -468,6 +525,8 @@ PLACEHOLDER_STATUSES = (
     "judge_batch_failed",
     "missing_evaluation",
     "judge_output_off_schema",
+    "judge_uncertain",
+    "scoring_input_invalid",
 )
 
 
@@ -487,34 +546,27 @@ def normalize_case_type(raw: Any) -> str:
     return value.lower() or "unknown"
 
 
+def _canonical_map(
+    records: list[dict[str, Any]], id_key: str
+) -> dict[str, dict[str, Any]]:
+    by_id = {}
+    for record in records:
+        if not isinstance(record, dict):
+            raise TypeError(f"Expected objects with {id_key}")
+        cid = record.get(id_key)
+        if not isinstance(cid, str) or not cid or cid in by_id:
+            raise ValueError(f"Missing or duplicate {id_key}: {cid!r}")
+        by_id[cid] = record
+    return by_id
+
+
 def apply_t5_scoring(
     evaluations: list[dict[str, Any]],
     case_map: dict[Any, dict[str, Any]],
     pass1_answers: dict[str, Any] | None = None,
 ) -> dict[str, int]:
-    """Replace the judge's Type 5 arithmetic with the deterministic rules.
-
-    For every Type 5 evaluation that has a matching test case and numeric
-    dimension scores, dimension B, ``resolution_match``, ``score_value`` and
-    the verdict are recomputed from the labels, A, C and the applied
-    penalties. The judge's original values are kept under ``judge_reported``
-    so disagreements stay visible. Returns counters for the metadata block.
-    """
-    # The label the evaluator chose is in its own Pass 1 answer. The judge
-    # echoes it in type_5_label_comparison, but the echo is a copy made by a
-    # second model; prefer the source when we have it.
-    actual_labels: dict[Any, Any] = {}
-    for answer in (pass1_answers or {}).get("answers", []) or []:
-        if not isinstance(answer, dict):
-            continue
-        summary = answer.get("type_5_action_summary")
-        # Evaluators sometimes emit the summary as a list or a string; only
-        # a dict with the label counts as a usable answer.
-        if isinstance(summary, dict) and summary.get("intended_resolution_label") is not None:
-            actual_labels[answer.get("test_case_id")] = summary["intended_resolution_label"]
-
-    # Reported under metadata.type_5_scoring so a reader of the results file
-    # can see how often the judge's own arithmetic differed from the rules.
+    """Score canonical Type 5 cases and retain immutable raw judgments."""
+    answers = _canonical_map((pass1_answers or {}).get("answers", []), "test_case_id")
     counters = {
         "type_5_recomputed": 0,
         "type_5_not_recomputed": 0,
@@ -523,78 +575,168 @@ def apply_t5_scoring(
         "type_5_resolution_label_changed": 0,
     }
     for ev in evaluations:
-        if normalize_case_type(ev.get("type")) != "type_5_agent_behavior":
+        cid = ev.get("test_case_id")
+        tc = case_map.get(cid)
+        if tc is None or normalize_case_type(tc.get("type")) != "type_5_agent_behavior":
             continue
-        # Zero-credit placeholders written for failed batches or missing
-        # records carry no judge output to recompute from.
-        if ev.get("evaluation_status") in PLACEHOLDER_STATUSES:
-            continue
-        case_id = ev.get("test_case_id")
-        test_case = case_map.get(case_id)
-        derived = (
-            t5_scoring.score_type5(ev, test_case, actual_labels.get(case_id))
-            if test_case is not None
-            else None
+        version = (
+            t5_contract.RUBRIC_VERSION
+            if "type_5_contract" in tc
+            else t5_scoring.RUBRIC_VERSION
         )
-        if derived is None:
-            # No test case, or the judge left A or C non-numeric. The record
-            # is kept as the judge wrote it and counted, not dropped.
-            counters["type_5_not_recomputed"] += 1
+        if ev.get("evaluation_status") in {
+            "judge_batch_failed",
+            "missing_evaluation",
+            "judge_output_off_schema",
+        }:
+            ev["rubric_version"] = version
             continue
+        ev.setdefault(
+            "raw_judgment",
+            deepcopy(
+                {
+                    k: v
+                    for k, v in ev.items()
+                    if k
+                    not in {"raw_judgment", "scoring_history", "scoring_provenance"}
+                }
+            ),
+        )
+        raw = ev["raw_judgment"]
+        ev["type"] = "type_5_agent_behavior"
+        ev["subtype"] = tc.get("subtype")
+        ev["is_capstone"] = bool(tc.get("is_capstone"))
+        old_dimensions = t5_scoring._as_dict(ev.get("type_5_dimensions"))
+        old_b = old_dimensions.get(
+            t5_scoring.DIMENSION_B, old_dimensions.get(t5_scoring.DIMENSION_B_LEGACY)
+        )
+        old_comparison = t5_scoring._as_dict(ev.get("type_5_label_comparison"))
+        ev.setdefault(
+            "judge_reported",
+            {
+                "score": raw.get("score"),
+                "score_value": raw.get("score_value"),
+                "resolution_label": old_b,
+                "resolution_match": old_comparison.get("resolution_match"),
+            },
+        )
+        answer = answers.get(cid)
+        previous = ev.get("scoring_provenance", {})
+        error = None
+        actual = None
+        label_source = "not_used"
+        if "type_5_contract" in tc:
+            # An offline behavior rescore requires the same original answer;
+            # old A/C scores cannot be converted into behavioral observations.
+            problems = t5_contract.validate_observations(raw, tc, answer)
+            if problems:
+                derived = None
+                error = "; ".join(problems)
+            else:
+                derived = t5_contract.score_contract(raw, tc, answer)
+        else:
+            if pass1_answers is not None:
+                actual = t5_scoring._as_dict(
+                    (answer or {}).get("type_5_action_summary")
+                ).get("intended_resolution_label")
+                label_source = "pass1"
+            elif previous.get("actual_label") is not None:
+                actual = previous["actual_label"]
+                label_source = previous.get("label_source", "stored_scoring_input")
+            else:
+                actual = t5_scoring._as_dict(raw.get("type_5_label_comparison")).get(
+                    "actual_resolution_label"
+                )
+                label_source = "legacy_judge_echo"
+            derived = (
+                t5_scoring.score_type5(raw, tc, actual)
+                if t5_scoring.normalize_label(actual) is not None
+                else None
+            )
+            if derived is None:
+                error = "Legacy scoring requires valid canonical labels, A/C in {0,1,3,5}, and valid semantic penalties."
 
-        # Replace malformed (non-dict) blocks so the derived values have a
-        # place to go; score_type5 already treated them as empty.
-        if not isinstance(ev.get("type_5_dimensions"), dict):
-            ev["type_5_dimensions"] = {}
-        if not isinstance(ev.get("type_5_label_comparison"), dict):
-            ev["type_5_label_comparison"] = {}
-        dimensions = ev["type_5_dimensions"]
-        comparison = ev["type_5_label_comparison"]
-        # Results written before dimension B was renamed use the old key.
-        judge_b = dimensions.get(t5_scoring.DIMENSION_B)
-        if judge_b is None:
-            judge_b = dimensions.get(t5_scoring.DIMENSION_B_LEGACY)
-        # Keep what the judge wrote next to what the rules produce, so a
-        # disagreement is visible in the record rather than silently fixed.
-        ev["judge_reported"] = {
-            "score": ev.get("score"),
-            "score_value": ev.get("score_value"),
-            "resolution_label": judge_b,
-            "resolution_match": comparison.get("resolution_match"),
-        }
-
-        # Compare on the 15-point scale so a judge that wrote 0.73 for 11/15
-        # is not counted as a change.
-        try:
-            judge_total = round(float(ev.get("score_value")) * t5_scoring.MAX_SCORE_15)
-        except (TypeError, ValueError):
-            judge_total = None
+        if derived is None:
+            counters["type_5_not_recomputed"] += 1
+            for key in (
+                "type_5_dimensions", "type_5_label_comparison", "failure_modes",
+                "final_score_15", "type_5_behavior", "behavioral_success", "scoring_provenance",
+            ):
+                ev.pop(key, None)
+            ev.update(
+                score="FAILED_EVALUATION",
+                score_value=0.0,
+                evaluation_status="scoring_input_invalid",
+                scoring_error=error,
+                rubric_version=version,
+            )
+            continue
         counters["type_5_recomputed"] += 1
-        counters["type_5_score_value_changed"] += judge_total != derived["final_score_15"]
+        counters["type_5_score_value_changed"] += (
+            ev.get("score_value") != derived["score_value"]
+        )
         counters["type_5_verdict_changed"] += ev.get("score") != derived["score"]
-        counters["type_5_resolution_label_changed"] += judge_b != derived["resolution_label"]
-
-        # Write the derived values back under the current schema names. The
-        # label pair is also rewritten so the record shows the labels the
-        # comparison was actually made from.
-        dimensions.pop(t5_scoring.DIMENSION_B_LEGACY, None)
-        dimensions[t5_scoring.DIMENSION_B] = derived["resolution_label"]
-        if derived["resolution_match"] is not None:
-            comparison["resolution_match"] = derived["resolution_match"]
-        if case_id in actual_labels:
-            comparison["actual_resolution_label"] = actual_labels[case_id]
-        if test_case.get("expected_resolution_label") is not None:
-            comparison["expected_resolution_label"] = test_case["expected_resolution_label"]
-        # failure_modes keeps every key the judge listed (unapplied ones as 0)
-        # with applied penalties as negative integers, whatever sign the
-        # judge used.
-        ev["failure_modes"] = {
-            name: derived["penalties"].get(name, 0)
-            for name in t5_scoring._as_dict(ev.get("failure_modes"))
-        } | derived["penalties"]
-        ev["final_score_15"] = derived["final_score_15"]
-        ev["score_value"] = derived["score_value"]
-        ev["score"] = derived["score"]
+        if "type_5_contract" in tc:
+            ev.update(derived)
+            # No legacy score components or penalties in the behavior rubric.
+            for key in (
+                "type_5_dimensions",
+                "final_score_15",
+                "failure_modes",
+                "type_5_label_comparison",
+            ):
+                ev.pop(key, None)
+        else:
+            counters["type_5_resolution_label_changed"] += (
+                old_b != derived["resolution_label"]
+            )
+            dimensions = deepcopy(raw["type_5_dimensions"])
+            dimensions.pop(t5_scoring.DIMENSION_B_LEGACY, None)
+            dimensions[t5_scoring.DIMENSION_B] = derived["resolution_label"]
+            ev["type_5_dimensions"] = dimensions
+            ev["type_5_label_comparison"] = {
+                "expected_resolution_label": t5_scoring.normalize_label(
+                    tc["expected_resolution_label"]
+                ),
+                "actual_resolution_label": t5_scoring.normalize_label(actual),
+                "resolution_match": derived["resolution_match"],
+            }
+            ev["failure_modes"] = {
+                name: derived["penalties"].get(name, 0)
+                for name in t5_scoring.PENALTY_KEYS
+            }
+            for key in ("final_score_15", "score_value", "score"):
+                ev[key] = derived[key]
+            ev["rubric_version"] = version
+            ev["evaluation_status"] = "evaluated"
+        ev.pop("scoring_error", None)
+        provenance = {
+            "rubric_version": version,
+            "case_sha256": t5_contract.fingerprint(tc),
+            "answer_sha256": t5_contract.fingerprint(answer)
+            if answer is not None
+            else previous.get("answer_sha256"),
+            "judgment_sha256": t5_contract.fingerprint(raw),
+            "actual_label": actual,
+            "label_source": label_source,
+            "legacy_missing_penalties_assumed_zero": (
+                sorted(
+                    set(t5_scoring.PENALTY_MAGNITUDES)
+                    - set(t5_scoring._as_dict(raw.get("failure_modes")))
+                )
+                if "type_5_contract" not in tc
+                else []
+            ),
+        }
+        ev["scoring_provenance"] = provenance
+        history = ev.setdefault("scoring_history", [])
+        entry = {
+            "inputs": provenance,
+            "score": ev["score"],
+            "score_value": ev["score_value"],
+        }
+        if not history or history[-1] != entry:
+            history.append(deepcopy(entry))
     return counters
 
 
@@ -607,8 +749,17 @@ def recompute_benchmark_summary(
 ) -> dict[str, Any]:
     """Recompute headline metrics after batched scoring merges evaluations."""
     evaluations = result.get("evaluations", []) or []
-    case_map = {tc.get("id"): tc for tc in test_cases_full.get("test_cases", [])}
+    case_map = _canonical_map(test_cases_full.get("test_cases", []), "id")
+    evaluation_map = _canonical_map(evaluations, "test_case_id")
+    unknown = sorted(set(evaluation_map) - set(case_map))
+    if unknown:
+        raise ValueError(f"Evaluations outside the eligible case population: {unknown}")
     t5_counters = apply_t5_scoring(evaluations, case_map, pass1_answers)
+    for ev in evaluations:
+        tc = case_map[ev["test_case_id"]]
+        ev["type"] = normalize_case_type(tc.get("type"))
+        if tc.get("subtype"):
+            ev["subtype"] = tc["subtype"]
 
     # Freeze the denominator to the intended case set: any intended case
     # without an evaluation record is scored as an explicit zero-credit
@@ -616,14 +767,24 @@ def recompute_benchmark_summary(
     evaluated_ids = {ev.get("test_case_id") for ev in evaluations}
     for case_id, tc in case_map.items():
         if case_id not in evaluated_ids:
-            evaluations.append({
-                "test_case_id": case_id,
-                "type": tc.get("type"),
-                "score": "FAILED_EVALUATION",
-                "score_value": 0.0,
-                "evaluation_status": "missing_evaluation",
-                "explanation": "No Pass 2 evaluation record was produced.",
-            })
+            evaluations.append(
+                {
+                    "test_case_id": case_id,
+                    "type": tc.get("type"),
+                    "score": "FAILED_EVALUATION",
+                    "score_value": 0.0,
+                    "evaluation_status": "missing_evaluation",
+                    "explanation": "No Pass 2 evaluation record was produced.",
+                }
+            )
+    for ev in evaluations:
+        tc = case_map[ev["test_case_id"]]
+        if normalize_case_type(tc.get("type")) == "type_5_agent_behavior":
+            ev["rubric_version"] = (
+                t5_contract.RUBRIC_VERSION
+                if "type_5_contract" in tc
+                else t5_scoring.RUBRIC_VERSION
+            )
     result["evaluations"] = evaluations
     failed_count = sum(
         1 for ev in evaluations if ev.get("evaluation_status") in PLACEHOLDER_STATUSES
@@ -643,7 +804,8 @@ def recompute_benchmark_summary(
     }
 
     type5 = [
-        ev for ev in evaluations
+        ev
+        for ev in evaluations
         if normalize_case_type(ev.get("type")) == "type_5_agent_behavior"
     ]
     subtype_scores: dict[str, list[float]] = {}
@@ -659,7 +821,8 @@ def recompute_benchmark_summary(
         subtype_scores.setdefault(subtype, []).append(
             float(ev.get("score_value", 0) or 0)
         )
-        for dim, value in (ev.get("type_5_dimensions") or {}).items():
+        dimensions = (ev.get("type_5_dimensions") or {}) if ev.get("evaluation_status") not in PLACEHOLDER_STATUSES else {}
+        for dim, value in dimensions.items():
             if isinstance(value, (int, float)):
                 dimension_scores.setdefault(dim, []).append(float(value))
         if tc.get("is_capstone"):
@@ -684,6 +847,71 @@ def recompute_benchmark_summary(
     metadata["total_cases"] = len(evaluations)
     metadata["failed_evaluation_cases"] = failed_count
     metadata["type_5_scoring"] = t5_counters
+    manifest = {
+        "eligible_case_ids": list(case_map),
+        "case_sha256": {
+            cid: t5_contract.fingerprint(tc) for cid, tc in case_map.items()
+        },
+    }
+    existing_manifest = metadata.get("evaluation_manifest")
+    if existing_manifest and existing_manifest != manifest:
+        raise ValueError(
+            "Eligible cases or case contents differ from the frozen evaluation manifest"
+        )
+    metadata["evaluation_manifest"] = manifest
+    metadata["evaluation_coverage"] = {
+        "intended_cases": len(evaluations),
+        "evaluated_cases": len(evaluations) - failed_count,
+        "evaluation_errors": failed_count,
+        "coverage_percent": _percent(len(evaluations) - failed_count, len(evaluations)),
+        "score_lower_bound": _percent(total_score, len(evaluations)),
+        "score_upper_bound": _percent(total_score + failed_count, len(evaluations)),
+    }
+    versions: dict[str, list[dict[str, Any]]] = {}
+    for ev in type5:
+        version = ev.get("rubric_version") or (
+            t5_contract.RUBRIC_VERSION
+            if "type_5_contract" in case_map[ev["test_case_id"]]
+            else t5_scoring.RUBRIC_VERSION
+        )
+        versions.setdefault(version, []).append(ev)
+    result["type_5_breakdown"]["by_rubric_version"] = {
+        version: {
+            "case_count": len(records),
+            "average_score": _percent(
+                sum(float(e.get("score_value", 0)) for e in records), len(records)
+            ),
+            "evaluation_errors": sum(
+                e.get("evaluation_status") in PLACEHOLDER_STATUSES for e in records
+            ),
+        }
+        for version, records in sorted(versions.items())
+    }
+    behavior = [
+        ev for ev in type5 if ev.get("rubric_version") == t5_contract.RUBRIC_VERSION
+    ]
+    result["type_5_breakdown"]["behavioral_success"] = {
+        "case_count": len(behavior),
+        "success_count": sum(ev.get("behavioral_success") is True for ev in behavior),
+        "success_rate_lower_bound": _percent(
+            sum(ev.get("behavioral_success") is True for ev in behavior), len(behavior)
+        ),
+        "by_dimension": {
+            dimension: _percent(sum(values), len(values))
+            for dimension in t5_contract.DIMENSIONS
+            if (
+                values := [
+                    ev["type_5_behavior"]["dimensions"][dimension]
+                    for ev in behavior
+                    if ev.get("evaluation_status") not in PLACEHOLDER_STATUSES
+                    and ev.get("type_5_behavior", {})
+                    .get("dimensions", {})
+                    .get(dimension)
+                    is not None
+                ]
+            )
+        },
+    }
     return result
 
 
@@ -713,6 +941,7 @@ def run_step_once(
     verification_path = test_cases_path.parent / test_cases_path.name.replace(
         "_test_cases.json", "_test_cases_verification.json"
     )
+    verification = {}
     if verification_path.exists():
         verification = json.loads(verification_path.read_text(encoding="utf-8"))
         rejected_ids: set[str] = set()
@@ -735,6 +964,15 @@ def run_step_once(
                 f"test cases ({filtered_count} remain)"
             )
 
+    _canonical_map(test_cases.get("test_cases", []), "id")
+    contract_review_errors = t5_contract.validate_verified_contracts(test_cases.get("test_cases", []), verification)
+    if contract_review_errors:
+        raise ValueError("; ".join(contract_review_errors))
+    for case in test_cases.get("test_cases", []):
+        if "type_5_contract" in case:
+            problems = t5_contract.validate_contract(case, t5_contract.log_strings(app_logs))
+            if problems:
+                raise ValueError(f"Invalid contract for {case['id']}: {'; '.join(problems)}")
     raw_logs = strip_to_raw_logs(app_logs)
     stripped = strip_ground_truth(test_cases)
 

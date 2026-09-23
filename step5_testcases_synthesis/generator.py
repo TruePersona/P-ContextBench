@@ -26,17 +26,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
     API_BACKENDS,
     SUPPORTED_BACKENDS,
-    make_client,
+    SUPPORTED_PROVIDERS,
     call_llm,
     check_api_key,
-    provider_for_backend,
     default_model_for_backend,
-    SUPPORTED_PROVIDERS,
+    make_client,
+    provider_for_backend,
+)
+from step6_benchmark_runner.t5_contract import (
+    fingerprint,
+    log_strings,
+    validate_contract,
 )
 from utils import (
-    load_prompt,
     extract_json,
     fill,
+    load_prompt,
 )
 
 STEP_DIR = Path(__file__).parent
@@ -115,6 +120,71 @@ def verification_passed(verification: dict[str, Any]) -> bool:
     return rejected == 0 and not coverage_deficit
 
 
+def validate_type5_contracts(
+    test_cases: dict[str, Any], app_logs: dict[str, Any]
+) -> dict[str, list[str]]:
+    """Newly generated Type 5 cases must carry usable, log-grounded contracts."""
+    source_text = log_strings(app_logs)
+    problems = {}
+    for case in test_cases.get("test_cases", []):
+        typ = str(case.get("type", "")).lower()
+        if typ == "type_5_agent_behavior" or (typ.startswith("5") and "_" in typ):
+            errors = validate_contract(case, source_text)
+            if errors:
+                problems[case.get("id", "<missing>")] = errors
+    return problems
+
+
+def enforce_contract_verification(
+    test_cases: dict[str, Any], verification: dict[str, Any]
+) -> None:
+    """A model's summary cannot substitute for an actual contract review."""
+    evaluations = verification.get("evaluations")
+    evaluations = (
+        [e for e in evaluations if isinstance(e, dict)]
+        if isinstance(evaluations, list)
+        else []
+    )
+    verification["evaluations"] = evaluations
+    for case in test_cases.get("test_cases", []):
+        if "type_5_contract" not in case:
+            continue
+        records = [
+            e
+            for e in evaluations
+            if e.get("test_case_id", e.get("id")) == case.get("id")
+        ]
+        check = records[0].get("behavior_contract_check") if len(records) == 1 else None
+        checked = isinstance(check, dict) and check.get("verdict") in ("PASS", "WARN")
+        checked = checked and records[0].get("overall_verdict") in (
+            "VERIFIED",
+            "FLAGGED",
+        )
+        if not checked:
+            if len(records) == 1:
+                records[0]["overall_verdict"] = "REJECTED"
+                records[0]["revision_note"] = (
+                    "Behavior contract review missing, duplicated, malformed or FAIL."
+                )
+            else:
+                evaluations[:] = [e for e in evaluations if e not in records]
+                evaluations.append(
+                    {
+                        "test_case_id": case["id"],
+                        "overall_verdict": "REJECTED",
+                        "revision_note": "Missing or duplicate behavior contract review.",
+                    }
+                )
+        else:
+            # Written by code after the independent review, never by the model.
+            records[0]["behavior_case_sha256"] = fingerprint(case)
+    rejected = sum(e.get("overall_verdict") == "REJECTED" for e in evaluations)
+    summary = verification.setdefault("verification_metadata", {}).setdefault(
+        "summary", {}
+    )
+    summary["rejected"] = max(rejected, summary.get("rejected", 0))
+
+
 def extract_base_name(profile_path: Path) -> str:
     return profile_path.stem.replace("_verification", "")
 
@@ -143,20 +213,64 @@ def run_step(
     verification_out = output_dir / f"{base_name}_test_cases_verification.json"
 
     for attempt in range(1, max_iterations + 1):
-        print(f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name}")
+        print(
+            f"[attempt {attempt}/{max_iterations}] generating test cases for {base_name}"
+        )
         test_cases = run_generation(
-            client, model, app_logs, corrected_social_circle,
-            gpt_reasoning, provider=provider, backend=backend,
+            client,
+            model,
+            app_logs,
+            corrected_social_circle,
+            gpt_reasoning,
+            provider=provider,
+            backend=backend,
         )
         test_cases_out.write_text(
             json.dumps(test_cases, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-        print(f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}")
-        verification = run_verification(
-            client, verifier_model, test_cases, app_logs,
-            gpt_reasoning, provider=provider, backend=backend,
+        contract_problems = validate_type5_contracts(test_cases, app_logs)
+        if contract_problems:
+            # Reject malformed answer keys before spending a verification call.
+            # Keep a normal rejection report so later stages cannot consume them.
+            verification = {
+                "verification_metadata": {
+                    "summary": {"rejected": len(contract_problems)}
+                },
+                "evaluations": [
+                    {
+                        "test_case_id": cid,
+                        "overall_verdict": "REJECTED",
+                        "revision_note": "; ".join(errors),
+                    }
+                    for cid, errors in contract_problems.items()
+                ],
+                "corrected_test_cases": {
+                    "coverage_deficit": ["Invalid Type 5 contracts"]
+                },
+                "contract_validation_errors": contract_problems,
+            }
+            verification_out.write_text(
+                json.dumps(verification, indent=2), encoding="utf-8"
+            )
+            print(
+                f"[attempt {attempt}/{max_iterations}] invalid Type 5 contracts: {contract_problems}"
+            )
+            continue
+
+        print(
+            f"[attempt {attempt}/{max_iterations}] verifying test cases for {base_name}"
         )
+        verification = run_verification(
+            client,
+            verifier_model,
+            test_cases,
+            app_logs,
+            gpt_reasoning,
+            provider=provider,
+            backend=backend,
+        )
+        enforce_contract_verification(test_cases, verification)
         verification_out.write_text(
             json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -165,7 +279,9 @@ def run_step(
             print(f"[attempt {attempt}/{max_iterations}] passed")
             return 0
         summary = verification.get("verification_metadata", {}).get("summary", {})
-        deficit = verification.get("corrected_test_cases", {}).get("coverage_deficit", [])
+        deficit = verification.get("corrected_test_cases", {}).get(
+            "coverage_deficit", []
+        )
         print(
             f"[attempt {attempt}/{max_iterations}] rejected={summary.get('rejected', 0)} "
             f"coverage_deficit={len(deficit)}"

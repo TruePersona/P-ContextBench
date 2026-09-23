@@ -13,9 +13,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-
 MIN_SCORE = 0.0
 MAX_SCORE = 1.0
+EVALUATION_ERRORS = {
+    "judge_batch_failed", "missing_evaluation", "judge_output_off_schema",
+    "judge_uncertain", "scoring_input_invalid",
+}
 
 SCORE_MAP = {
     "CORRECT": 1.0,
@@ -90,6 +93,12 @@ def load_evaluations(path: Path) -> dict[str, dict[str, Any]]:
         by_id[tid] = evaluation
     if not by_id:
         raise ValueError(f"{path} has no usable evaluations")
+    manifest = payload.get("metadata", {}).get("evaluation_manifest")
+    if manifest is not None:
+        ids = manifest.get("eligible_case_ids") if isinstance(manifest, dict) else None
+        if (not isinstance(ids, list) or not all(isinstance(cid, str) for cid in ids)
+                or len(set(ids)) != len(ids) or set(ids) != set(by_id)):
+            raise ValueError(f"{path}: evaluations differ from the frozen manifest; rescore with original cases first")
     return by_id
 
 
@@ -147,6 +156,8 @@ def summarize_group(records: list[dict[str, Any]], k: int) -> dict[str, Any]:
         "strict_pass_k_count": strict_count,
         "strict_pass_k_rate": strict_rate,
         "strict_pass_k_percent": percent(strict_count, total),
+        "strict_pass_k_upper_bound_percent": percent(sum(r["possible_pass_k"] for r in records), total),
+        "cases_with_evaluation_errors": sum(bool(r["evaluation_error_runs"]) for r in records),
         "min_score_k_average": min_score_avg,
         "min_score_k_average_percent": percent(sum(min_scores), total),
         "average_accuracy_across_runs": (
@@ -233,6 +244,27 @@ def aggregate_passk(
         first = present_evaluations[0] if present_evaluations else {}
         meta = case_metadata.get(tid, {})
 
+        versions = {
+            e.get("rubric_version", "unversioned_legacy") for e in present_evaluations
+        }
+        if len(versions) > 1:
+            raise ValueError(
+                f"{tid}: cannot aggregate different rubric versions: {sorted(versions)}"
+            )
+        case_hashes = {
+            e.get("scoring_provenance", {}).get("case_sha256")
+            for e in present_evaluations
+        }
+        case_hashes.discard(None)
+        if len(case_hashes) > 1:
+            raise ValueError(
+                f"{tid}: cannot aggregate different case/contract contents"
+            )
+        errors = [
+            idx + 1
+            for idx, e in enumerate(evaluations)
+            if e is None or e.get("evaluation_status") in EVALUATION_ERRORS
+        ]
         scores = [
             score_value(evaluation) if evaluation is not None else 0.0
             for evaluation in evaluations
@@ -246,11 +278,20 @@ def aggregate_passk(
             "subtype": subtype,
             "scores": scores,
             "min_score": min_score,
-            "strict_pass_k": all(score == 1.0 for score in scores),
+            "rubric_version": next(iter(versions)),
+            "strict_pass_k": not errors and all(score == 1.0 for score in scores),
+            "possible_pass_k": all(
+                score == 1.0 or idx + 1 in errors for idx, score in enumerate(scores)
+            ),
+            "evaluation_error_runs": errors,
             "unstable": len(set(scores)) > 1,
-            "hard_failure": any(score == 0.0 for score in scores),
+            "hard_failure": any(
+                score == 0.0 and idx + 1 not in errors
+                for idx, score in enumerate(scores)
+            ),
             "missing_from_runs": [
-                idx + 1 for idx, evaluation in enumerate(evaluations)
+                idx + 1
+                for idx, evaluation in enumerate(evaluations)
                 if evaluation is None
             ],
         }

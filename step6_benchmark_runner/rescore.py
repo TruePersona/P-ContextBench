@@ -20,11 +20,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from step6_benchmark_runner.generator import recompute_benchmark_summary
+from step6_benchmark_runner.generator import _canonical_map, recompute_benchmark_summary
+from step6_benchmark_runner.t5_contract import fingerprint
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -39,11 +41,52 @@ def rescore(
     test_cases: dict[str, Any],
     pass1_answers: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return the results with Type 5 fields recomputed and summaries rebuilt."""
-    metadata = results.get("metadata", {}) or {}
+    """Rescore the original eligible population, never the unfiltered case file.
+
+    Legacy files have no manifest: conservatively preserve recorded IDs and
+    state that assumption. Their missing/excluded cases cannot be recovered
+    reliably from the results alone. Neither input object is modified.
+    """
+    results = deepcopy(results)
+    metadata = results.setdefault("metadata", {})
+    case_map = _canonical_map(test_cases.get("test_cases", []), "id")
+    recorded = _canonical_map(results.get("evaluations", []), "test_case_id")
+    manifest = metadata.get("evaluation_manifest")
+    ids = manifest["eligible_case_ids"] if manifest else list(recorded)
+    if (
+        not isinstance(ids, list)
+        or not all(isinstance(cid, str) for cid in ids)
+        or len(set(ids)) != len(ids)
+    ):
+        raise ValueError("Manifest eligible_case_ids must be unique strings")
+    missing = sorted(set(ids) - set(case_map))
+    if missing:
+        raise ValueError(f"Missing test cases for original evaluated IDs: {missing}")
+    if set(recorded) - set(ids):
+        raise ValueError("Results contain IDs outside their frozen manifest")
+    if pass1_answers is not None:
+        answers = _canonical_map(pass1_answers.get("answers", []), "test_case_id")
+        for cid, record in recorded.items():
+            expected_hash = record.get("scoring_provenance", {}).get("answer_sha256")
+            if expected_hash and (
+                cid not in answers or fingerprint(answers[cid]) != expected_hash
+            ):
+                raise ValueError(
+                    f"Pass 1 answer changed for {cid}; run a fresh judgment, not an offline rescore"
+                )
+    population = {**test_cases, "test_cases": [case_map[cid] for cid in ids]}
+    if pass1_answers is None and any("type_5_contract" in case_map[cid] for cid in ids):
+        raise ValueError(
+            "Behavior contract rescoring requires the original --pass1 answers"
+        )
+    metadata.setdefault(
+        "rescore_population_policy",
+        "frozen_manifest" if manifest else "legacy_recorded_ids",
+    )
+    metadata["rescore_semantics"] = "reuse_original_judgments; not a fresh evaluation"
     return recompute_benchmark_summary(
         results,
-        test_cases,
+        population,
         metadata.get("model_used_pass1", "unknown"),
         metadata.get("model_used_pass2", "unknown"),
         pass1_answers=pass1_answers,
