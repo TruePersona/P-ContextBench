@@ -1,0 +1,33 @@
+Assess whether each question can be answered from the public history alone.
+You have no private persona profile or answer key. Do not infer facts from other
+questions. Treat each case independently. Read the complete history, including
+updates, cancellations, changes of permission, and information about other people.
+
+For factual questions, answer only what the public evidence supports. For
+interpretive questions, distinguish supported interpretations from speculation
+and identify materially different valid answers. For requests, respond usefully
+as the assistant; respect current user intent, authority, time, and uncertainty.
+Do not treat an old preference as an unconditional prohibition. Do not require
+unnecessary clarification, refusal, or disclosure merely to demonstrate recall.
+
+PUBLIC HISTORY:
+{{PUBLIC_HISTORY}}
+
+PUBLIC QUESTIONS:
+{{PUBLIC_CASES}}
+
+Return one assessment per exact case ID, with no omissions or extra IDs:
+{"assessments":[{"test_case_id":"TC-01",
+"answerability":"supported | ambiguous | unsupported",
+"answer":"A concrete answer based only on public evidence",
+"supporting_quotes":["Exact verbatim substrings of the public history"],
+"limitations":"Uncertainty, conflicting evidence, valid alternatives, or none"}]}
+
+Use supported only when the question has a defensible answer from the history.
+For an action request, a justified clarification, refusal, or partial completion
+is an answer. Missing information that makes clarification the appropriate next
+step does not itself invalidate that case. Assess whether the next response is
+justified, rather than whether the final external task can already be completed.
+Use ambiguous when a material ambiguity prevents determining the answer, and
+unsupported when required evidence is absent. A supported answer needs at least
+one exact source quote. Include all necessary updates and counterevidence.

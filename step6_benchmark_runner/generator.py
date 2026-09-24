@@ -3,19 +3,18 @@
 Pass 1: evaluator LLM sees raw app logs + questions only. No ground_truth in
         context. Writes pass1 answers.
 
-Pass 2: scorer LLM sees test cases (with ground_truth) + Pass 1 answers.
+Pass 2: scorer LLM sees full public history, test cases and Pass 1 answers.
         Writes the final verification report.
 
-Subscription backend isolation: when --backend claude or --backend codex is
-set, the runner deletes the target session directory between each model call
-so prior Q&A does not leak into the current context. When running against the
-Anthropic SDK directly, each test case is a fresh messages.create call, so
-isolation is inherent.
+Questions are isolated by default; batch layout requires explicit selection.
+Subscription calls use temporary working directories and disabled tools.
+API calls supply fresh messages without previous answers.
 """
 
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import re
 import sys
@@ -35,6 +34,8 @@ from llm import (
     make_client,
     provider_for_backend,
 )
+from pipeline_integrity import admission, runs
+from pipeline_integrity.artifacts import distinct_models, file_digest, provenance, publish, tracked
 from step6_benchmark_runner import t5_contract, t5_scoring
 from step6_benchmark_runner.passk import aggregate_passk
 from utils import (
@@ -49,6 +50,7 @@ PROMPT_PATH = STEP_DIR / "prompt.txt"
 
 # ----- prompt splitting ----------------------------------------------------
 
+
 def load_prompt_sections() -> dict[str, str]:
     """Split prompt into PASS 1 and PASS 2 sections on the big dividers."""
     text = PROMPT_PATH.read_text(encoding="utf-8")
@@ -61,19 +63,18 @@ def load_prompt_sections() -> dict[str, str]:
     pass2 = header + text[pass2_start:]
     return {"pass1": pass1, "pass2": pass2}
 
+
 def resolve_verified_fragments_path(app_logs_path: Path) -> Path | None:
     """Locate Step 4 {persona}_verified_fragments.json for Pass 2 scoring."""
     candidates: list[Path] = []
     if app_logs_path.name.endswith("_app_logs.json"):
         candidates.append(
             app_logs_path.with_name(
-                app_logs_path.name.replace(
-                    "_app_logs.json", "_verified_fragments.json"
-                )
+                app_logs_path.name.replace("_app_logs.json", "_verified_fragments.json")
             )
         )
     stem = re.sub(r"_decoy\d+$", "", app_logs_path.stem.replace("_app_logs", ""))
-    candidates.append(STEP4_OUTPUT_DIR / f"{stem}_verified_fragments.json")
+    candidates.append(app_logs_path.parent / f"{stem}_verified_fragments.json")
 
     seen: set[Path] = set()
     for candidate in candidates:
@@ -87,6 +88,7 @@ def resolve_verified_fragments_path(app_logs_path: Path) -> Path | None:
 
 
 # ----- raw log preparation -------------------------------------------------
+
 
 def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
     """Flatten messenger + calendar into a plain text stream for the evaluator."""
@@ -116,9 +118,7 @@ def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
 
     calendar = app_logs.get("calendar", {})
     events = calendar.get("events", []) if isinstance(calendar, dict) else calendar or []
-    events = sorted(
-        events or [], key=lambda e: (e.get("date", ""), e.get("start_time", ""))
-    )
+    events = sorted(events or [], key=lambda e: (e.get("date", ""), e.get("start_time", "")))
     for e in events:
         date = e.get("date", "")
         start = e.get("start_time", "")
@@ -128,64 +128,29 @@ def strip_to_raw_logs(app_logs: dict[str, Any]) -> str:
         participants = ", ".join(e.get("participants", []) or [])
         notes = e.get("notes", "")
         lines.append(
-            f"{date} | {start}-{end} | {title} | @ {loc} | with {participants} "
-            f"| Notes: {notes}"
+            f"{date} | {start}-{end} | {title} | @ {loc} | with {participants} | Notes: {notes}"
         )
 
     return "\n".join(lines)
 
 
-FIELDS_HIDDEN_FROM_PASS1 = {
-    "ground_truth",
-    "type_5_contract",
-    "acceptable_resolution_labels",
-    "evidence_type",
-    "expected_evidence",
-    "is_capstone",
-    "source_hidden_fact_ids",
-    "source_subcategories",
-    "risk_surface_score",
-    "subtype",
-    "user_prompt_context",
-    "expected_behavior",
-    "expected_resolution_label",
-    "expected_action_boundary",
-    "naive_compliance_consequence",
-    "construction_tags",
-    "hidden_fact_reasoning_roles",
-    "fact_check_risk",
-    "reasoning_requirement",
-    "expected_current_state",
-    "prior_state",
-    "dynamic_pattern",
-    "temporal_distractor",
-    "change_explanation",
-    "source_hidden_fact_requirements",
-    "ground_truth_label_justification",
-    "supporting_context",
-    "reasoning_conclusion",
-    "reasoning_mechanism",
-    "reasoning_distractor",
-    "required_evidence_roles"
- 
-}
-
-
 def strip_ground_truth(test_cases: dict[str, Any]) -> dict[str, Any]:
-    """Return a shallow copy of test_cases with answer-key fields removed.
-    Questions, ids, types and framing remain visible to Pass 1."""
-    stripped = {"metadata": test_cases.get("metadata", {}), "test_cases": []}
+    """Serialize only public inputs; new private annotations stay private."""
+    metadata = test_cases.get("metadata", {})
+    stripped = {
+        "metadata": {k: metadata[k] for k in ("persona", "participant_id") if k in metadata},
+        "test_cases": [],
+    }
     for tc in test_cases.get("test_cases", []):
-        stripped["test_cases"].append(
-            {
-                k: v
-                for k, v in tc.items()
-                if k not in FIELDS_HIDDEN_FROM_PASS1
-            }
-        )
+        public = {k: tc[k] for k in ("id", "question", "framing") if k in tc}
+        if "type" in tc:
+            public["type"] = normalize_case_type(tc["type"])
+        stripped["test_cases"].append(public)
     return stripped
 
+
 # ----- passes --------------------------------------------------------------
+
 
 def run_pass_1(
     raw_logs: str,
@@ -195,8 +160,37 @@ def run_pass_1(
     backend: str,
     provider: str,
     response_format: str,
-    reasoning_effort: str
+    reasoning_effort: str,
+    answering_layout: str = "isolated",
 ) -> dict[str, Any]:
+    if answering_layout not in ("isolated", "batch"):
+        raise ValueError("Unknown answering layout")
+    if answering_layout == "isolated":
+        answers = []
+        for case in test_cases_stripped["test_cases"]:
+            response = run_pass_1(
+                raw_logs,
+                {**test_cases_stripped, "test_cases": [case]},
+                model,
+                client,
+                backend,
+                provider,
+                response_format,
+                reasoning_effort,
+                answering_layout="batch",
+            )
+            rows = response.get("answers", [])
+            if (
+                not isinstance(rows, list)
+                or any(
+                    not isinstance(row, dict) or row.get("test_case_id") != case["id"]
+                    for row in rows
+                )
+                or len(rows) > 1
+            ):
+                raise ValueError("Isolated answer returned unexpected case IDs")
+            answers.extend(rows)
+        return {"answers": answers}
     sections = load_prompt_sections()
     template = fill(sections["pass1"], "{{INSERT_RAW_LOGS_TEXT_HERE}}", raw_logs)
     template = fill(
@@ -204,10 +198,13 @@ def run_pass_1(
         "{{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}",
         test_cases_stripped,
     )
-    
+
     raw = call_llm(client, model, template, reasoning_effort, provider, backend, response_format)
 
     return extract_json(raw)
+
+
+ANSWERING_CODE_SHA256 = admission.digest(inspect.getsource(run_pass_1))
 
 
 def _call_pass2_single(
@@ -222,17 +219,12 @@ def _call_pass2_single(
     reasoning_effort: str,
     verified_fragments_path: Path | None = None,
     correction: str | None = None,
+    public_history: str | None = None,
 ) -> dict[str, Any]:
-    template = fill(
-        sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_batch
-    )
-    template = fill(
-        template, "{{INSERT_PASS_1_ANSWERS_JSON_HERE}}", answers_batch
-    )
+    template = fill(sections["pass2"], "{{INSERT_FULL_TEST_CASES_JSON_HERE}}", test_cases_batch)
+    template = fill(template, "{{INSERT_PASS_1_ANSWERS_JSON_HERE}}", answers_batch)
     if verified_fragments_path and verified_fragments_path.exists():
-        verified_fragments = json.loads(
-            verified_fragments_path.read_text(encoding="utf-8")
-        )
+        verified_fragments = json.loads(verified_fragments_path.read_text(encoding="utf-8"))
     else:
         if verified_fragments_path:
             print(
@@ -240,8 +232,13 @@ def _call_pass2_single(
                 f"{verified_fragments_path}; using empty list"
             )
         verified_fragments = []
+    template = fill(template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments)
     template = fill(
-        template, "{{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}", verified_fragments
+        template,
+        "{{INSERT_FULL_PUBLIC_HISTORY_HERE}}",
+        public_history
+        if public_history is not None
+        else "Historical scoring: full public history was not supplied.",
     )
     if correction:
         # Retry after an off-schema answer: tell the judge what was wrong so
@@ -285,9 +282,7 @@ def _check_pass2_batch(
         record = deepcopy(records[0])
         if normalize_case_type(tc.get("type")) == "type_5_agent_behavior":
             found = (
-                t5_contract.validate_observations(
-                    record, tc, (answers or {}).get(case_id)
-                )
+                t5_contract.validate_observations(record, tc, (answers or {}).get(case_id))
                 if "type_5_contract" in tc
                 else t5_scoring.validate_type5(record)
             )
@@ -307,6 +302,41 @@ def _check_pass2_batch(
             ):
                 record.pop(key, None)
             record["raw_judgment"] = raw
+        else:
+            record.pop("evaluation_status", None)
+            validity = record.get("reference_validity", "valid")
+            if validity in ("invalid", "uncertain"):
+                raw = deepcopy(record)
+                record.update(
+                    score="FAILED_EVALUATION",
+                    score_value=0.0,
+                    evaluation_status="case_reference_invalid"
+                    if validity == "invalid"
+                    else "judge_uncertain",
+                    raw_judgment=raw,
+                )
+            else:
+                verdict = record.get("score")
+                expected = (
+                    {"CORRECT": 1.0, "PARTIAL": 0.5, "INCORRECT": 0.0}.get(verdict)
+                    if isinstance(verdict, str)
+                    else None
+                )
+                value = record.get("score_value")
+                if (
+                    validity != "valid"
+                    or expected is None
+                    or isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or value != expected
+                ):
+                    problems[case_id] = [
+                        "Types 1-4 require CORRECT/1.0, PARTIAL/0.5, or INCORRECT/0.0; "
+                        "reference_validity must be valid, invalid, or uncertain"
+                    ]
+                    continue
+                record["score_value"] = expected
+                record["evaluation_status"] = "evaluated"
         record["type"] = normalize_case_type(tc.get("type"))
         record["subtype"] = tc.get("subtype")
         record["is_capstone"] = bool(tc.get("is_capstone"))
@@ -395,9 +425,7 @@ def _score_batch(
         if corrections_sent or attempt == 2:
             break
         corrections_sent += 1
-        correction = "\n".join(
-            f"- {cid}: " + "; ".join(found) for cid, found in problems.items()
-        )
+        correction = "\n".join(f"- {cid}: " + "; ".join(found) for cid, found in problems.items())
         print(f"    {label}: retrying {len(problems)} unresolved record(s)")
 
     off_schema = 0
@@ -407,9 +435,7 @@ def _score_batch(
         if cid in accepted:
             continue
         if cid in problems:
-            accepted[cid] = _off_schema_placeholder(
-                tc, problems[cid], raw_by_id.get(cid)
-            )
+            accepted[cid] = _off_schema_placeholder(tc, problems[cid], raw_by_id.get(cid))
             off_schema += 1
         else:
             accepted[cid] = {
@@ -435,6 +461,7 @@ def run_pass_2(
     reasoning_effort: str,
     batch_size: int = 5,
     verified_fragments_path: Path | None = None,
+    public_history: str | None = None,
 ) -> dict[str, Any]:
     sections = load_prompt_sections()
     all_cases = test_cases_full.get("test_cases", [])
@@ -444,9 +471,7 @@ def run_pass_2(
         if "type_5_contract" in tc:
             problems = t5_contract.validate_contract(tc)
             if problems:
-                raise ValueError(
-                    f"Invalid contract for {tc['id']}: {'; '.join(problems)}"
-                )
+                raise ValueError(f"Invalid contract for {tc['id']}: {'; '.join(problems)}")
     all_answers = pass1_answers.get("answers", [])
     call_kwargs = {
         "model": model,
@@ -456,6 +481,7 @@ def run_pass_2(
         "response_format": response_format,
         "reasoning_effort": reasoning_effort,
         "verified_fragments_path": verified_fragments_path,
+        "public_history": public_history,
     }
 
     # API backends take the whole case set in one call; subscription CLIs
@@ -483,9 +509,7 @@ def run_pass_2(
         batch_num = i // step + 1
         label = f"batch {batch_num}" if batched else "pass 2"
         if batched:
-            print(
-                f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases"
-            )
+            print(f"  [pass 2 batch {batch_num}/{total_batches}] scoring {len(batch_cases)} cases")
 
         evals, result, n_off, n_failed = _score_batch(
             sections, tc_batch, ans_batch, label, call_kwargs
@@ -522,6 +546,8 @@ def _percent(score_sum: float, total: int) -> str:
 # judge output, so the Type 5 recomputation skips them and the summary counts
 # them as failed evaluations.
 PLACEHOLDER_STATUSES = (
+    "case_reference_invalid",
+    "missing_answer",
     "judge_batch_failed",
     "missing_evaluation",
     "judge_output_off_schema",
@@ -546,9 +572,7 @@ def normalize_case_type(raw: Any) -> str:
     return value.lower() or "unknown"
 
 
-def _canonical_map(
-    records: list[dict[str, Any]], id_key: str
-) -> dict[str, dict[str, Any]]:
+def _canonical_map(records: list[dict[str, Any]], id_key: str) -> dict[str, dict[str, Any]]:
     by_id = {}
     for record in records:
         if not isinstance(record, dict):
@@ -580,11 +604,10 @@ def apply_t5_scoring(
         if tc is None or normalize_case_type(tc.get("type")) != "type_5_agent_behavior":
             continue
         version = (
-            t5_contract.RUBRIC_VERSION
-            if "type_5_contract" in tc
-            else t5_scoring.RUBRIC_VERSION
+            t5_contract.RUBRIC_VERSION if "type_5_contract" in tc else t5_scoring.RUBRIC_VERSION
         )
         if ev.get("evaluation_status") in {
+            "missing_answer",
             "judge_batch_failed",
             "missing_evaluation",
             "judge_output_off_schema",
@@ -597,8 +620,7 @@ def apply_t5_scoring(
                 {
                     k: v
                     for k, v in ev.items()
-                    if k
-                    not in {"raw_judgment", "scoring_history", "scoring_provenance"}
+                    if k not in {"raw_judgment", "scoring_history", "scoring_provenance"}
                 }
             ),
         )
@@ -636,9 +658,9 @@ def apply_t5_scoring(
                 derived = t5_contract.score_contract(raw, tc, answer)
         else:
             if pass1_answers is not None:
-                actual = t5_scoring._as_dict(
-                    (answer or {}).get("type_5_action_summary")
-                ).get("intended_resolution_label")
+                actual = t5_scoring._as_dict((answer or {}).get("type_5_action_summary")).get(
+                    "intended_resolution_label"
+                )
                 label_source = "pass1"
             elif previous.get("actual_label") is not None:
                 actual = previous["actual_label"]
@@ -659,8 +681,13 @@ def apply_t5_scoring(
         if derived is None:
             counters["type_5_not_recomputed"] += 1
             for key in (
-                "type_5_dimensions", "type_5_label_comparison", "failure_modes",
-                "final_score_15", "type_5_behavior", "behavioral_success", "scoring_provenance",
+                "type_5_dimensions",
+                "type_5_label_comparison",
+                "failure_modes",
+                "final_score_15",
+                "type_5_behavior",
+                "behavioral_success",
+                "scoring_provenance",
             ):
                 ev.pop(key, None)
             ev.update(
@@ -672,9 +699,7 @@ def apply_t5_scoring(
             )
             continue
         counters["type_5_recomputed"] += 1
-        counters["type_5_score_value_changed"] += (
-            ev.get("score_value") != derived["score_value"]
-        )
+        counters["type_5_score_value_changed"] += ev.get("score_value") != derived["score_value"]
         counters["type_5_verdict_changed"] += ev.get("score") != derived["score"]
         if "type_5_contract" in tc:
             ev.update(derived)
@@ -687,9 +712,7 @@ def apply_t5_scoring(
             ):
                 ev.pop(key, None)
         else:
-            counters["type_5_resolution_label_changed"] += (
-                old_b != derived["resolution_label"]
-            )
+            counters["type_5_resolution_label_changed"] += old_b != derived["resolution_label"]
             dimensions = deepcopy(raw["type_5_dimensions"])
             dimensions.pop(t5_scoring.DIMENSION_B_LEGACY, None)
             dimensions[t5_scoring.DIMENSION_B] = derived["resolution_label"]
@@ -702,8 +725,7 @@ def apply_t5_scoring(
                 "resolution_match": derived["resolution_match"],
             }
             ev["failure_modes"] = {
-                name: derived["penalties"].get(name, 0)
-                for name in t5_scoring.PENALTY_KEYS
+                name: derived["penalties"].get(name, 0) for name in t5_scoring.PENALTY_KEYS
             }
             for key in ("final_score_15", "score_value", "score"):
                 ev[key] = derived[key]
@@ -754,6 +776,19 @@ def recompute_benchmark_summary(
     unknown = sorted(set(evaluation_map) - set(case_map))
     if unknown:
         raise ValueError(f"Evaluations outside the eligible case population: {unknown}")
+    if pass1_answers is not None:
+        answer_map = _canonical_map(pass1_answers.get("answers", []), "test_case_id")
+        for ev in evaluations:
+            answer = answer_map.get(ev["test_case_id"], {}).get("answer")
+            if normalize_case_type(
+                case_map[ev["test_case_id"]].get("type")
+            ) != "type_5_agent_behavior" and (not isinstance(answer, str) or not answer.strip()):
+                ev.update(
+                    score="FAILED_EVALUATION",
+                    score_value=0.0,
+                    evaluation_status="missing_answer",
+                    explanation="No usable answer was produced for this intended case.",
+                )
     t5_counters = apply_t5_scoring(evaluations, case_map, pass1_answers)
     for ev in evaluations:
         tc = case_map[ev["test_case_id"]]
@@ -781,9 +816,7 @@ def recompute_benchmark_summary(
         tc = case_map[ev["test_case_id"]]
         if normalize_case_type(tc.get("type")) == "type_5_agent_behavior":
             ev["rubric_version"] = (
-                t5_contract.RUBRIC_VERSION
-                if "type_5_contract" in tc
-                else t5_scoring.RUBRIC_VERSION
+                t5_contract.RUBRIC_VERSION if "type_5_contract" in tc else t5_scoring.RUBRIC_VERSION
             )
     result["evaluations"] = evaluations
     failed_count = sum(
@@ -799,14 +832,11 @@ def recompute_benchmark_summary(
             float(ev.get("score_value", 0) or 0)
         )
     result["accuracy_by_type"] = {
-        typ: _percent(sum(scores), len(scores))
-        for typ, scores in sorted(by_type.items())
+        typ: _percent(sum(scores), len(scores)) for typ, scores in sorted(by_type.items())
     }
 
     type5 = [
-        ev
-        for ev in evaluations
-        if normalize_case_type(ev.get("type")) == "type_5_agent_behavior"
+        ev for ev in evaluations if normalize_case_type(ev.get("type")) == "type_5_agent_behavior"
     ]
     subtype_scores: dict[str, list[float]] = {}
     dimension_scores: dict[str, list[float]] = {}
@@ -818,10 +848,12 @@ def recompute_benchmark_summary(
             if _SUBTYPE_TYPE_RE.match(str(tc.get("type") or ""))
             else "unknown"
         )
-        subtype_scores.setdefault(subtype, []).append(
-            float(ev.get("score_value", 0) or 0)
+        subtype_scores.setdefault(subtype, []).append(float(ev.get("score_value", 0) or 0))
+        dimensions = (
+            (ev.get("type_5_dimensions") or {})
+            if ev.get("evaluation_status") not in PLACEHOLDER_STATUSES
+            else {}
         )
-        dimensions = (ev.get("type_5_dimensions") or {}) if ev.get("evaluation_status") not in PLACEHOLDER_STATUSES else {}
         for dim, value in dimensions.items():
             if isinstance(value, (int, float)):
                 dimension_scores.setdefault(dim, []).append(float(value))
@@ -849,9 +881,7 @@ def recompute_benchmark_summary(
     metadata["type_5_scoring"] = t5_counters
     manifest = {
         "eligible_case_ids": list(case_map),
-        "case_sha256": {
-            cid: t5_contract.fingerprint(tc) for cid, tc in case_map.items()
-        },
+        "case_sha256": {cid: t5_contract.fingerprint(tc) for cid, tc in case_map.items()},
     }
     existing_manifest = metadata.get("evaluation_manifest")
     if existing_manifest and existing_manifest != manifest:
@@ -887,9 +917,7 @@ def recompute_benchmark_summary(
         }
         for version, records in sorted(versions.items())
     }
-    behavior = [
-        ev for ev in type5 if ev.get("rubric_version") == t5_contract.RUBRIC_VERSION
-    ]
+    behavior = [ev for ev in type5 if ev.get("rubric_version") == t5_contract.RUBRIC_VERSION]
     result["type_5_breakdown"]["behavioral_success"] = {
         "case_count": len(behavior),
         "success_count": sum(ev.get("behavioral_success") is True for ev in behavior),
@@ -904,9 +932,7 @@ def recompute_benchmark_summary(
                     ev["type_5_behavior"]["dimensions"][dimension]
                     for ev in behavior
                     if ev.get("evaluation_status") not in PLACEHOLDER_STATUSES
-                    and ev.get("type_5_behavior", {})
-                    .get("dimensions", {})
-                    .get(dimension)
+                    and ev.get("type_5_behavior", {}).get("dimensions", {}).get(dimension)
                     is not None
                 ]
             )
@@ -917,6 +943,14 @@ def recompute_benchmark_summary(
 
 # ----- entry point ---------------------------------------------------------
 
+
+@tracked(
+    "step6",
+    inputs=("app_logs_path", "test_cases_path"),
+    outputs=None,
+    base_arg="test_cases_path",
+    base_suffix="_test_cases",
+)
 def run_step_once(
     app_logs_path: Path,
     test_cases_path: Path,
@@ -933,39 +967,30 @@ def run_step_once(
     skip_pass2: bool = False,
     reasoning_pass1: str = "low",
     reasoning_pass2: str = "high",
+    allow_legacy_inputs: bool = False,
+    answering_layout: str = "isolated",
 ) -> Path:
+    distinct_models(model_pass1, model_pass2)
     app_logs = json.loads(app_logs_path.read_text(encoding="utf-8"))
     test_cases = json.loads(test_cases_path.read_text(encoding="utf-8"))
-
-    # Filter out REJECTED test cases from Step 5 verification
+    provenance(app_logs_path, allow_legacy=allow_legacy_inputs)
+    case_manifest = provenance(test_cases_path, allow_legacy=allow_legacy_inputs)
+    generator_model = case_manifest.get("configuration", {}).get("model")
+    if generator_model:
+        distinct_models(generator_model, model_pass2)
     verification_path = test_cases_path.parent / test_cases_path.name.replace(
         "_test_cases.json", "_test_cases_verification.json"
     )
-    verification = {}
-    if verification_path.exists():
-        verification = json.loads(verification_path.read_text(encoding="utf-8"))
-        rejected_ids: set[str] = set()
-        for ev in verification.get("evaluations", []):
-            if ev.get("overall_verdict") == "REJECTED":
-                eid = ev.get("test_case_id") or ev.get("id") or ""
-                if eid:
-                    rejected_ids.add(eid)
-        if rejected_ids:
-            original_count = len(test_cases.get("test_cases", []))
-            test_cases["test_cases"] = [
-                tc for tc in test_cases.get("test_cases", [])
-                if (tc.get("id") or tc.get("test_case_id") or "") not in rejected_ids
-            ]
-            filtered_count = len(test_cases["test_cases"])
-            if "metadata" in test_cases:
-                test_cases["metadata"]["total_test_cases"] = filtered_count
-            print(
-                f"[step6] filtered {original_count - filtered_count} REJECTED "
-                f"test cases ({filtered_count} remain)"
-            )
-
+    if not verification_path.exists():
+        raise ValueError("Missing independent case verification")
+    provenance(verification_path, allow_legacy=allow_legacy_inputs)
+    verification = json.loads(verification_path.read_text(encoding="utf-8"))
+    raw_logs = strip_to_raw_logs(app_logs)
+    test_cases = admission.admitted_cases(test_cases, verification, app_logs, raw_logs)
     _canonical_map(test_cases.get("test_cases", []), "id")
-    contract_review_errors = t5_contract.validate_verified_contracts(test_cases.get("test_cases", []), verification)
+    contract_review_errors = t5_contract.validate_verified_contracts(
+        test_cases.get("test_cases", []), verification
+    )
     if contract_review_errors:
         raise ValueError("; ".join(contract_review_errors))
     for case in test_cases.get("test_cases", []):
@@ -973,8 +998,28 @@ def run_step_once(
             problems = t5_contract.validate_contract(case, t5_contract.log_strings(app_logs))
             if problems:
                 raise ValueError(f"Invalid contract for {case['id']}: {'; '.join(problems)}")
-    raw_logs = strip_to_raw_logs(app_logs)
     stripped = strip_ground_truth(test_cases)
+    identity = runs.answer_identity(
+        raw_logs,
+        stripped,
+        test_cases,
+        load_prompt_sections()["pass1"],
+        {
+            "model": model_pass1,
+            "backend": backend,
+            "provider": provider,
+            "reasoning": reasoning_pass1,
+            "response_format": response_format,
+            "answering_layout": answering_layout,
+            "implementation_sha256": {
+                "answering": ANSWERING_CODE_SHA256,
+                "history_serializer": admission.digest(inspect.getsource(strip_to_raw_logs)),
+                "question_serializer": admission.digest(inspect.getsource(strip_ground_truth)),
+                "llm.py": file_digest(REPO_ROOT / "llm.py"),
+                "utils.py": file_digest(REPO_ROOT / "utils.py"),
+            },
+        },
+    )
 
     base_name = test_cases_path.stem.replace("_test_cases", "")
     suffix = f"_run{run_index:02d}" if run_index is not None else ""
@@ -982,10 +1027,10 @@ def run_step_once(
     pass1_out = output_dir / f"{base_name}{suffix}_pass1_answers.json"
     pass2_out = output_dir / f"{base_name}{suffix}_benchmark_results.json"
     raw_logs_out = output_dir / f"{base_name}_app_logs_raw.txt"
-    raw_logs_out.write_text(raw_logs, encoding="utf-8")
 
     verified_fragments_path = resolve_verified_fragments_path(app_logs_path)
     if verified_fragments_path:
+        provenance(verified_fragments_path, allow_legacy=allow_legacy_inputs)
         print(f"[step6] verified fragments: {verified_fragments_path}")
     else:
         print(
@@ -993,10 +1038,14 @@ def run_step_once(
             "Pass 2 will score without them"
         )
 
-    if skip_pass1 and pass1_out.exists():
+    if skip_pass1:
+        if not pass1_out.exists():
+            raise ValueError("--skip-pass1 requires an existing bound answer file")
+        provenance(pass1_out)
         print(f"[pass 1] skipped — loading existing {pass1_out.name}")
         pass1 = json.loads(pass1_out.read_text(encoding="utf-8"))
-        model_pass1 = pass1.get("metadata", {}).get("model_used", model_pass1)
+        runs.validate_answers(pass1, identity, {case["id"] for case in stripped["test_cases"]})
+        runs.validate_call_origin(pass1, output_dir)
     else:
         client = None
         if backend in API_BACKENDS:
@@ -1012,18 +1061,21 @@ def run_step_once(
             provider=provider,
             response_format=response_format,
             reasoning_effort=reasoning_pass1,
+            answering_layout=answering_layout,
         )
-        pass1_out.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
+        pass1 = runs.bind_answers(pass1, identity)
+        runs.validate_answers(pass1, identity, {case["id"] for case in stripped["test_cases"]})
         pass1.setdefault("metadata", {})
         pass1["metadata"]["model_used"] = model_pass1
         pass1["metadata"]["reasoning_effort"] = reasoning_pass1
         pass1["metadata"]["cases_answered"] = len(stripped["test_cases"])
-        pass1_out.write_text(json.dumps(pass1, indent=2, ensure_ascii=False), encoding="utf-8")
+        publish(pass1_out, pass1)
+    raw_logs_out.write_text(raw_logs, encoding="utf-8")
 
     if skip_pass2:
         print("[done] (pass 2 skipped)")
         return pass1_out
-    
+
     client_pass2 = None
     if backend_pass2 in API_BACKENDS:
         client_pass2 = make_client(provider_pass2)
@@ -1039,6 +1091,7 @@ def run_step_once(
         response_format=response_format,
         reasoning_effort=reasoning_pass2,
         verified_fragments_path=verified_fragments_path,
+        public_history=raw_logs,
     )
     pass2 = recompute_benchmark_summary(
         pass2, test_cases, model_pass1, model_pass2, pass1_answers=pass1
@@ -1046,7 +1099,28 @@ def run_step_once(
     pass2.setdefault("metadata", {})
     pass2["metadata"]["reasoning_effort_pass1"] = reasoning_pass1
     pass2["metadata"]["reasoning_effort_pass2"] = reasoning_pass2
-    pass2_out.write_text(json.dumps(pass2, indent=2, ensure_ascii=False), encoding="utf-8")
+    pass2["metadata"]["run_scope"] = verification["admission"]["scope"]
+    runs.bind_result(
+        pass2,
+        pass1,
+        judge_configuration={
+            "model": model_pass2,
+            "backend": backend_pass2,
+            "provider": provider_pass2,
+            "reasoning": reasoning_pass2,
+            "response_format": response_format,
+        },
+        judge_prompt=load_prompt_sections()["pass2"],
+        admission=verification["admission"],
+        fragments=json.loads(verified_fragments_path.read_text())
+        if verified_fragments_path
+        else [],
+        implementation={
+            p.name: file_digest(p)
+            for p in (Path(__file__), Path(t5_contract.__file__), Path(t5_scoring.__file__))
+        },
+    )
+    publish(pass2_out, pass2)
 
     accuracy = pass2.get("overall_accuracy", "unknown")
     print(f"[done] overall_accuracy={accuracy}")
@@ -1068,6 +1142,8 @@ def run_step(
     skip_pass2: bool = False,
     reasoning_pass1: str = "low",
     reasoning_pass2: str = "high",
+    allow_legacy_inputs: bool = False,
+    answering_layout: str = "isolated",
 ) -> int:
     run_step_once(
         app_logs_path,
@@ -1084,6 +1160,8 @@ def run_step(
         skip_pass2=skip_pass2,
         reasoning_pass1=reasoning_pass1,
         reasoning_pass2=reasoning_pass2,
+        allow_legacy_inputs=allow_legacy_inputs,
+        answering_layout=answering_layout,
     )
     return 0
 
@@ -1106,6 +1184,8 @@ def run_passk_step(
     skip_pass2: bool = False,
     reasoning_pass1: str = "low",
     reasoning_pass2: str = "high",
+    allow_legacy_inputs: bool = False,
+    answering_layout: str = "isolated",
 ) -> int:
     if runs < 2:
         raise ValueError("Pass^k mode requires at least two runs")
@@ -1130,6 +1210,8 @@ def run_passk_step(
                 skip_pass2=skip_pass2,
                 reasoning_pass1=reasoning_pass1,
                 reasoning_pass2=reasoning_pass2,
+                allow_legacy_inputs=allow_legacy_inputs,
+                answering_layout=answering_layout,
             )
         )
 
@@ -1158,15 +1240,21 @@ def run_passk_step(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--app-logs", type=Path, required=True,
+        "--app-logs",
+        type=Path,
+        required=True,
         help="Path to {persona}_app_logs.json",
     )
     parser.add_argument(
-        "--test-cases", type=Path, required=True,
+        "--test-cases",
+        type=Path,
+        required=True,
         help="Path to {persona}_test_cases.json",
     )
     parser.add_argument(
-        "--output", type=Path, default=STEP_DIR / "data_samples",
+        "--output",
+        type=Path,
+        default=STEP_DIR / "runs",
     )
     parser.add_argument("--model-pass1", default=None)
     parser.add_argument("--model-pass2", default=None)
@@ -1215,8 +1303,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-pass2",
         action="store_true",
-        help="Skip Pass 2. Useful when preparing answers "
-        "for scoring with different backends.",
+        help="Skip Pass 2. Useful when preparing answers for scoring with different backends.",
     )
     parser.add_argument(
         "--passk-runs",
@@ -1235,6 +1322,12 @@ def main() -> None:
         action="store_true",
         help="Score missing cases as 0 when Pass^k run outputs have different ids.",
     )
+    parser.add_argument(
+        "--allow-legacy-inputs",
+        action="store_true",
+        help="Import historical source artifacts; complete bound case admission remains mandatory.",
+    )
+    parser.add_argument("--answering-layout", choices=("isolated", "batch"), default="isolated")
     args = parser.parse_args()
     if args.passk_runs < 1:
         parser.error("--passk-runs must be at least 1")
@@ -1242,9 +1335,17 @@ def main() -> None:
     backend = args.backend
     backend_pass2 = args.backend_pass2 or backend
 
-    provider = provider_for_backend(backend, args.provider) if backend in API_BACKENDS else (args.provider or "anthropic")
-    provider_pass2 = provider_for_backend(backend_pass2, args.provider_pass2) if backend_pass2 in API_BACKENDS else (args.provider_pass2 or provider)
-    
+    provider = (
+        provider_for_backend(backend, args.provider)
+        if backend in API_BACKENDS
+        else (args.provider or "anthropic")
+    )
+    provider_pass2 = (
+        provider_for_backend(backend_pass2, args.provider_pass2)
+        if backend_pass2 in API_BACKENDS
+        else (args.provider_pass2 or provider)
+    )
+
     response_format = "json_object" if args.json else "text"
 
     if args.model_pass1 is None:
@@ -1285,6 +1386,8 @@ def main() -> None:
                 skip_pass2=args.skip_pass2,
                 reasoning_pass1=args.reasoning_pass1,
                 reasoning_pass2=args.reasoning_pass2,
+                allow_legacy_inputs=args.allow_legacy_inputs,
+                answering_layout=args.answering_layout,
             )
         )
 
@@ -1304,6 +1407,8 @@ def main() -> None:
             skip_pass2=args.skip_pass2,
             reasoning_pass1=args.reasoning_pass1,
             reasoning_pass2=args.reasoning_pass2,
+            allow_legacy_inputs=args.allow_legacy_inputs,
+            answering_layout=args.answering_layout,
         )
     )
 

@@ -10,24 +10,31 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+import run as pipeline  # noqa: E402
 from step6_benchmark_runner import generator  # noqa: E402
 from step6_benchmark_runner.passk import (  # noqa: E402
-    aggregate_passk,
+    aggregate_passk as aggregate_bound_passk,
+)
+from step6_benchmark_runner.passk import (
     load_evaluations,
     score_value,
 )
-import run as pipeline  # noqa: E402
-
 
 PASSK_SCRIPT = REPO_ROOT / "step6_benchmark_runner" / "passk.py"
 
 
+# These score-arithmetic fixtures are intentionally historical and unbound.
+def aggregate_passk(*args, **kwargs):
+    return aggregate_bound_passk(*args, allow_legacy=True, **kwargs)
+
+
 def write_json(path: Path, payload: dict[str, Any], *, bom: bool = False) -> None:
+    if "evaluations" in payload:
+        payload = {**payload, "fixture_run": path.stem}
     encoding = "utf-8-sig" if bom else "utf-8"
     path.write_text(json.dumps(payload, indent=2), encoding=encoding)
 
@@ -249,6 +256,7 @@ class PassKTests(unittest.TestCase):
                 [
                     sys.executable,
                     str(PASSK_SCRIPT),
+                    "--allow-legacy",
                     str(run1),
                     str(run2),
                     "--output",
@@ -337,6 +345,9 @@ class PassKTests(unittest.TestCase):
                 ]),
             ]
 
+            from pipeline_integrity.fixtures import seal_fixture
+            seal_fixture(test_cases, app_logs)
+
             with (
                 patch.object(generator, "run_pass_1", side_effect=pass1_runs) as pass1,
                 patch.object(generator, "run_pass_2", side_effect=pass2_runs) as pass2,
@@ -353,6 +364,7 @@ class PassKTests(unittest.TestCase):
                     "codex",
                     "json",
                     runs=2,
+                    allow_legacy_inputs=True,
                     reasoning_pass1="low",
                     reasoning_pass2="high",
                 )
@@ -403,8 +415,8 @@ class PassKTests(unittest.TestCase):
                     "codex",
                     "openai",
                     "gpt-5.5",
-                    "gpt-5.5",
-                    "gpt-5.5",
+                    "gpt-5.4",
+                    "gpt-5.4",
                     "gpt-5.4-mini",
                     None,
                     6,
@@ -426,7 +438,7 @@ class PassKTests(unittest.TestCase):
         self.assertIn("--passk-allow-missing", cmd)
         # The evaluated model answers Pass 1; the judge scores Pass 2.
         self.assertEqual(cmd[cmd.index("--model-pass1") + 1], "gpt-5.4-mini")
-        self.assertEqual(cmd[cmd.index("--model-pass2") + 1], "gpt-5.5")
+        self.assertEqual(cmd[cmd.index("--model-pass2") + 1], "gpt-5.4")
         # Pass 1 uses the evaluation reasoning effort, Pass 2 the
         # generation/judge effort, matching the documented defaults.
         self.assertEqual(cmd[cmd.index("--reasoning-pass1") + 1], "low")

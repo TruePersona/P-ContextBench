@@ -29,19 +29,23 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
     API_BACKENDS,
-    SUPPORTED_PROVIDERS,
     SUPPORTED_BACKENDS,
+    SUPPORTED_PROVIDERS,
     call_llm,
     check_api_key,
+    default_model_for_backend,
     make_client,
     provider_for_backend,
-    default_model_for_backend,
 )
+from pipeline_integrity import admission
+from pipeline_integrity.artifacts import distinct_models, file_digest, provenance, tracked
+from step4_app_log_synthesizer import evidence_alignment
 from utils import (
-    load_prompt,
     extract_json,
     fill,
+    load_prompt,
 )
+
 try:
     from .decoys import (
         build_decoy_filler_sessions,
@@ -84,18 +88,32 @@ def derive_persona_identity(corrected_profile: dict[str, Any]) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 
 PRIORITY_CATEGORIES = {
-    "health", "mental_health", "medication", "therapy",
-    "financial", "financial_constraint", "money",
-    "safety", "risk",
-    "relationship", "family", "social",
-    "legal", "regulatory",
-    "behavioral", "self_regulation", "coping",
+    "health",
+    "mental_health",
+    "medication",
+    "therapy",
+    "financial",
+    "financial_constraint",
+    "money",
+    "safety",
+    "risk",
+    "relationship",
+    "family",
+    "social",
+    "legal",
+    "regulatory",
+    "behavioral",
+    "self_regulation",
+    "coping",
     "temporal",
 }
 
 DEPRIORITIZE_CATEGORIES = {
-    "decorative", "aesthetic", "style",
-    "hobby_minor", "one_off",
+    "decorative",
+    "aesthetic",
+    "style",
+    "hobby_minor",
+    "one_off",
     "location_minor",
     "personality_redundant",
 }
@@ -159,9 +177,7 @@ def cluster_hidden_facts(
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     result = extract_json(raw)
 
-    fact_ids_expected = {
-        hf.get("fact_id", f"HF-{i:03d}") for i, hf in enumerate(hidden_facts, 1)
-    }
+    fact_ids_expected = {hf.get("fact_id", f"HF-{i:03d}") for i, hf in enumerate(hidden_facts, 1)}
     clusters = result.get("clusters", [])
     seen_fact_ids: set[str] = set()
     deduped_clusters: list[dict[str, Any]] = []
@@ -198,14 +214,16 @@ def cluster_hidden_facts(
         clusters = result.setdefault("clusters", [])
         next_cluster = len(clusters) + 1
         for fid in sorted(missing):
-            clusters.append({
-                "cluster_id": f"C{next_cluster}",
-                "cluster_status": "singleton_missing_assignment",
-                "hidden_fact_ids": [fid],
-                "cluster_reason": (
-                    "Added deterministically because clustering omitted this fact_id."
-                ),
-            })
+            clusters.append(
+                {
+                    "cluster_id": f"C{next_cluster}",
+                    "cluster_status": "singleton_missing_assignment",
+                    "hidden_fact_ids": [fid],
+                    "cluster_reason": (
+                        "Added deterministically because clustering omitted this fact_id."
+                    ),
+                }
+            )
             next_cluster += 1
 
     return result
@@ -241,14 +259,10 @@ def generate_cluster_fragments(
 
     template = load_prompt(PROMPT_PATH)
     template = fill(template, "{{INSERT_HIDDEN_FACT_CLUSTER_JSON_HERE}}", cluster_input)
-    template = fill(
-        template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle
-    )
+    template = fill(template, "{{INSERT_CORRECTED_SOCIAL_CIRCLE_JSON_HERE}}", social_circle)
     template = fill(template, "{{LOG_START_DATE}}", log_start)
     template = fill(template, "{{LOG_END_DATE}}", log_end)
-    template = fill(
-        template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage
-    )
+    template = fill(template, "{{INSERT_CONTACT_USAGE_COUNTS_JSON_HERE}}", contact_usage)
     raw = call_llm(client, model, template, gpt_reasoning, provider=provider, backend=backend)
     return extract_json(raw)
 
@@ -276,18 +290,7 @@ def verify_cluster(
     Defensively strips ALL metadata that could leak ground truth to the
     cold verifier: support mappings, fact IDs, cluster metadata, labels.
     """
-    _LEAK_FIELDS = {
-        "supports_hidden_facts", "pipeline_notes_only",
-        "source_fact_id", "source_fact_ids",
-        "fact_id", "fact_ids", "hidden_fact_ids",
-        "ground_truth_label", "ground_truth_labels",
-        "cluster_id", "cluster_reason", "cluster_status",
-        "passed_verification", "implicit_signal_explanation",
-    }
-    clean_fragments = []
-    for f in fragments:
-        vf = {k: v for k, v in f.items() if k not in _LEAK_FIELDS}
-        clean_fragments.append(vf)
+    clean_fragments = [evidence_alignment.visible_fragment(f) for f in fragments]
 
     template = load_prompt(VERIFICATION_PROMPT_PATH)
     template = fill(template, "{{INSERT_FRAGMENTS_JSON_HERE}}", clean_fragments)
@@ -295,7 +298,9 @@ def verify_cluster(
     template = fill(template, "{{PERSONA_AGE}}", str(persona["age"]))
     template = fill(template, "{{PERSONA_OCCUPATION}}", persona["occupation"])
     template = fill(template, "{{PERSONA_LOCATION}}", persona["location"])
-    raw = call_llm(client, verifier_model, template, gpt_reasoning, provider=provider, backend=backend)
+    raw = call_llm(
+        client, verifier_model, template, gpt_reasoning, provider=provider, backend=backend
+    )
     return extract_json(raw)
 
 
@@ -309,11 +314,40 @@ def _verification_candidates(verification: dict[str, Any]) -> list[dict[str, Any
     return []
 
 
+def verify_fact_alignment(
+    client,
+    verifier_model,
+    fragments,
+    verification,
+    facts,
+    gpt_reasoning,
+    provider="anthropic",
+    backend="anthropic-api",
+):
+    """Compare frozen blind recovery to every full intended claim."""
+    template = load_prompt(Path(__file__).parent / "alignment_prompt.txt")
+    template = fill(template, "{{FACTS}}", facts)
+    template = fill(template, "{{RECOVERY}}", evidence_alignment.blind_snapshot(verification))
+    template = fill(
+        template,
+        "{{FRAGMENTS}}",
+        [evidence_alignment.visible_fragment(f) for f in fragments],
+    )
+    raw = call_llm(
+        client,
+        verifier_model,
+        template,
+        gpt_reasoning,
+        provider=provider,
+        backend=backend,
+    )
+    return evidence_alignment.seal_alignment(extract_json(raw), facts, verification, fragments)
+
+
 def _all_candidates_high_confidence(verification: dict[str, Any]) -> bool:
     candidates = _verification_candidates(verification)
     return bool(candidates) and all(
-        (c.get("confidence") or "").upper() == "HIGH"
-        for c in candidates
+        (c.get("confidence") or "").upper() == "HIGH" for c in candidates
     )
 
 
@@ -343,22 +377,32 @@ def _has_implicitness_leaks(verification: dict[str, Any]) -> bool:
 
 
 # Cluster acceptance policy. "strict" enforces the verifier contract:
-# only a RECOVERED verdict with no leak-flagged fragments passes.
+# clean, confident blind recovery plus complete semantic fact alignment.
 # "lenient" reproduces the acceptance rule used to build the committed
 # data samples and must be selected explicitly.
 GATE_POLICY = "strict"
+
+
+def _strict_resume_passed(verification, facts, fragments):
+    """Reapply the full gate as well as the saved evidence binding on resume."""
+    if not evidence_alignment.resume_alignment(verification, facts, fragments):
+        return False
+    by_id = {fragment["fragment_id"]: fragment for fragment in fragments}
+    reviewed = [by_id[fid] for fid in verification["fact_alignment"]["fragment_ids"]]
+    return cluster_passed(verification, facts, policy="strict", fragments=reviewed)[0]
 
 
 def cluster_passed(
     verification: dict[str, Any],
     cluster_facts: list[dict[str, Any]],
     policy: str | None = None,
+    fragments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, list[dict[str, Any]]]:
     """Check if the cluster verification gate passes.
 
-    strict (default): only RECOVERED passes, and only when no fragment
-    is leak-flagged and the shared-evidence checks did not fail. This is
-    the acceptance predicate the verifier prompt documents.
+    strict (default): require clean, confident blind recovery and explicit
+    semantic alignment of every full intended claim. Alignment is produced
+    after freezing the blind output and validated against visible fragments.
 
     lenient: RECOVERED passes unconditionally, and AMBIGUOUS also passes
     when every candidate is HIGH confidence and leak flags are present.
@@ -369,14 +413,21 @@ def cluster_passed(
     Returns (passed, matched_pairs) for trace recording.
     """
     policy = policy or GATE_POLICY
+    if policy not in ("strict", "lenient"):
+        raise ValueError("unknown cluster acceptance policy")
     if _shared_evidence_failed(verification):
         return (False, [])
 
     verdict = verification.get("verdict")
     if policy == "strict":
-        if verdict != "RECOVERED" or _has_implicitness_leaks(verification):
+        if (
+            verdict != "RECOVERED"
+            or _has_implicitness_leaks(verification)
+            or not _all_candidates_high_confidence(verification)
+            or not evidence_alignment.accepted_alignment(verification, cluster_facts, fragments)
+        ):
             return (False, [])
-        gate_reason = "recovered_no_leaks"
+        gate_reason = "recovered_and_semantically_aligned"
     elif verdict == "RECOVERED":
         gate_reason = "recovered"
     elif (
@@ -396,6 +447,9 @@ def cluster_passed(
         "policy": policy,
     }
 
+    if policy == "strict":
+        return (True, evidence_alignment.matched_facts(verification))
+
     # Passed the primary gate. Now build matched_pairs for traceability.
     candidates = _verification_candidates(verification)
     if not candidates or not cluster_facts:
@@ -405,9 +459,7 @@ def cluster_passed(
         (hf.get("fact_id", f"HF-{i:03d}"), (hf.get("ground_truth_label") or "").lower())
         for i, hf in enumerate(cluster_facts, 1)
     ]
-    candidate_labels = [
-        (c.get("candidate_label") or "").lower() for c in candidates
-    ]
+    candidate_labels = [(c.get("candidate_label") or "").lower() for c in candidates]
 
     def token_overlap(candidate: str, target: str) -> float:
         rec_tokens = set(re.findall(r"[a-z0-9]{3,}", candidate))
@@ -432,11 +484,13 @@ def cluster_passed(
             candidate = candidate_labels[ii]
             overlap = token_overlap(candidate, target)
             total += overlap
-            pairs.append({
-                "fact_id": fact_id,
-                "matched_candidate": candidates[ii].get("candidate_label", ""),
-                "overlap": round(overlap, 3),
-            })
+            pairs.append(
+                {
+                    "fact_id": fact_id,
+                    "matched_candidate": candidates[ii].get("candidate_label", ""),
+                    "overlap": round(overlap, 3),
+                }
+            )
         if total > best_total_overlap:
             best_total_overlap = total
             best_pairs = pairs
@@ -514,23 +568,27 @@ def assemble_meaningful_log(
         for frag in frags:
             frag_id = frag.get("fragment_id", "")
             for msg in frag.get("messages", []) or []:
-                session_messages.append({
-                    "time": msg.get("time", ""),
-                    "sender": _normalize_sender(msg.get("sender", ""), persona_name),
-                    "text": msg.get("text", ""),
-                })
+                session_messages.append(
+                    {
+                        "time": msg.get("time", ""),
+                        "sender": _normalize_sender(msg.get("sender", ""), persona_name),
+                        "text": msg.get("text", ""),
+                    }
+                )
             session_fact_ids.extend(frag.get("source_fact_ids", []))
             session_frag_ids.append(frag_id)
 
         session_messages.sort(key=lambda m: m.get("time", ""))
 
         sid = f"M-{m_idx:03d}"
-        meaningful_sessions.append({
-            "session_id": sid,
-            "date": date,
-            "contact": contact,
-            "messages": session_messages,
-        })
+        meaningful_sessions.append(
+            {
+                "session_id": sid,
+                "date": date,
+                "contact": contact,
+                "messages": session_messages,
+            }
+        )
         provenance[sid] = list(set(session_fact_ids))
         for fid in session_frag_ids:
             fragment_placement[fid] = sid
@@ -568,11 +626,13 @@ def validate_meaningful_preservation(
 
     placed_cals: list[tuple[str, str, str]] = []
     for e in partial_log.get("calendar", {}).get("events", []):
-        placed_cals.append((
-            e.get("title", "").strip(),
-            e.get("date", ""),
-            e.get("start_time", ""),
-        ))
+        placed_cals.append(
+            (
+                e.get("title", "").strip(),
+                e.get("date", ""),
+                e.get("start_time", ""),
+            )
+        )
 
     missing_msgs: list[dict[str, Any]] = []
     total_msgs = 0
@@ -650,7 +710,9 @@ def generate_filler_sessions(
     if isinstance(members, list):
         contacts = [m.get("name", "") for m in members if m.get("name")]
     elif isinstance(members, dict):
-        contacts = [m.get("name", "") for m in members.values() if isinstance(m, dict) and m.get("name")]
+        contacts = [
+            m.get("name", "") for m in members.values() if isinstance(m, dict) and m.get("name")
+        ]
     if not contacts:
         contacts = ["Contact"]
 
@@ -680,12 +742,13 @@ def generate_filler_sessions(
     ]
 
     import datetime
+
     start = datetime.date.fromisoformat(log_start)
     end = datetime.date.fromisoformat(log_end)
     total_days = (end - start).days + 1
 
     hf_tokens: set[str] = set()
-    for hf in (hidden_facts or []):
+    for hf in hidden_facts or []:
         for field in ("ground_truth_label", "claim"):
             val = (hf.get(field) or "").lower()
             hf_tokens.update(re.findall(r"[a-z]{4,}", val))
@@ -700,27 +763,31 @@ def generate_filler_sessions(
 
     filler_sessions: list[dict[str, Any]] = []
     f_idx = 1
-    pair_idx = 0
 
     for i in range(target_sessions):
         day_offset = (i * total_days) // target_sessions
         date = (start + datetime.timedelta(days=day_offset)).isoformat()
         contact = contacts[i % len(contacts)]
-        c_text, p_text = safe_pairs[pair_idx % len(safe_pairs)]
-        pair_idx += 1
+        c_text, p_text = safe_pairs[i % len(safe_pairs)]
 
         hour = 8 + (i * 7) % 14
         minute = (i * 13) % 60
 
-        filler_sessions.append({
-            "session_id": f"F-{f_idx:03d}",
-            "date": date,
-            "contact": contact,
-            "messages": [
-                {"time": f"{hour:02d}:{minute:02d}", "sender": contact, "text": c_text},
-                {"time": f"{hour:02d}:{(minute + 3) % 60:02d}", "sender": persona_name, "text": p_text},
-            ],
-        })
+        filler_sessions.append(
+            {
+                "session_id": f"F-{f_idx:03d}",
+                "date": date,
+                "contact": contact,
+                "messages": [
+                    {"time": f"{hour:02d}:{minute:02d}", "sender": contact, "text": c_text},
+                    {
+                        "time": f"{hour:02d}:{(minute + 3) % 60:02d}",
+                        "sender": persona_name,
+                        "text": p_text,
+                    },
+                ],
+            }
+        )
         f_idx += 1
 
     def filler_token_count(sessions: list[dict[str, Any]]) -> int:
@@ -740,10 +807,7 @@ def generate_filler_sessions(
         if desired_count <= 1:
             return sessions[:1]
         last = len(sessions) - 1
-        return [
-            sessions[round(i * last / (desired_count - 1))]
-            for i in range(desired_count)
-        ]
+        return [sessions[round(i * last / (desired_count - 1))] for i in range(desired_count)]
 
     max_filler_tokens = int(target_filler_tokens * 1.05)
     tokens = filler_token_count(filler_sessions)
@@ -780,7 +844,11 @@ def build_filler_with_decoys(
             f"{len(selected_decoys)} safe messenger decoys are available"
         )
     decoy_sessions, decoy_registry = build_decoy_filler_sessions(
-        selected_decoys, persona, social_circle, log_start, log_end,
+        selected_decoys,
+        persona,
+        social_circle,
+        log_start,
+        log_end,
     )
     decoy_tokens_estimate = len(json.dumps(decoy_sessions, ensure_ascii=False)) // 4
 
@@ -792,8 +860,12 @@ def build_filler_with_decoys(
     mundane_ratio = mundane_target_tokens / meaningful_tokens if meaningful_tokens else 0
 
     mundane_sessions = generate_filler_sessions(
-        persona, social_circle, log_start, log_end,
-        meaningful_tokens, filler_ratio=mundane_ratio,
+        persona,
+        social_circle,
+        log_start,
+        log_end,
+        meaningful_tokens,
+        filler_ratio=mundane_ratio,
         target_context_tokens=None,
         hidden_facts=hidden_facts,
     )
@@ -828,7 +900,7 @@ def _build_fragment_registry(
                 text = (msg.get("text") or "").strip()
                 words = text.split()
                 if len(words) >= 5:
-                    anchors.append(" ".join(words[:min(12, len(words))]))
+                    anchors.append(" ".join(words[: min(12, len(words))]))
                 elif text:
                     anchors.append(text)
         elif ftype in ("calendar_event", "calendar"):
@@ -846,15 +918,17 @@ def _build_fragment_registry(
             missing += 1
             missing_keys.append(global_key)
 
-        registry.append({
-            "source_cluster_id": cluster_id,
-            "source_fragment_id": frag_id,
-            "global_fragment_key": global_key,
-            "placed_item_id": placed_id,
-            "hidden_fact_ids": sfids,
-            "status": status,
-            "content_anchors": anchors,
-        })
+        registry.append(
+            {
+                "source_cluster_id": cluster_id,
+                "source_fragment_id": frag_id,
+                "global_fragment_key": global_key,
+                "placed_item_id": placed_id,
+                "hidden_fact_ids": sfids,
+                "status": status,
+                "content_anchors": anchors,
+            }
+        )
 
     check = {
         "input_verified_fragment_count": len(verified_fragments),
@@ -946,7 +1020,9 @@ def assemble_final_log(
         "filler_messages": f_msgs,
         "calendar_events": len(cal_events),
         "target_filler_ratio": f"{target_filler_ratio:g}:1",
-        "ratio_filler_to_meaningful": f"{filler_tokens / meaningful_tokens:.1f}:1" if meaningful_tokens else "N/A",
+        "ratio_filler_to_meaningful": f"{filler_tokens / meaningful_tokens:.1f}:1"
+        if meaningful_tokens
+        else "N/A",
     }
 
     difficulty_counts = {
@@ -965,7 +1041,8 @@ def assemble_final_log(
 
     if verified_fragments and fragment_placement is not None:
         frag_registry, frag_check = _build_fragment_registry(
-            verified_fragments, fragment_placement,
+            verified_fragments,
+            fragment_placement,
         )
         app_log["verified_fragment_registry"] = frag_registry
         app_log["verified_fragment_check"] = frag_check
@@ -1005,9 +1082,7 @@ def validate_final_log(
     stats = app_log.get("token_stats", {})
     meaningful_tokens = stats.get("meaningful_token_count", 0) or 0
     filler_tokens = stats.get("filler_token_count", 0) or 0
-    actual_filler_ratio = (
-        filler_tokens / meaningful_tokens if meaningful_tokens else None
-    )
+    actual_filler_ratio = filler_tokens / meaningful_tokens if meaningful_tokens else None
     if target_filler_ratio is None or actual_filler_ratio is None:
         filler_ratio_pass = True
         ratio_bounds: list[float] | None = None
@@ -1020,13 +1095,17 @@ def validate_final_log(
     fragment_check = app_log.get("verified_fragment_check", {})
     fragment_check_pass = fragment_check.get("completeness_check", "PASS") == "PASS"
 
-    verdict = "PASS" if (
-        registry_coverage == len(passed_fact_ids)
-        and passed_fact_ids <= indexed_fact_ids
-        and not failed_fact_ids
-        and filler_ratio_pass
-        and fragment_check_pass
-    ) else "FAIL"
+    verdict = (
+        "PASS"
+        if (
+            registry_coverage == len(passed_fact_ids)
+            and passed_fact_ids <= indexed_fact_ids
+            and not failed_fact_ids
+            and filler_ratio_pass
+            and fragment_check_pass
+        )
+        else "FAIL"
+    )
 
     return {
         "selected_facts_total": len(selected_fact_ids),
@@ -1220,16 +1299,12 @@ def verify_post_merge_coverage(
         else:
             frag_id = frag.get("fragment_id", "?")
             fact_label = ",".join(fact_ids)
-            fragments_missing_detail.append(
-                f"{fact_label}/{frag_id} (ngram_overlap={overlap:.0%})"
-            )
+            fragments_missing_detail.append(f"{fact_label}/{frag_id} (ngram_overlap={overlap:.0%})")
             for fid in fact_ids:
                 if fid not in frag_fact_ids_present:
                     frag_fact_ids_missing.add(fid)
 
-    content_missing = sorted(
-        frag_fact_ids_missing - frag_fact_ids_present
-    )
+    content_missing = sorted(frag_fact_ids_missing - frag_fact_ids_present)
 
     all_missing = sorted(set(registry_missing) | set(content_missing))
 
@@ -1240,9 +1315,7 @@ def verify_post_merge_coverage(
         "hidden_facts_total": len(passed_fact_ids),
         "hidden_facts_in_registry": len(app_hf_ids & passed_fact_ids),
         "hidden_facts_in_content": len(frag_fact_ids_present),
-        "hidden_facts_covered": len(
-            (app_hf_ids & passed_fact_ids) | frag_fact_ids_present
-        ),
+        "hidden_facts_covered": len((app_hf_ids & passed_fact_ids) | frag_fact_ids_present),
         "registry_missing_fact_ids": registry_missing[:20],
         "content_missing_fact_ids": content_missing[:20],
         "missing_fact_ids": all_missing[:20],
@@ -1310,10 +1383,12 @@ def audit_message_preservation(
                 if matched:
                     found += 1
                 else:
-                    missing_messages.append({
-                        "fragment_id": frag_id,
-                        "message_text": msg.get("text", "")[:80],
-                    })
+                    missing_messages.append(
+                        {
+                            "fragment_id": frag_id,
+                            "message_text": msg.get("text", "")[:80],
+                        }
+                    )
 
         total_expected += expected
         total_found += found
@@ -1356,6 +1431,13 @@ def _upsert_trace_entry(
 # ---------------------------------------------------------------------------
 
 
+@tracked(
+    "step4",
+    inputs=("profile_path", "social_circle_path", "verified_decoys_path"),
+    outputs=("_app_logs.json", "_app_logs_trace.json", "_verified_fragments.json"),
+    base_arg="profile_path",
+    base_suffix="_verification",
+)
 def run_step(
     profile_path: Path,
     social_circle_path: Path,
@@ -1376,20 +1458,63 @@ def run_step(
     verified_decoys_path: Path | str | None = None,
     decoy_count: int = 0,
     decoy_pool_size: int = 40,
+    allow_legacy_inputs: bool = False,
 ) -> int:
     """File-path based entry point for CLI use."""
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
-    corrected_profile = profile["corrected_extracted_profile"]
+    distinct_models(model, verifier_model)
+    provenance(profile_path, allow_legacy=allow_legacy_inputs)
+    circle_manifest = provenance(social_circle_path, allow_legacy=allow_legacy_inputs)
+    if circle_manifest.get("inputs", {}).get("profile_path", {}).get(
+        "sha256", file_digest(profile_path)
+    ) != file_digest(profile_path):
+        raise ValueError("Social circle belongs to a different profile revision")
+    corrected_profile = admission.profile(profile)
     all_hidden_facts = corrected_profile["hidden_facts"]
     hidden_facts = select_hidden_facts(all_hidden_facts, max_facts)
 
     circle = json.loads(social_circle_path.read_text(encoding="utf-8"))
-    corrected_social_circle = circle["corrected_social_circle"]
+    corrected_social_circle = admission.social_circle(circle)
+
+    if resume:
+        base_name = profile_path.stem.removesuffix("_verification")
+        previous = provenance(
+            output_dir / f"{base_name}_verified_fragments.json", allow_rejected=True
+        )
+        for key, path in (
+            ("profile_path", profile_path),
+            ("social_circle_path", social_circle_path),
+        ):
+            if previous.get("inputs", {}).get(key, {}).get("sha256") != file_digest(path):
+                raise ValueError("Cannot resume Step 4 with changed upstream inputs")
+        config = previous["configuration"]
+        current = {
+            "model": model,
+            "verifier_model": verifier_model,
+            "log_start": log_start,
+            "log_end": log_end,
+            "provider": provider,
+            "backend": backend,
+            "gpt_reasoning": gpt_reasoning,
+            "max_facts": max_facts,
+            "gate_policy": GATE_POLICY,
+        }
+        if any(config.get(key) != value for key, value in current.items()):
+            raise ValueError("Cannot resume Step 4 with changed generation/gate configuration")
 
     return run_step_from_dicts(
-        corrected_profile, corrected_social_circle, hidden_facts,
-        output_dir, model, verifier_model, per_cluster_max_attempts,
-        log_start, log_end, gpt_reasoning, provider, backend,
+        corrected_profile,
+        corrected_social_circle,
+        hidden_facts,
+        output_dir,
+        model,
+        verifier_model,
+        per_cluster_max_attempts,
+        log_start,
+        log_end,
+        gpt_reasoning,
+        provider,
+        backend,
         base_name=profile_path.stem.replace("_verification", ""),
         resume=resume,
         retry_failed=retry_failed,
@@ -1495,15 +1620,26 @@ def run_step_from_dicts(
             frag_fact_ids.update(f.get("source_fact_ids", []))
         missing_trace_fact_ids = current_fact_ids - all_trace_fact_ids
         extra_trace_fact_ids = all_trace_fact_ids - current_fact_ids
-        unique_fragment_ids = (
-            len(set(f.get("fragment_id", "") for f in existing_frags))
-            == len(existing_frags)
+        unique_fragment_ids = len({f.get("fragment_id", "") for f in existing_frags}) == len(
+            existing_frags
         )
         compatible = (
             not extra_trace_fact_ids
             and existing_frags
             and unique_fragment_ids
             and (not missing_trace_fact_ids or retry_failed)
+            and (
+                GATE_POLICY == "lenient"
+                or all(
+                    not t.get("passed")
+                    or _strict_resume_passed(
+                        t.get("final_verification") or {},
+                        [hf_map[fid] for fid in t.get("hidden_fact_ids", []) if fid in hf_map],
+                        existing_frags,
+                    )
+                    for t in existing_trace
+                )
+            )
         )
         if compatible:
             failed_trace = [t for t in existing_trace if not t.get("passed")]
@@ -1556,10 +1692,15 @@ def run_step_from_dicts(
                 ]
 
                 partial_log, provenance, fragment_placement = assemble_meaningful_log(
-                    verified_fragments, persona, log_start, log_end,
+                    verified_fragments,
+                    persona,
+                    log_start,
+                    log_end,
                 )
                 pres = validate_meaningful_preservation(
-                    partial_log, verified_fragments, persona["name"],
+                    partial_log,
+                    verified_fragments,
+                    persona["name"],
                 )
                 print(
                     f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
@@ -1569,16 +1710,29 @@ def run_step_from_dicts(
                     print("[step4] FAIL: verified content not 100% preserved")
                     return 1
 
-                meaningful_tokens = len(
-                    json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
-                ) // 4
+                meaningful_tokens = (
+                    len(
+                        json.dumps(
+                            partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False
+                        )
+                    )
+                    // 4
+                )
                 verified_decoy_pool = ensure_decoy_pool(
-                    verified_hidden_facts, reuse_existing=True,
+                    verified_hidden_facts,
+                    reuse_existing=True,
                 )
                 filler, decoy_registry, decoy_tokens, mundane_tokens = build_filler_with_decoys(
-                    persona, corrected_social_circle, log_start, log_end,
-                    meaningful_tokens, filler_ratio, target_context_tokens,
-                    verified_hidden_facts, verified_decoy_pool, decoy_count,
+                    persona,
+                    corrected_social_circle,
+                    log_start,
+                    log_end,
+                    meaningful_tokens,
+                    filler_ratio,
+                    target_context_tokens,
+                    verified_hidden_facts,
+                    verified_decoy_pool,
+                    decoy_count,
                 )
                 print(
                     f"[step4] generated {len(filler)} filler sessions "
@@ -1587,18 +1741,23 @@ def run_step_from_dicts(
 
                 registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
                 app_log = assemble_final_log(
-                    partial_log, filler, registry, provenance, trace,
-                    verified_fragments, fragment_placement,
+                    partial_log,
+                    filler,
+                    registry,
+                    provenance,
+                    trace,
+                    verified_fragments,
+                    fragment_placement,
                     target_filler_ratio=filler_ratio,
                     decoy_registry=decoy_registry,
                     decoy_filler_token_count=decoy_tokens,
                     mundane_filler_token_count=mundane_tokens,
                 )
                 validation = validate_final_log(
-                    app_log, verified_fragments, trace,
-                    target_filler_ratio=(
-                        filler_ratio if target_context_tokens is None else None
-                    ),
+                    app_log,
+                    verified_fragments,
+                    trace,
+                    target_filler_ratio=(filler_ratio if target_context_tokens is None else None),
                 )
                 app_log["_validation"] = validation
                 print(
@@ -1619,7 +1778,9 @@ def run_step_from_dicts(
     # Phase 1: Cluster
     if clusters is None:
         print(f"[step4] clustering {len(hidden_facts)} hidden facts for {persona['name']}")
-        cluster_result = cluster_hidden_facts(client, model, hidden_facts, gpt_reasoning, provider, backend)
+        cluster_result = cluster_hidden_facts(
+            client, model, hidden_facts, gpt_reasoning, provider, backend
+        )
         clusters = cluster_result.get("clusters", [])
         print(f"[step4] formed {len(clusters)} clusters")
 
@@ -1631,16 +1792,18 @@ def run_step_from_dicts(
 
         if not cluster_facts:
             print(f"[step4/{cluster_id}] WARNING: no valid facts, skipping")
-            trace.append({
-                "cluster_id": cluster_id,
-                "hidden_fact_ids": fact_ids,
-                "ground_truth_labels": [],
-                "attempts": 0,
-                "passed": False,
-                "per_fact_recovery": [],
-                "final_verification": None,
-                "error": f"fact_ids {fact_ids} not found in hidden_facts",
-            })
+            trace.append(
+                {
+                    "cluster_id": cluster_id,
+                    "hidden_fact_ids": fact_ids,
+                    "ground_truth_labels": [],
+                    "attempts": 0,
+                    "passed": False,
+                    "per_fact_recovery": [],
+                    "final_verification": None,
+                    "error": f"fact_ids {fact_ids} not found in hidden_facts",
+                }
+            )
             continue
 
         passed = False
@@ -1664,20 +1827,54 @@ def run_step_from_dicts(
                 }
 
                 bundle = generate_cluster_fragments(
-                    client, model, cluster_input, cluster_facts,
-                    corrected_social_circle, log_start, log_end,
-                    contact_usage, gpt_reasoning, provider, backend
+                    client,
+                    model,
+                    cluster_input,
+                    cluster_facts,
+                    corrected_social_circle,
+                    log_start,
+                    log_end,
+                    contact_usage,
+                    gpt_reasoning,
+                    provider,
+                    backend,
                 )
                 fragments = bundle.get("fragments", [])
 
                 verification = verify_cluster(
-                    client, verifier_model, fragments, persona,
-                    len(cluster_facts), gpt_reasoning, provider, backend,
+                    client,
+                    verifier_model,
+                    fragments,
+                    persona,
+                    len(cluster_facts),
+                    gpt_reasoning,
+                    provider,
+                    backend,
                 )
                 last_fragments = fragments
                 last_verification = verification
 
-                passed, matched_pairs = cluster_passed(verification, cluster_facts)
+                if (
+                    GATE_POLICY == "strict"
+                    and verification.get("verdict") == "RECOVERED"
+                    and not _has_implicitness_leaks(verification)
+                    and _all_candidates_high_confidence(verification)
+                    and not _shared_evidence_failed(verification)
+                ):
+                    verification["fact_alignment"] = verify_fact_alignment(
+                        client,
+                        verifier_model,
+                        fragments,
+                        verification,
+                        cluster_facts,
+                        gpt_reasoning,
+                        provider,
+                        backend,
+                    )
+
+                passed, matched_pairs = cluster_passed(
+                    verification, cluster_facts, fragments=fragments
+                )
                 if passed:
                     for frag in fragments:
                         src = frag.get("source", {})
@@ -1689,7 +1886,7 @@ def run_step_from_dicts(
                 else:
                     verdict = verification.get("verdict", "UNKNOWN")
                     print(f"[step4/{cluster_id}] verdict={verdict}, regenerating")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - retain provider failures in the bounded cluster trace
                 print(f"[step4/{cluster_id}] attempt {attempt} error: {e}")
                 last_verification = {"error": str(e)}
                 if attempt == per_cluster_max_attempts:
@@ -1699,9 +1896,7 @@ def run_step_from_dicts(
         trace_entry = {
             "cluster_id": cluster_id,
             "hidden_fact_ids": fact_ids,
-            "ground_truth_labels": [
-                hf.get("ground_truth_label", "") for hf in cluster_facts
-            ],
+            "ground_truth_labels": [hf.get("ground_truth_label", "") for hf in cluster_facts],
             "attempts": attempt,
             "passed": passed,
             "per_fact_recovery": matched_pairs,
@@ -1710,17 +1905,12 @@ def run_step_from_dicts(
         _upsert_trace_entry(trace, trace_entry)
 
         # Save trace incrementally
-        trace_out.write_text(
-            json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        trace_out.write_text(json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8")
 
         # Collect verified fragments
         if passed:
             for frag in last_fragments:
-                sfids = [
-                    s["hidden_fact_id"]
-                    for s in frag.get("supports_hidden_facts", [])
-                ]
+                sfids = [s["hidden_fact_id"] for s in frag.get("supports_hidden_facts", [])]
                 verified_fragments.append({**frag, "source_fact_ids": sfids})
 
     # Save verified fragments
@@ -1730,9 +1920,7 @@ def run_step_from_dicts(
     )
 
     passed_count = sum(1 for t in trace if t["passed"])
-    total_facts_passed = sum(
-        len(t["hidden_fact_ids"]) for t in trace if t["passed"]
-    )
+    total_facts_passed = sum(len(t["hidden_fact_ids"]) for t in trace if t["passed"])
     print(
         f"[step4] {passed_count}/{len(trace)} clusters passed "
         f"({total_facts_passed}/{len(hidden_facts)} facts)"
@@ -1745,19 +1933,22 @@ def run_step_from_dicts(
     for t in trace:
         if t["passed"]:
             passed_fact_ids.update(t["hidden_fact_ids"])
-    verified_hidden_facts = [
-        hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids
-    ]
+    verified_hidden_facts = [hf for hf in hidden_facts if hf.get("fact_id") in passed_fact_ids]
 
     # Phase 3: Assemble meaningful log (Python, deterministic)
     print(f"[step4] assembling {len(verified_fragments)} fragments deterministically")
     partial_log, provenance, fragment_placement = assemble_meaningful_log(
-        verified_fragments, persona, log_start, log_end,
+        verified_fragments,
+        persona,
+        log_start,
+        log_end,
     )
 
     # Phase 4: Validate 100% preservation
     pres = validate_meaningful_preservation(
-        partial_log, verified_fragments, persona["name"],
+        partial_log,
+        verified_fragments,
+        persona["name"],
     )
     print(
         f"[step4] preservation: {pres['messages_found']}/{pres['messages_expected']} msgs, "
@@ -1770,27 +1961,39 @@ def run_step_from_dicts(
         return 1
 
     # Phase 5: Generate filler (template-based)
-    meaningful_tokens = len(
-        json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)
-    ) // 4
+    meaningful_tokens = (
+        len(json.dumps(partial_log["messenger"]["meaningful_sessions"], ensure_ascii=False)) // 4
+    )
     verified_decoy_pool = ensure_decoy_pool(
-        verified_hidden_facts, reuse_existing=resume,
+        verified_hidden_facts,
+        reuse_existing=resume,
     )
     filler_sessions, decoy_registry, decoy_tokens, mundane_tokens = build_filler_with_decoys(
-        persona, corrected_social_circle, log_start, log_end,
-        meaningful_tokens, filler_ratio, target_context_tokens,
-        verified_hidden_facts, verified_decoy_pool, decoy_count,
+        persona,
+        corrected_social_circle,
+        log_start,
+        log_end,
+        meaningful_tokens,
+        filler_ratio,
+        target_context_tokens,
+        verified_hidden_facts,
+        verified_decoy_pool,
+        decoy_count,
     )
     print(
-        f"[step4] generated {len(filler_sessions)} filler sessions "
-        f"({len(decoy_registry)} decoys)"
+        f"[step4] generated {len(filler_sessions)} filler sessions ({len(decoy_registry)} decoys)"
     )
 
     # Phase 6: Final assembly
     hidden_facts_registry = _build_hidden_facts_registry(verified_hidden_facts, trace)
     app_log = assemble_final_log(
-        partial_log, filler_sessions, hidden_facts_registry, provenance, trace,
-        verified_fragments, fragment_placement,
+        partial_log,
+        filler_sessions,
+        hidden_facts_registry,
+        provenance,
+        trace,
+        verified_fragments,
+        fragment_placement,
         target_filler_ratio=filler_ratio,
         decoy_registry=decoy_registry,
         decoy_filler_token_count=decoy_tokens,
@@ -1799,7 +2002,9 @@ def run_step_from_dicts(
 
     # Phase 7: Final validation
     validation = validate_final_log(
-        app_log, verified_fragments, trace,
+        app_log,
+        verified_fragments,
+        trace,
         target_filler_ratio=filler_ratio if target_context_tokens is None else None,
     )
     app_log["_validation"] = validation
@@ -1810,9 +2015,7 @@ def run_step_from_dicts(
         f"filler ratio {validation['filler_ratio']})"
     )
 
-    app_log_out.write_text(
-        json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    app_log_out.write_text(json.dumps(app_log, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[step4] wrote {app_log_out}")
 
     return 0 if validation["verdict"] == "PASS" else 1
@@ -1826,77 +2029,107 @@ def run_step_from_dicts(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--profile", type=Path, required=True,
+        "--profile",
+        type=Path,
+        required=True,
         help="Path to {persona}_verification.json from step2",
     )
     parser.add_argument(
-        "--social-circle", type=Path, required=True,
+        "--social-circle",
+        type=Path,
+        required=True,
         help="Path to {persona}_social_circle_verification.json from step3",
     )
     parser.add_argument(
-        "--output", type=Path,
-        default=STEP_DIR / "data_samples",
+        "--output",
+        type=Path,
+        default=STEP_DIR / "runs",
     )
     parser.add_argument("--model", default=None)
     parser.add_argument(
-        "--verifier-model", default=None,
+        "--verifier-model",
+        default=None,
         help="Independent model for the reverse-inferability gate",
     )
     parser.add_argument(
-        "--per-cluster-max-attempts", type=int, default=3,
+        "--per-cluster-max-attempts",
+        type=int,
+        default=3,
     )
     parser.add_argument("--log-start", default="2026-03-01")
     parser.add_argument("--log-end", default="2026-03-31")
     parser.add_argument(
-        "--gpt-reasoning",
-        default="high",
-        help="OpenAI model (openai-api, codex) reasoning effort."
+        "--gpt-reasoning", default="high", help="OpenAI model (openai-api, codex) reasoning effort."
     )
     parser.add_argument(
-        "--backend", default="anthropic-api",
+        "--backend",
+        default="anthropic-api",
         choices=SUPPORTED_BACKENDS,
         help="claude/codex for subscription CLI, anthropic-api/openai-api for metered API.",
     )
     parser.add_argument(
-        "--provider", default=None, choices=SUPPORTED_PROVIDERS,
+        "--provider",
+        default=None,
+        choices=SUPPORTED_PROVIDERS,
     )
     parser.add_argument(
-        "--max-facts", type=int, default=100,
+        "--max-facts",
+        type=int,
+        default=100,
         help="Maximum hidden facts to include (prioritized by benchmark relevance)",
     )
     parser.add_argument(
-        "--resume", action="store_true",
+        "--resume",
+        action="store_true",
         help="Resume from existing trace + fragments files, skip clustering and verification",
     )
     parser.add_argument(
-        "--retry-failed", action="store_true",
+        "--retry-failed",
+        action="store_true",
         help="With --resume, reuse passed clusters and regenerate only failed clusters",
     )
     parser.add_argument(
-        "--filler-ratio", type=float, default=2.5,
+        "--filler-ratio",
+        type=float,
+        default=2.5,
         help="Filler-to-meaningful token ratio (default 2.5)",
     )
     parser.add_argument(
-        "--target-context-tokens", type=int, default=None,
+        "--target-context-tokens",
+        type=int,
+        default=None,
         help="Target total context tokens (overrides --filler-ratio when set)",
     )
     parser.add_argument(
-        "--verified-decoys", type=Path, default=None,
+        "--verified-decoys",
+        type=Path,
+        default=None,
         help="Optional pre-verified decoy pool JSON; hard messenger decoys are selected first",
     )
     parser.add_argument(
-        "--decoy-count", type=int, default=0,
+        "--decoy-count",
+        type=int,
+        default=0,
         help="Number of verified messenger decoys to place as filler (default 0)",
     )
     parser.add_argument(
-        "--decoy-pool-size", type=int, default=40,
+        "--decoy-pool-size",
+        type=int,
+        default=40,
         help="Number of decoy candidates to generate when --verified-decoys is omitted",
     )
     parser.add_argument(
-        "--gate-policy", choices=("strict", "lenient"), default="strict",
-        help="Cluster acceptance policy. strict enforces the documented "
-        "predicate (RECOVERED, no leak flags). lenient reproduces the rule "
+        "--gate-policy",
+        choices=("strict", "lenient"),
+        default="strict",
+        help="Cluster acceptance policy. strict requires clean, confident blind "
+        "recovery and evidence-backed alignment of every intended fact. lenient reproduces the rule "
         "the committed data samples were built with.",
+    )
+    parser.add_argument(
+        "--allow-legacy-inputs",
+        action="store_true",
+        help="Import historical upstream artifacts; structural checks still apply.",
     )
     args = parser.parse_args()
 
@@ -1940,6 +2173,7 @@ def main() -> None:
             verified_decoys_path=args.verified_decoys,
             decoy_count=args.decoy_count,
             decoy_pool_size=args.decoy_pool_size,
+            allow_legacy_inputs=args.allow_legacy_inputs,
         )
     )
 

@@ -28,7 +28,7 @@ def evaluation(
         dimensions[b_key] = b
     if c is not None:
         dimensions[t5.DIMENSION_C] = c
-    modes = {name: 0 for name in t5.PENALTY_KEYS}
+    modes = dict.fromkeys(t5.PENALTY_KEYS, 0)
     modes.update(penalties or {})
     return {
         "test_case_id": "TC-40",

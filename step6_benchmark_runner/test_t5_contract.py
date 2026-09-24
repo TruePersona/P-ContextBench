@@ -294,7 +294,9 @@ class BehaviorContractTests(unittest.TestCase):
                 ],
             }
             enforce_contract_verification({"test_cases": [sample_case()]}, verification)
-            self.assertEqual(verification_passed(verification), expected)
+            self.assertEqual(not bool(verification["verification_metadata"]["summary"]["rejected"]), expected)
+            # A contract check alone no longer constitutes whole-case admission.
+            self.assertFalse(verification_passed(verification))
 
 
 class RunnerRegressionTests(unittest.TestCase):
@@ -509,7 +511,7 @@ class ReliabilityTests(unittest.TestCase):
                 path = Path(directory) / f"run{i}.json"
                 path.write_text(json.dumps(result))
                 paths.append(path)
-            return aggregate_passk(paths)
+            return aggregate_passk(paths, allow_legacy=True)
 
     def test_valid_alternatives_get_full_passk(self):
         result = self.aggregate(

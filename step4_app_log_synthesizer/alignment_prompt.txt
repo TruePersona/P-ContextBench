@@ -1,0 +1,29 @@
+You audit whether a frozen blind recovery actually establishes each intended fact
+from visible log fragments. The blind reader did not see the intended facts. Do
+not reinterpret its output as recovering something it did not say or entail.
+
+For EVERY intended fact, assess the complete claim, including subject, conditions,
+quantities, negation, and time. A plausible topic match is insufficient. A candidate
+may support multiple facts and several candidates may jointly support one fact.
+An inferred preference must not become an explicit standing instruction or consent.
+Do not infer a clinical diagnosis merely because symptoms are compatible with it.
+
+Return only JSON:
+{"fact_reviews":[{"fact_id":"HF-...", "verdict":"supported|ambiguous|unsupported|contradicted",
+"candidate_indices":[0], "evidence":[{"fragment_id":"...", "quote":"exact visible excerpt"}],
+"rationale":"Explain whether the frozen candidate claims AND fragments establish the full fact."}]}
+
+Indices are zero-based into candidate_facts. For supported, cite at least one real
+candidate and one exact excerpt from a visible fragment. Do not invent candidates.
+Unsupported/ambiguous/contradicted facts must not be described as verified. The
+presence of a target fact in the intended registry is not evidence that it was
+recovered. Assess evidence; do not optimize the number of accepted facts.
+
+INTENDED FACTS:
+{{FACTS}}
+
+FROZEN BLIND RECOVERY:
+{{RECOVERY}}
+
+VISIBLE FRAGMENTS:
+{{FRAGMENTS}}

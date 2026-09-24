@@ -5,12 +5,13 @@ check whether each test case is fair, correctly grounded in the hidden_facts
 registry, free of duplication, and, for Type 5 cases, built on a real
 persona-specific risk or conflict signal.
 
-Answerability is NOT verified here. Answerability is owned by the upstream
-app-log synthesis step, which runs a per-fragment reverse-inferability gate
-on every hidden_fact before merging into the full log. If that gate passes,
-hidden_facts are recoverable from logs; this prompt therefore focuses on
-integrity of ground truth, dedup, and Type 5 risk validity. Type 4 reasoning
-validity is self-audited during generation and it is not reverified here. 
+Verify answerability against the complete public history, including filler and
+later updates. Earlier fragment checks do not establish final-case validity.
+The frozen public-only assessment below was produced without the private key.
+Compare its answer and evidence to every requirement of the proposed key;
+reject unsupported requirements, speculative Type 4 interpretations presented
+as unique truths, and unjustified Type 5 intervention. Do not repair the frozen
+assessment or silently replace the case's answer key.
 
 This prompt is self-contained. All required data is inserted below.
 
@@ -28,6 +29,9 @@ APP LOGS (from data_samples/{persona}_app_logs.json). The hidden_facts
 array in this file is the canonical answer key. Also used to confirm evidence
 anchors resolve to real dated entries:
 {{INSERT_APP_LOGS_JSON_HERE}}
+
+FROZEN PUBLIC-ONLY ASSESSMENT:
+{{INSERT_PUBLIC_REVIEW_JSON_HERE}}
 
 ===============================================================================
 TERMINOLOGY
@@ -47,7 +51,7 @@ A test case's OVERALL verdict is:
 VERIFICATION CRITERIA
 ===============================================================================
 
-Run all six criteria on every test case, using NOT_APPLICABLE where a
+Run all seven criteria on every test case, using NOT_APPLICABLE where a
 type-specific criterion does not apply.
 
 CRITERION 1: GROUND TRUTH SOURCING
@@ -217,6 +221,19 @@ CRITERION 6: TYPE 5 BEHAVIOR CONTRACT VALIDITY
   while leaving the original case marked VERIFIED.
 
 ===============================================================================
+CRITERION 7: PUBLIC EVIDENCE AND INTERPRETATION VALIDITY
+  PASS: the blind assessment is supported, its exact source quotes resolve in
+        the complete history, and the proposed key requires only facts or
+        actions justified by that history and the actual question. Check later
+        corrections, ownership, permission scope, and materially different valid
+        interpretations. Type 4 requires independent review of the inference.
+  WARN: minor wording uncertainty that does not change a valid answer.
+  FAIL: ambiguous/unsupported blind assessment; missing decisive evidence;
+        contradiction; unsupported required detail; a defensible alternative
+        is excluded; or required intervention is unnecessary.
+  Include public_evidence_check with verdict and explanation for every case.
+  This criterion applies to all types and cannot be NOT_APPLICABLE.
+
 CORRECTED TEST CASES OUTPUT
 ===============================================================================
 
@@ -288,6 +305,10 @@ OUTPUT FORMAT
         "explanation": "For Type 5: grounding, proportionality, valid alternative paths, and critical boundaries. NOT_APPLICABLE for other types."
       },
       "overall_verdict": "VERIFIED | FLAGGED | REJECTED",
+      "public_evidence_check": {
+        "verdict": "PASS | WARN | FAIL",
+        "explanation": "Compare the frozen public assessment with the complete reference requirements."
+      },
       "revision_note": "string (only present when FLAGGED or REJECTED)"
     }
   ],
@@ -317,7 +338,8 @@ PROCESS
    e. Run Criterion 5 (dynamic preference validity) if type == type_3_dynamic_tracking.
    f. Run Criterion 6 (behavior contract validity) for Type 5; otherwise mark
       behavior_contract_check NOT_APPLICABLE. Record the verdict and explanation.
-   g. Assign overall verdict.
+   g. Run Criterion 7 for every case, including independent Type 4 interpretation
+      review. Assign overall verdict from all applicable criteria.
 3. Build the corrected_test_cases structure (drop REJECTED, annotate FLAGGED,
    carry VERIFIED).
 4. Re-run coverage rules on the corrected set; record any deficits.

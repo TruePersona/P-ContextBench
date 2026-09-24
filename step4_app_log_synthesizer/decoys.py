@@ -27,7 +27,7 @@ def load_verified_decoys(decoys_path: Path | str | None) -> list[dict[str, Any]]
     else:
         decoys = payload
     if not isinstance(decoys, list):
-        raise ValueError(f"Verified decoys file must contain a list: {path}")
+        raise ValueError(f"Verified decoys file must contain a list: {path}")  # noqa: TRY004 - malformed serialized input is a validation error
     return decoys
 
 
@@ -45,7 +45,7 @@ def _decoys_from_payload(payload: Any) -> list[dict[str, Any]]:
     else:
         decoys = payload
     if not isinstance(decoys, list):
-        raise ValueError("Decoy generation output must contain a decoys list")
+        raise ValueError("Decoy generation output must contain a decoys list")  # noqa: TRY004 - malformed serialized input is a validation error
     return [d for d in decoys if isinstance(d, dict)]
 
 
@@ -244,7 +244,6 @@ def _generate_decoys_in_batches(
     windows = _batch_log_windows(log_start, log_end, batch_count)
 
     for batch_idx in range(max_batches):
-        remaining_total = max(target_count - len(decoys), 0)
         remaining_messenger = max(
             required_messenger_count - _selectable_messenger_count(decoys),
             0,

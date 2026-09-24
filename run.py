@@ -15,13 +15,13 @@ from llm import (
     default_model_for_backend,
     provider_for_backend,
 )
+from pipeline_integrity.artifacts import distinct_models
+from step1_seed.generator import (
+    emit_seed,
+    fetch_record,
+)
 from utils import (
     extract_name,
-    base
-)
-from step1_seed.generator import (
-    fetch_record,
-    emit_seed,
 )
 
 REPO_ROOT = Path(__file__).parent
@@ -81,23 +81,47 @@ def run_pipeline(
     provider_pass2: str | None = None,
     skip_pass1: bool = False,
     skip_pass2: bool = False,
+    workspace: Path | None = None,
+    allow_legacy_inputs: bool = False,
+    answering_layout: str = "isolated",
 ) -> None:
-    
+    if start <= 5:
+        distinct_models(model, verifier_model)
+    if stop >= 6:
+        distinct_models(evaluator_model, judge_model)
+        distinct_models(model, judge_model)
+    workspace = Path(workspace) if workspace else REPO_ROOT / "runs"
 
     # Step 1: Seed
 
     if start <= 1 <= stop and uuid:
         record = fetch_record(uuid)
-        seed_path = emit_seed(record, STEP1_DIR / "data_samples")
+        seed_path = emit_seed(record, workspace / "seeds")
         start = 2
         print(f"Wrote seed: {seed_path}")
 
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
     name = extract_name(seed)
-    n = base(name)
+    n = seed_path.stem.removesuffix("_seed")
+    persona_workspace = workspace / seed["uuid"]
+
+    def artifact(stage, filename):
+        local = persona_workspace / stage.name / filename
+        return (
+            local
+            if local.exists() or start <= int(stage.name[4]) <= stop
+            else stage / "data_samples" / filename
+        )
+
+    def execute(stage, command):
+        command += ["--output", str(persona_workspace / stage.name)]
+        if allow_legacy_inputs and stage not in (STEP1_DIR, STEP2_DIR):
+            command += ["--allow-legacy-inputs"]
+        if stage == STEP6_DIR:
+            command += ["--answering-layout", answering_layout]
+        run_stage(stage.name, command)
 
     print(f"=== Pipeline for {name} (steps {start}-{stop}) ===")
-
 
     # Step 2: Interview
 
@@ -105,19 +129,24 @@ def run_pipeline(
         cmd = [
             sys.executable,
             str(STEP2_DIR / "generator.py"),
-            "--seed", str(seed_path),
-            "--model", model,
-            "--verifier-model", verifier_model,
-            "--backend", backend,
-            "--provider", provider,
-            "--gpt-reasoning", gpt_reasoning
+            "--seed",
+            str(seed_path),
+            "--model",
+            model,
+            "--verifier-model",
+            verifier_model,
+            "--backend",
+            backend,
+            "--provider",
+            provider,
+            "--gpt-reasoning",
+            gpt_reasoning,
         ]
 
-        run_stage("step2", cmd)
+        execute(STEP2_DIR, cmd)
 
-    verification_path = STEP2_DIR / "data_samples" / f"{n}_verification.json"
-    interview_path = STEP2_DIR / "data_samples" / f"{n}_interview.json"
-
+    verification_path = artifact(STEP2_DIR, f"{n}_verification.json")
+    interview_path = artifact(STEP2_DIR, f"{n}_interview.json")
 
     # Step 3: Social Circle
 
@@ -125,41 +154,62 @@ def run_pipeline(
         cmd = [
             sys.executable,
             str(STEP3_DIR / "generator.py"),
-            "--profile", str(verification_path),
-            "--transcript", str(interview_path),
-            "--model", model,
-            "--verifier-model", verifier_model,
-            "--backend", backend,
-            "--provider", provider,
-            "--gpt-reasoning", gpt_reasoning
+            "--profile",
+            str(verification_path),
+            "--transcript",
+            str(interview_path),
+            "--model",
+            model,
+            "--verifier-model",
+            verifier_model,
+            "--backend",
+            backend,
+            "--provider",
+            provider,
+            "--gpt-reasoning",
+            gpt_reasoning,
         ]
 
-        run_stage("step3", cmd)
+        execute(STEP3_DIR, cmd)
 
-    social_circle_path = STEP3_DIR / "data_samples" / f"{n}_social_circle_verification.json"
-
+    social_circle_path = artifact(STEP3_DIR, f"{n}_social_circle_verification.json")
 
     # Step 4: App Logs
-    
+
     if start <= 4 <= stop:
         cmd = [
             sys.executable,
             str(STEP4_DIR / "generator.py"),
-            "--profile", str(verification_path),
-            "--social-circle", str(social_circle_path),
-            "--model", model,
-            "--verifier-model", verifier_model,
-            "--backend", backend,
-            "--provider", provider,
-            "--gpt-reasoning", gpt_reasoning,
-            "--log-start", log_start,
-            "--log-end", log_end,
-            "--per-cluster-max-attempts", str(per_cluster_max_attempts),
-            "--max-facts", str(max_facts),
-            "--filler-ratio", str(filler_ratio),
-            "--decoy-count", str(decoy_count),
-            "--decoy-pool-size", str(decoy_pool_size),
-            "--gate-policy", gate_policy
+            "--profile",
+            str(verification_path),
+            "--social-circle",
+            str(social_circle_path),
+            "--model",
+            model,
+            "--verifier-model",
+            verifier_model,
+            "--backend",
+            backend,
+            "--provider",
+            provider,
+            "--gpt-reasoning",
+            gpt_reasoning,
+            "--log-start",
+            log_start,
+            "--log-end",
+            log_end,
+            "--per-cluster-max-attempts",
+            str(per_cluster_max_attempts),
+            "--max-facts",
+            str(max_facts),
+            "--filler-ratio",
+            str(filler_ratio),
+            "--decoy-count",
+            str(decoy_count),
+            "--decoy-pool-size",
+            str(decoy_pool_size),
+            "--gate-policy",
+            gate_policy,
         ]
 
         if target_context_tokens:
@@ -171,10 +221,10 @@ def run_pipeline(
         if retry_failed:
             cmd += ["--retry-failed"]
 
-        run_stage("step4", cmd)
+        execute(STEP4_DIR, cmd)
 
-    app_logs_path = STEP4_DIR / "data_samples" / f"{n}_app_logs.json"
-
+    log_name = f"{n}_decoy{decoy_count}" if decoy_count else n
+    app_logs_path = artifact(STEP4_DIR, f"{log_name}_app_logs.json")
 
     # Step 5: Test Cases
 
@@ -182,20 +232,27 @@ def run_pipeline(
         cmd = [
             sys.executable,
             str(STEP5_DIR / "generator.py"),
-            "--profile", str(verification_path),
-            "--app-logs", str(app_logs_path),
-            "--social-circle", str(social_circle_path),
-            "--model", model,
-            "--verifier-model", verifier_model,
-            "--backend", backend,
-            "--provider", provider,
-            "--gpt-reasoning", gpt_reasoning
+            "--profile",
+            str(verification_path),
+            "--app-logs",
+            str(app_logs_path),
+            "--social-circle",
+            str(social_circle_path),
+            "--model",
+            model,
+            "--verifier-model",
+            verifier_model,
+            "--backend",
+            backend,
+            "--provider",
+            provider,
+            "--gpt-reasoning",
+            gpt_reasoning,
         ]
 
-        run_stage("step5", cmd)
+        execute(STEP5_DIR, cmd)
 
-    test_cases_path = STEP5_DIR / "data_samples" / f"{n}_test_cases.json"
-
+    test_cases_path = artifact(STEP5_DIR, f"{n}_test_cases.json")
 
     # Step 6: Benchmark
 
@@ -203,16 +260,24 @@ def run_pipeline(
         cmd = [
             sys.executable,
             str(STEP6_DIR / "generator.py"),
-            "--app-logs", str(app_logs_path),
-            "--test-cases", str(test_cases_path),
-            "--model-pass1", evaluator_model,
-            "--model-pass2", judge_model,
-            "--backend", backend,
-            "--provider", provider,
-            "--reasoning-pass1", gpt_eval_reasoning,
-            "--reasoning-pass2", gpt_reasoning
+            "--app-logs",
+            str(app_logs_path),
+            "--test-cases",
+            str(test_cases_path),
+            "--model-pass1",
+            evaluator_model,
+            "--model-pass2",
+            judge_model,
+            "--backend",
+            backend,
+            "--provider",
+            provider,
+            "--reasoning-pass1",
+            gpt_eval_reasoning,
+            "--reasoning-pass2",
+            gpt_reasoning,
         ]
-    
+
         if backend_pass2:
             cmd += ["--backend-pass2", backend_pass2]
         if provider_pass2:
@@ -228,7 +293,7 @@ def run_pipeline(
         if passk_allow_missing:
             cmd += ["--passk-allow-missing"]
 
-        run_stage("step6", cmd)
+        execute(STEP6_DIR, cmd)
 
 
 def main() -> None:
@@ -238,12 +303,16 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=Path, help="Path to a seed JSON")
     parser.add_argument(
-        "--uuid", type=str, default=None,
+        "--uuid",
+        type=str,
+        default=None,
         help="Persona UUID in Nemotron-Personas-USA. "
-        "Required for Step 1 (no seed/persona provided)."
+        "Required for Step 1 (no seed/persona provided).",
     )
     parser.add_argument(
-        "--persona", type=str, default=None,
+        "--persona",
+        type=str,
+        default=None,
         help="Persona name shorthand (e.g. julio_simmons); resolves to "
         "step1_seed/data_samples/<persona>_seed.json. Mutually "
         "exclusive with --seed and --all.",
@@ -336,27 +405,28 @@ def main() -> None:
         "backward-compatible shortcut for --backend <provider>-api.",
     )
     parser.add_argument(
-        "--model", default=None,
+        "--model",
+        default=None,
         help="Generator model passed to every backend CLI call. MUST be an "
         "exact pinned string, never an alias. Defaults to claude-opus-4-7 for "
         "the Claude backend and gpt-5.5 for the Codex backend.",
     )
     parser.add_argument(
-        "--verifier-model", default=None,
+        "--verifier-model",
+        default=None,
         help="Verifier model for Step 4's reverse-inferability gate. MUST be "
-        "an exact pinned string. Should differ from --model when possible so "
-        "the verifier is independent.",
+        "an exact model string and must differ from --model.",
     )
     parser.add_argument(
-        "--evaluator-model", default=None,
-        help="Evaluator model for Step 6 Pass 1 answering. MUST be "
-        "an exact pinned string.",
+        "--evaluator-model",
+        default=None,
+        help="Evaluator model for Step 6 Pass 1 answering. MUST be an exact pinned string.",
     )
     parser.add_argument(
-        "--judge-model", default=None,
+        "--judge-model",
+        default=None,
         help="Judge model for Step 6 Pass 2 scoring. MUST be an exact pinned "
-        "string. Should differ from --evaluator-model when possible to keep the scorer "
-        "independent of the answerer.",
+        "string and must differ from --evaluator-model and the case generator.",
     )
     parser.add_argument(
         "--passk-runs",
@@ -378,12 +448,12 @@ def main() -> None:
     parser.add_argument(
         "--gpt-reasoning",
         default="high",
-        help="OpenAI model (openai-api, codex) generation/verification (Steps 2-5, Step 6 Pass 2) reasoning effort."
+        help="OpenAI model (openai-api, codex) generation/verification (Steps 2-5, Step 6 Pass 2) reasoning effort.",
     )
     parser.add_argument(
         "--gpt-eval-reasoning",
         default="low",
-        help="OpenAI model (openai-api, codex) response (Step 6 Pass 1) reasoning effort."
+        help="OpenAI model (openai-api, codex) response (Step 6 Pass 1) reasoning effort.",
     )
     parser.add_argument(
         "--skip-pass1",
@@ -412,12 +482,32 @@ def main() -> None:
         help="Optional API provider override for compatibility (Step 6 Pass 2). "
         "openrouter uses OPENROUTER_API_KEY and is compatible with openai-api",
     )
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=REPO_ROOT / "runs",
+        help="Root for new artifacts, grouped by persona UUID; originals remain under data_samples.",
+    )
+    parser.add_argument(
+        "--allow-legacy-inputs",
+        action="store_true",
+        help="Import historical upstream artifacts explicitly; never bypass new case admission.",
+    )
+    parser.add_argument("--answering-layout", choices=("isolated", "batch"), default="isolated")
     args = parser.parse_args()
 
     backend_pass2 = args.backend_pass2 or args.backend
 
-    provider = provider_for_backend(args.backend, args.provider) if args.backend in API_BACKENDS else (args.provider or "anthropic")
-    provider_pass2 = provider_for_backend(backend_pass2, args.provider_pass2) if backend_pass2 in API_BACKENDS else (args.provider_pass2 or provider)
+    provider = (
+        provider_for_backend(args.backend, args.provider)
+        if args.backend in API_BACKENDS
+        else (args.provider or "anthropic")
+    )
+    provider_pass2 = (
+        provider_for_backend(backend_pass2, args.provider_pass2)
+        if backend_pass2 in API_BACKENDS
+        else (args.provider_pass2 or provider)
+    )
 
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")
@@ -426,7 +516,7 @@ def main() -> None:
     if args.evaluator_model is None:
         args.evaluator_model = default_model_for_backend(args.backend, "evaluator")
     if args.judge_model is None:
-        args.judge_model = default_model_for_backend(args.backend, "judge")
+        args.judge_model = default_model_for_backend(backend_pass2, "judge")
 
     for flag, val in [
         ("--model", args.model),
@@ -500,6 +590,9 @@ def main() -> None:
                     provider_pass2=provider_pass2,
                     skip_pass1=args.skip_pass1,
                     skip_pass2=args.skip_pass2,
+                    workspace=args.workspace,
+                    allow_legacy_inputs=args.allow_legacy_inputs,
+                    answering_layout=args.answering_layout,
                 )
             except StageError as exc:
                 # Move on to the next persona but keep the failure visible;
@@ -546,6 +639,9 @@ def main() -> None:
                 provider_pass2=provider_pass2,
                 skip_pass1=args.skip_pass1,
                 skip_pass2=args.skip_pass2,
+                workspace=args.workspace,
+                allow_legacy_inputs=args.allow_legacy_inputs,
+                answering_layout=args.answering_layout,
             )
         except StageError as exc:
             print(str(exc), file=sys.stderr)

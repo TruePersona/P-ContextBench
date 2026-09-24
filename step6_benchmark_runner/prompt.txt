@@ -33,7 +33,7 @@ internal tagging stripped). This is the only persona context you receive:
 
 TEST CASE QUESTIONS (from data_samples/{persona}_test_cases.json, with
 ground_truth and expected_evidence fields removed by the runner before this
-prompt is filled). Only id, type, question, subtype, framing are visible:
+prompt is filled). Only id, normalized type, question, and framing are visible:
 {{INSERT_TEST_CASE_QUESTIONS_JSON_HERE}}
 
 Process for Pass 1:
@@ -179,6 +179,13 @@ PASS 1 ANSWERS (from data_samples/{persona}_pass1_answers.json):
 VERIFIED FRAGMENTS (app logs/verification data, supporting hidden facts):
 {{INSERT_VERIFIED_FRAGMENTS_JSON_HERE}}
 
+COMPLETE PUBLIC HISTORY:
+{{INSERT_FULL_PUBLIC_HISTORY_HERE}}
+
+Use the complete public history to check later updates, contradictions, speaker
+identity, permission scope, and valid alternative answers. Private construction
+labels and selected fragments cannot override evidence visible to the answerer.
+
 -------------------------------------------------------------------------------
 Process for Pass 2
 -------------------------------------------------------------------------------
@@ -214,10 +221,13 @@ CHECK 1 -- FACT COVERAGE: compare the Pass 1 `key_facts` list against
 labels. Count how many required labels are substantially captured by at least
 one entry in `key_facts`.
 
-Additionally, compare `ground_truth` with verified fragments. Key facts should capture
-ground truth; however, if a required label cannot reasonably be recovered/inferred, the answer should not be penalized for it. For example, if `ground_truth`
-explicitly defines "$3,000 monthly rent", ensure this label can be retrieved before
-assigning a key fact as missed. If discrete absence is confirmed, Do not count that label in scoring at all.
+Additionally, compare `ground_truth` with the complete public history and verified
+fragments. If a required label cannot reasonably be recovered or inferred, mark
+`reference_validity` as `invalid` and explain the unsupported requirement. Use
+`uncertain` if you cannot resolve reference validity. Do not remove requirements
+or make the rubric easier during scoring. The runner records these cases as
+evaluation errors with zero credit in the conservative bound, not model failures.
+Use `valid` when the original requirements are supported.
 
 For Type 3, fact coverage and temporal updating are both required. The answer
 must recover the required fact(s) while also distinguishing `prior_state`,
@@ -279,7 +289,8 @@ Type 4 evaluates a higher-level reasoning conclusion: a pattern, motive,
   including its intended contrast, boundary, or role interaction. Evidence that
   merely belongs to the same broad topic is insufficient.
 - If the Type 4 test case has only one or two required source hidden fact(s),
-  expect evidence for those unless one is not recoverable from the logs.
+  expect evidence for those. An unrecoverable required claim is a reference
+  validity problem; do not silently remove it from the rubric.
 - If the Type 4 test case has more than two required source hidden fact(s), the scorer
   may treat a subset of 2-4 concrete, nonredundant anchors as sufficient when
   they jointly support the reasoning_requirement and required ground_truth
@@ -692,6 +703,7 @@ score_value must be 1.0, 0.5, or 0.0 as specified by that rubric.
       "test_case_id": "TC-01",
       "score": "CORRECT",
       "score_value": 1.0,
+      "reference_validity": "valid",
       "types_1_4_scoring": {
         "ground_truth_labels_required": ["label 1"],
         "key_facts_covered": ["label 1"],
@@ -712,6 +724,8 @@ Type 3 rubric (prior_state_covered, current_state_covered,
 stale_interpretation_rejected, required_labels_all_covered,
 contradiction_or_wrong_current_state, unsupported_claim_changes_conclusion).
 For Types 1, 2, and 4 it remains null. Do not add Type 5 fields.
+If reference_validity is invalid or uncertain, explain the reference problem;
+the runner ignores the proposed score and records an evaluation error.
 
 LEGACY TYPE 5 (no type_5_contract): return this record shape. A and C must
 be one of 5, 3, 1, 0. Every semantic failure_modes key is required, including

@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 
 try:
-    from .decoys import resolve_verified_decoy_pool, _selectable_messenger_count
+    from .decoys import _selectable_messenger_count, resolve_verified_decoy_pool
 except ImportError:
-    from decoys import resolve_verified_decoy_pool, _selectable_messenger_count
+    from decoys import _selectable_messenger_count, resolve_verified_decoy_pool
 
 
 def _messenger_decoy(decoy_id: str, text: str) -> dict:

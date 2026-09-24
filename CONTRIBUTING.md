@@ -31,14 +31,14 @@ Every step folder follows the same structure:
 2. Add `prompt.txt`, `verification_prompt.txt` (if verification applies), `generator.py`, and `README.md`.
 3. Add `data_samples/`.
 4. Update the top-level `README.md` pipeline table to reference the new step.
-5. Update `Top_level_generator.py` to orchestrate the new step into the pipeline.
+5. Update `run.py` to orchestrate the new step into the pipeline.
 
 ## Regenerating Personas
 
 Run the pipeline end-to-end for a single persona:
 
 ```bash
-python Top_level_generator.py --participant_id <id>
+python run.py --uuid <id> --start 1 --stop 6
 ```
 
 Run a single step for an existing persona:
@@ -46,7 +46,7 @@ Run a single step for an existing persona:
 ```bash
 python step2_interview/generator.py \
   --seed step1_seed/data_samples/{name}_seed.json \
-  --output step2_interview/data_samples/
+  --output runs/{name}/step2_interview/
 ```
 
 ## Code Style
@@ -54,7 +54,7 @@ python step2_interview/generator.py \
 We use [Ruff](https://docs.astral.sh/ruff/) for linting and formatting Python code.
 
 ```bash
-pip install ruff
+pip install -r requirements-dev.txt
 ruff check .
 ruff check --fix .
 ruff format .

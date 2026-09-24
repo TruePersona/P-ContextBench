@@ -45,7 +45,7 @@ Step 6 writes `{persona}_pass1_answers.json`, `{persona}_benchmark_results.json`
 
 ```
 Python 3.10+
-pip install anthropic openai datasets
+pip install -r requirements-dev.txt
 ```
 
 ### Authentication
@@ -60,7 +60,12 @@ Verify your backend works before starting a long run: `python run.py --help`.
 
 ## Run
 
-### Score a model against the existing dataset
+### Score a model against an admitted dataset
+
+Generate and verify cases in the selected workspace before scoring. Historical
+`data_samples/` files require explicit import and new bound case admission; their
+summary labels alone are insufficient. See the [pipeline integrity and migration
+guide](pipeline_integrity/README.md) for the audit and migration commands.
 
 ```bash
 # Benchmark GPT-5.4 mini with GPT-5.4 as judge (Codex subscription)
@@ -133,22 +138,34 @@ python run.py \
 
 For the full flag reference, defaults, and failure semantics, see [CONFIG.md](CONFIG.md).
 
+The separate [Type 5 research harness](type5_protocol/README.md) evaluates actual
+responses against evidence-backed requirements and compares public-history
+retrieval policies under a frozen evaluator. It includes registered experiments,
+source-span auditing, and independent human-review workflows. This candidate
+protocol is not yet validated for benchmark publication and does not replace the
+published Step 6 scorer.
+
 ### Tests
 
 ```bash
-python -m pytest test_pipeline.py step4_app_log_synthesizer step6_benchmark_runner -q
+python -m unittest test_pipeline pipeline_integrity.test_integrity step4_app_log_synthesizer.test_decoys step4_app_log_synthesizer.test_decoy_safety step4_app_log_synthesizer.test_evidence_alignment step6_benchmark_runner.test_passk step6_benchmark_runner.test_t5_scoring step6_benchmark_runner.test_t5_contract -q
+ruff check .
 ```
 
 [`test_pipeline.py`](test_pipeline.py) covers the runner and stage gates; the step-level suites cover decoy safety and Pass^k aggregation.
+Run the candidate protocol checks with
+`python3 -m unittest type5_protocol.test_protocol type5_protocol.test_experiment type5_protocol.test_validation type5_protocol.test_policy_study`.
 
 ## Model independence
 
-The pipeline uses four model roles. Three independence boundaries prevent systematic bias:
+The pipeline uses four model roles and enforces different configured model IDs
+across these boundaries. Separation reduces shared-role bias; it does not itself
+establish independent or correct judgment.
 
 | Boundary | Requirement | Why |
 |---|---|---|
 | Generator differs from Verifier | The model that creates app log fragments must not verify its own output. | A model pattern-matching its own generation is not an independent recoverability test. |
-| Evaluator differs from Judge | The model being benchmarked must not grade its own answers. | Same-model self-grading inflates scores by ~27% (empirically measured). |
+| Evaluator differs from Judge | The model being benchmarked must not grade its own answers. | Avoid evaluating responses solely through the answerer's own preferences. |
 | Generator differs from Judge | The model that created the test cases must not grade answers to them. | Shared systematic biases in question construction and answer evaluation. |
 
 **Default model assignments:**

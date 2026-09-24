@@ -13,11 +13,20 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pipeline_integrity.artifacts import digest, provenance
+from pipeline_integrity.runs import compatible_runs
+
 MIN_SCORE = 0.0
 MAX_SCORE = 1.0
 EVALUATION_ERRORS = {
-    "judge_batch_failed", "missing_evaluation", "judge_output_off_schema",
-    "judge_uncertain", "scoring_input_invalid",
+    "case_reference_invalid",
+    "missing_answer",
+    "judge_batch_failed",
+    "missing_evaluation",
+    "judge_output_off_schema",
+    "judge_uncertain",
+    "scoring_input_invalid",
 }
 
 SCORE_MAP = {
@@ -35,7 +44,7 @@ SCORE_MAP = {
 def load_json(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
-        raise ValueError(f"{path} must contain a JSON object")
+        raise ValueError(f"{path} must contain a JSON object")  # noqa: TRY004 - malformed serialized input is a validation error
     return payload
 
 
@@ -45,7 +54,7 @@ def case_id(case: dict[str, Any]) -> str:
 
 def normalize_score(value: Any, *, context: str) -> float:
     if isinstance(value, bool):
-        raise ValueError(f"{context} score_value must be numeric, not boolean")
+        raise ValueError(f"{context} score_value must be numeric, not boolean")  # noqa: TRY004 - malformed serialized input is a validation error
     if isinstance(value, (int, float)):
         score = float(value)
     elif isinstance(value, str):
@@ -54,7 +63,7 @@ def normalize_score(value: Any, *, context: str) -> float:
         except ValueError as exc:
             raise ValueError(f"{context} has invalid score_value {value!r}") from exc
     else:
-        raise ValueError(f"{context} has missing score_value")
+        raise ValueError(f"{context} has missing score_value")  # noqa: TRY004 - malformed serialized input is a validation error
 
     if not MIN_SCORE <= score <= MAX_SCORE:
         raise ValueError(f"{context} score_value {score} is outside 0..1")
@@ -79,7 +88,7 @@ def load_evaluations(path: Path) -> dict[str, dict[str, Any]]:
     payload = load_json(path)
     evaluations = payload.get("evaluations", [])
     if not isinstance(evaluations, list):
-        raise ValueError(f"{path} does not contain an evaluations list")
+        raise ValueError(f"{path} does not contain an evaluations list")  # noqa: TRY004 - malformed serialized input is a validation error
 
     by_id: dict[str, dict[str, Any]] = {}
     for evaluation in evaluations:
@@ -96,9 +105,15 @@ def load_evaluations(path: Path) -> dict[str, dict[str, Any]]:
     manifest = payload.get("metadata", {}).get("evaluation_manifest")
     if manifest is not None:
         ids = manifest.get("eligible_case_ids") if isinstance(manifest, dict) else None
-        if (not isinstance(ids, list) or not all(isinstance(cid, str) for cid in ids)
-                or len(set(ids)) != len(ids) or set(ids) != set(by_id)):
-            raise ValueError(f"{path}: evaluations differ from the frozen manifest; rescore with original cases first")
+        if (
+            not isinstance(ids, list)
+            or not all(isinstance(cid, str) for cid in ids)
+            or len(set(ids)) != len(ids)
+            or set(ids) != set(by_id)
+        ):
+            raise ValueError(
+                f"{path}: evaluations differ from the frozen manifest; rescore with original cases first"
+            )
     return by_id
 
 
@@ -108,7 +123,7 @@ def load_case_metadata(path: Path | None) -> dict[str, dict[str, Any]]:
     payload = load_json(path)
     cases = payload.get("test_cases", [])
     if not isinstance(cases, list):
-        raise ValueError(f"{path} does not contain a test_cases list")
+        raise ValueError(f"{path} does not contain a test_cases list")  # noqa: TRY004 - malformed serialized input is a validation error
     by_id: dict[str, dict[str, Any]] = {}
     for case in cases:
         if not isinstance(case, dict):
@@ -138,10 +153,7 @@ def average(values: list[float]) -> float:
 def run_accuracy(records: list[dict[str, Any]], k: int) -> list[float]:
     if not records:
         return []
-    return [
-        average([record["scores"][idx] for record in records])
-        for idx in range(k)
-    ]
+    return [average([record["scores"][idx] for record in records]) for idx in range(k)]
 
 
 def summarize_group(records: list[dict[str, Any]], k: int) -> dict[str, Any]:
@@ -156,7 +168,9 @@ def summarize_group(records: list[dict[str, Any]], k: int) -> dict[str, Any]:
         "strict_pass_k_count": strict_count,
         "strict_pass_k_rate": strict_rate,
         "strict_pass_k_percent": percent(strict_count, total),
-        "strict_pass_k_upper_bound_percent": percent(sum(r["possible_pass_k"] for r in records), total),
+        "strict_pass_k_upper_bound_percent": percent(
+            sum(r["possible_pass_k"] for r in records), total
+        ),
         "cases_with_evaluation_errors": sum(bool(r["evaluation_error_runs"]) for r in records),
         "min_score_k_average": min_score_avg,
         "min_score_k_average_percent": percent(sum(min_scores), total),
@@ -167,15 +181,11 @@ def summarize_group(records: list[dict[str, Any]], k: int) -> dict[str, Any]:
             percent(sum(run_averages), len(run_averages)) if run_averages else "N/A"
         ),
         "worst_run_accuracy": min(run_averages) if run_averages else 0.0,
-        "worst_run_accuracy_percent": (
-            percent(min(run_averages), 1) if run_averages else "N/A"
-        ),
+        "worst_run_accuracy_percent": (percent(min(run_averages), 1) if run_averages else "N/A"),
     }
 
 
-def summarize_runs(
-    records: list[dict[str, Any]], result_paths: list[Path]
-) -> list[dict[str, Any]]:
+def summarize_runs(records: list[dict[str, Any]], result_paths: list[Path]) -> list[dict[str, Any]]:
     accuracies = run_accuracy(records, len(result_paths))
     return [
         {
@@ -184,7 +194,7 @@ def summarize_runs(
             "average_score": accuracy,
             "accuracy_percent": percent(accuracy, 1),
         }
-        for idx, (path, accuracy) in enumerate(zip(result_paths, accuracies))
+        for idx, (path, accuracy) in enumerate(zip(result_paths, accuracies, strict=True))
     ]
 
 
@@ -199,20 +209,21 @@ def validate_case_sets(
         common_ids &= set(run_map)
 
     missing_cases: list[dict[str, Any]] = []
-    for path, run_map in zip(paths, run_maps):
+    for path, run_map in zip(paths, run_maps, strict=True):
         missing = sorted(all_ids - set(run_map))
         extra = sorted(set(run_map) - common_ids)
         if missing:
-            missing_cases.append({
-                "run": str(path),
-                "missing_test_case_ids": missing,
-                "extra_test_case_ids": extra,
-            })
+            missing_cases.append(
+                {
+                    "run": str(path),
+                    "missing_test_case_ids": missing,
+                    "extra_test_case_ids": extra,
+                }
+            )
 
     if missing_cases and not allow_missing:
         details = "; ".join(
-            f"{m['run']} missing {len(m['missing_test_case_ids'])}"
-            for m in missing_cases
+            f"{m['run']} missing {len(m['missing_test_case_ids'])}" for m in missing_cases
         )
         raise ValueError(
             "Result files do not contain the same test_case_id set. "
@@ -226,15 +237,24 @@ def aggregate_passk(
     result_paths: list[Path],
     test_cases_path: Path | None = None,
     allow_missing: bool = False,
+    allow_legacy: bool = False,
 ) -> dict[str, Any]:
     if len(result_paths) < 2:
         raise ValueError("Pass^k requires at least two result JSON files")
 
+    if len({path.resolve() for path in result_paths}) != len(result_paths):
+        raise ValueError("Pass^k requires distinct result files")
     run_maps = [load_evaluations(path) for path in result_paths]
     case_metadata = load_case_metadata(test_cases_path)
-    aligned_ids, missing_cases = validate_case_sets(
-        run_maps, result_paths, allow_missing
-    )
+    aligned_ids, missing_cases = validate_case_sets(run_maps, result_paths, allow_missing)
+    payloads = [load_json(path) for path in result_paths]
+    binding_status = compatible_runs(payloads, allow_legacy=allow_legacy)
+    if binding_status == "bound":
+        for path in result_paths:
+            provenance(path)
+    elif len({digest(payload) for payload in payloads}) != len(payloads):
+        raise ValueError("Copied unbound results cannot establish distinct inference attempts")
+
     k = len(result_paths)
 
     records: list[dict[str, Any]] = []
@@ -244,30 +264,24 @@ def aggregate_passk(
         first = present_evaluations[0] if present_evaluations else {}
         meta = case_metadata.get(tid, {})
 
-        versions = {
-            e.get("rubric_version", "unversioned_legacy") for e in present_evaluations
-        }
+        versions = {e.get("rubric_version", "unversioned_legacy") for e in present_evaluations}
         if len(versions) > 1:
             raise ValueError(
                 f"{tid}: cannot aggregate different rubric versions: {sorted(versions)}"
             )
         case_hashes = {
-            e.get("scoring_provenance", {}).get("case_sha256")
-            for e in present_evaluations
+            e.get("scoring_provenance", {}).get("case_sha256") for e in present_evaluations
         }
         case_hashes.discard(None)
         if len(case_hashes) > 1:
-            raise ValueError(
-                f"{tid}: cannot aggregate different case/contract contents"
-            )
+            raise ValueError(f"{tid}: cannot aggregate different case/contract contents")
         errors = [
             idx + 1
             for idx, e in enumerate(evaluations)
             if e is None or e.get("evaluation_status") in EVALUATION_ERRORS
         ]
         scores = [
-            score_value(evaluation) if evaluation is not None else 0.0
-            for evaluation in evaluations
+            score_value(evaluation) if evaluation is not None else 0.0 for evaluation in evaluations
         ]
         min_score = min(scores) if scores else 0.0
         typ = str(first.get("type") or meta.get("type") or "unknown")
@@ -286,13 +300,10 @@ def aggregate_passk(
             "evaluation_error_runs": errors,
             "unstable": len(set(scores)) > 1,
             "hard_failure": any(
-                score == 0.0 and idx + 1 not in errors
-                for idx, score in enumerate(scores)
+                score == 0.0 and idx + 1 not in errors for idx, score in enumerate(scores)
             ),
             "missing_from_runs": [
-                idx + 1
-                for idx, evaluation in enumerate(evaluations)
-                if evaluation is None
+                idx + 1 for idx, evaluation in enumerate(evaluations) if evaluation is None
             ],
         }
         records.append(record)
@@ -307,6 +318,7 @@ def aggregate_passk(
     summary = {
         "metadata": {
             "metric": f"Pass^{k}",
+            "provenance_status": binding_status,
             "k": k,
             "result_files": [str(path) for path in result_paths],
             "test_cases_file": str(test_cases_path) if test_cases_path else None,
@@ -317,20 +329,12 @@ def aggregate_passk(
         },
         "overall": summarize_group(records, k),
         "run_accuracy": summarize_runs(records, result_paths),
-        "by_type": {
-            typ: summarize_group(group, k)
-            for typ, group in sorted(by_type.items())
-        },
+        "by_type": {typ: summarize_group(group, k) for typ, group in sorted(by_type.items())},
         "by_subtype": {
-            subtype: summarize_group(group, k)
-            for subtype, group in sorted(by_subtype.items())
+            subtype: summarize_group(group, k) for subtype, group in sorted(by_subtype.items())
         },
-        "unstable_cases": [
-            record for record in records if record["unstable"]
-        ],
-        "hard_failures": [
-            record for record in records if record["hard_failure"]
-        ],
+        "unstable_cases": [record for record in records if record["unstable"]],
+        "hard_failures": [record for record in records if record["hard_failure"]],
         "missing_cases": missing_cases,
         "per_case": records,
     }
@@ -362,6 +366,11 @@ def main() -> None:
         action="store_true",
         help="Use union alignment and score missing cases as 0",
     )
+    parser.add_argument(
+        "--allow-legacy",
+        action="store_true",
+        help="Historical aggregation only; independent calls and full input identity cannot be established.",
+    )
     args = parser.parse_args()
 
     try:
@@ -369,8 +378,9 @@ def main() -> None:
             args.results,
             test_cases_path=args.test_cases,
             allow_missing=args.allow_missing,
+            allow_legacy=args.allow_legacy,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - report CLI failures and exit nonzero
         print(f"passk: {exc}", file=sys.stderr)
         sys.exit(1)
 

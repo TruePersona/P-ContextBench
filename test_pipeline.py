@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import run as pipeline
 from step4_app_log_synthesizer import generator as step4
+from step4_app_log_synthesizer.evidence_alignment import seal_alignment
 from step6_benchmark_runner import generator as step6
 
 
@@ -35,8 +36,8 @@ def _run_pipeline(seed_path: Path, start: int, stop: int, **kwargs) -> None:
         "codex",
         "openai",
         "gpt-5.5",
-        "gpt-5.5",
-        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.4",
         "gpt-5.4-mini",
         None,
         start,
@@ -49,13 +50,15 @@ class PipelineRunnerTests(unittest.TestCase):
     def test_stage_failure_stops_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             seed_path = _write_seed(tmp)
-            with patch.object(
-                pipeline.subprocess,
-                "run",
-                return_value=SimpleNamespace(returncode=1),
-            ) as proc:
-                with self.assertRaises(pipeline.StageError):
-                    _run_pipeline(seed_path, 2, 6)
+            with (
+                patch.object(
+                    pipeline.subprocess,
+                    "run",
+                    return_value=SimpleNamespace(returncode=1),
+                ) as proc,
+                self.assertRaises(pipeline.StageError),
+            ):
+                _run_pipeline(seed_path, 2, 6)
         # Step 2 failed, so steps 3-6 must not have run.
         self.assertEqual(proc.call_count, 1)
 
@@ -127,10 +130,31 @@ _FACTS = [{"fact_id": "HF-001", "ground_truth_label": "daily medication routine"
 class ClusterGateTests(unittest.TestCase):
     def test_strict_accepts_clean_recovered(self) -> None:
         verification = _verification("RECOVERED", "HIGH", leaks=False)
-        passed, _ = step4.cluster_passed(verification, _FACTS, policy="strict")
+        fragments = [
+            {"fragment_id": "C1-F1", "messages": [{"text": "daily medication routine"}]}
+        ]
+        alignment = {
+            "fact_reviews": [
+                {
+                    "fact_id": "HF-001",
+                    "verdict": "supported",
+                    "candidate_indices": [0],
+                    "evidence": [
+                        {"fragment_id": "C1-F1", "quote": "daily medication routine"}
+                    ],
+                    "rationale": "The frozen recovery and evidence cover the whole fact.",
+                }
+            ]
+        }
+        verification["fact_alignment"] = seal_alignment(
+            alignment, _FACTS, verification, fragments
+        )
+        passed, _ = step4.cluster_passed(
+            verification, _FACTS, policy="strict", fragments=fragments
+        )
         self.assertTrue(passed)
         decision = verification["_gate_decision"]
-        self.assertEqual(decision["reason"], "recovered_no_leaks")
+        self.assertEqual(decision["reason"], "recovered_and_semantically_aligned")
         self.assertEqual(decision["policy"], "strict")
 
     def test_strict_rejects_recovered_with_leaks(self) -> None:
@@ -470,7 +494,7 @@ def _judge_record(case_id: str, **overrides: object) -> dict[str, object]:
             "actual_resolution_label": "REFUSE",
             "resolution_match": "exact",
         },
-        "failure_modes": {name: 0 for name in step6.t5_scoring.PENALTY_KEYS},
+        "failure_modes": dict.fromkeys(step6.t5_scoring.PENALTY_KEYS, 0),
     }
     for key, value in overrides.items():
         block, _, field = key.partition("__")
@@ -532,7 +556,7 @@ class JudgeSchemaRetryTests(unittest.TestCase):
         self.assertEqual(calls[1]["ids"], ["TC-40"])
         self.assertNotIn("TC-41", calls[1]["correction"])
         statuses = [ev.get("evaluation_status") for ev in result["evaluations"]]
-        self.assertEqual(statuses, [None, None, None])
+        self.assertEqual(statuses, [None, None, "evaluated"])
         self.assertEqual(result["metadata"]["off_schema_cases"], 0)
 
     def test_record_still_off_schema_becomes_a_placeholder(self) -> None:
@@ -564,7 +588,7 @@ class JudgeSchemaRetryTests(unittest.TestCase):
 
     def test_api_backend_gets_the_same_retry_policy(self) -> None:
         good = {"evaluations": [_judge_record("TC-40"), _judge_record("TC-41"),
-                                {"test_case_id": "TC-01", "type": "type_1_simple_fact_check"}]}
+                                {"test_case_id": "TC-01", "type": "type_1_simple_fact_check", "score": "CORRECT", "score_value": 1.0}]}
         result, calls = self._run([ValueError("not json"), good], backend="openai-api")
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[0]["ids"], ["TC-40", "TC-41", "TC-01"])  # one call, all cases

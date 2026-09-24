@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,18 +26,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from llm import (
     API_BACKENDS,
     SUPPORTED_BACKENDS,
-    make_client,
+    SUPPORTED_PROVIDERS,
     call_llm,
     check_api_key,
-    provider_for_backend,
     default_model_for_backend,
-    SUPPORTED_PROVIDERS,
+    make_client,
+    provider_for_backend,
 )
+from pipeline_integrity import admission
+from pipeline_integrity.artifacts import distinct_models, publish, tracked
 from utils import (
-    load_prompt,
     extract_json,
-    fill_seed_placeholders,
     fill,
+    fill_seed_placeholders,
+    load_prompt,
 )
 
 STEP_DIR = Path(__file__).parent
@@ -47,9 +48,14 @@ VERIFICATION_PROMPT_PATH = STEP_DIR / "verification_prompt.txt"
 
 DEFAULT_MAX_ITERATIONS = 3
 
+
 def run_generation(
-    client, model: str, seed: dict[str, Any], gpt_reasoning: str,
-    provider: str = "anthropic", backend: str = "anthropic-api",
+    client,
+    model: str,
+    seed: dict[str, Any],
+    gpt_reasoning: str,
+    provider: str = "anthropic",
+    backend: str = "anthropic-api",
 ) -> dict[str, Any]:
     prompt = fill_seed_placeholders(load_prompt(PROMPT_PATH), seed)
     raw = call_llm(client, model, prompt, gpt_reasoning, provider=provider, backend=backend)
@@ -67,9 +73,7 @@ def run_verification(
 ) -> dict[str, Any]:
     template = fill_seed_placeholders(load_prompt(VERIFICATION_PROMPT_PATH), seed)
     template = fill(template, "{{INSERT_SEED_JSON_HERE}}", seed)
-    template = fill(
-        template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", interview["transcript"]
-    )
+    template = fill(template, "{{INSERT_TRANSCRIPT_JSON_HERE}}", interview["transcript"])
     template = fill(
         template,
         "{{INSERT_EXTRACTED_PROFILE_JSON_HERE}}",
@@ -83,6 +87,13 @@ def overall_verdict(verification: dict[str, Any]) -> str:
     return verification.get("verification", {}).get("overall_verdict", "UNKNOWN")
 
 
+@tracked(
+    "step2",
+    inputs=("seed_path",),
+    outputs=("_interview.json", "_verification.json"),
+    base_arg="seed_path",
+    base_suffix="_seed",
+)
 def run_step(
     seed_path: Path,
     output_dir: Path,
@@ -93,6 +104,9 @@ def run_step(
     provider: str = "anthropic",
     backend: str = "anthropic-api",
 ) -> int:
+    distinct_models(model, verifier_model)
+    if max_iterations < 1:
+        raise ValueError("max_iterations must be positive")
     seed = json.loads(seed_path.read_text(encoding="utf-8"))
     client = make_client(provider) if backend in API_BACKENDS else None
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -106,16 +120,28 @@ def run_step(
 
     for attempt in range(1, max_iterations + 1):
         print(f"[attempt {attempt}/{max_iterations}] generating interview for {base_name}")
-        interview = run_generation(client, model, seed, gpt_reasoning, provider=provider, backend=backend)
-        interview_out.write_text(json.dumps(interview, indent=2, ensure_ascii=False), encoding="utf-8")
+        interview = run_generation(
+            client, model, seed, gpt_reasoning, provider=provider, backend=backend
+        )
+        publish(interview_out, interview)
+        admission.interview(interview, participant_id=seed["uuid"])
 
         print(f"[attempt {attempt}/{max_iterations}] verifying interview for {base_name}")
-        verification = run_verification(client, verifier_model, seed, interview, gpt_reasoning, provider=provider, backend=backend)
-        verification_out.write_text(json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8")
+        verification = run_verification(
+            client,
+            verifier_model,
+            seed,
+            interview,
+            gpt_reasoning,
+            provider=provider,
+            backend=backend,
+        )
+        publish(verification_out, verification)
 
         verdict = overall_verdict(verification)
         print(f"[attempt {attempt}/{max_iterations}] verdict: {verdict}")
         if verdict in {"PASS", "PASS_WITH_REVISIONS"}:
+            admission.profile(verification, participant_id=seed["uuid"])
             return 0
 
     return 1
@@ -127,7 +153,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=STEP_DIR / "data_samples",
+        default=STEP_DIR / "runs",
         help="Directory to write interview and verification outputs into",
     )
     parser.add_argument("--model", default=None)
@@ -142,7 +168,11 @@ def main() -> None:
     parser.add_argument("--backend", default="anthropic-api", choices=SUPPORTED_BACKENDS)
     args = parser.parse_args()
 
-    provider = provider_for_backend(args.backend, args.provider) if args.backend in API_BACKENDS else (args.provider or "anthropic")
+    provider = (
+        provider_for_backend(args.backend, args.provider)
+        if args.backend in API_BACKENDS
+        else (args.provider or "anthropic")
+    )
 
     if args.model is None:
         args.model = default_model_for_backend(args.backend, "generator")
@@ -153,7 +183,18 @@ def main() -> None:
         print(f"API key for {provider} is not set.", file=sys.stderr)
         sys.exit(2)
 
-    sys.exit(run_step(args.seed, args.output, args.model, args.verifier_model, args.max_iterations, args.gpt_reasoning, provider, args.backend))
+    sys.exit(
+        run_step(
+            args.seed,
+            args.output,
+            args.model,
+            args.verifier_model,
+            args.max_iterations,
+            args.gpt_reasoning,
+            provider,
+            args.backend,
+        )
+    )
 
 
 if __name__ == "__main__":
