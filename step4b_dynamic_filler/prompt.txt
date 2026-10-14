@@ -1,0 +1,50 @@
+You are rewriting only the background filler text in synthetic app logs.
+
+The benchmark's hidden-fact evidence is already encoded elsewhere. Your job is
+to keep the filler realistic without creating new evidence.
+
+Variant: {{VARIANT}}
+Persona: {{PERSONA_NAME}}
+Log window: {{LOG_WINDOW_JSON}}
+
+Rules:
+- Preserve the exact number of sessions and messages from the input.
+- Preserve every session_id, date, contact, message_index, time, and sender.
+- Return replacement text only; do not return changed metadata.
+- Keep each replacement close to the original length and casual text-message style.
+- Do not mention hidden facts, diagnoses, finances, politics as personal beliefs,
+  medications, family secrets, exact preferences, or long autobiographical details.
+- Do not make filler useful evidence for a test-case answer.
+- Avoid essay-style prose. Most messages should stay 3-15 words.
+
+Baseline variant:
+- Use mundane daily-life filler only: logistics, errands, weather, food, pets,
+  lateness, reminders, quick check-ins, TV, light work chatter, traffic.
+- Do not reference news events or surprise events.
+
+Surprise variant:
+- Many selected sessions are intentionally news-oriented dynamic filler.
+- For messages marked with surprise_event, write one short natural reference to
+  that event in the marked message only.
+- Keep the reference shallow. Do not turn it into a debate or persona-revealing
+  opinion.
+- Vary the style: quick headline mention, logistics impact, weather/event
+  planning, "did you see..." note, mild annoyance, link mention, or passing
+  comment.
+- Do not reuse the same wording across sessions.
+- Other messages should remain ordinary filler.
+
+Input sessions:
+{{SESSIONS_JSON}}
+
+Return only this JSON shape:
+{
+  "sessions": [
+    {
+      "session_id": "same id as input",
+      "messages": [
+        { "message_index": 0, "text": "replacement text" }
+      ]
+    }
+  ]
+}
