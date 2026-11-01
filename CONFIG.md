@@ -64,15 +64,7 @@ Default model assignments per backend are listed in the README under Model indep
 | `--skip-pass1` | | Reuse an existing `{persona}_pass1_answers.json`. |
 | `--skip-pass2` | | Stop after Pass 1 answering. |
 
-Step 6 removes cases the verifier marked REJECTED and records eligible case IDs and content hashes in `metadata.evaluation_manifest`. Offline rescoring preserves this population. Older result files without a manifest preserve their recorded IDs; rejected cases are never restored from the full case file.
-
-The runner retains the first valid judgment per case and retries only unresolved IDs, with the same bounded policy for API and CLI backends. Missing, invalid, or uncertain judgments remain explicit evaluation errors with zero credit in the conservative headline. `metadata.evaluation_coverage` reports coverage and score lower/upper bounds. Pass^k distinguishes evaluation errors from model hard failures and rejects mixed scoring versions or changed known case hashes across runs.
-
-Type 5 has two versioned scoring paths. Existing cases without contracts use `type5-label-v1.1`: the judge returns A/C and ten semantic penalties; code computes B, label comparisons, blind compliance, over-refusal, totals, and verdicts. New cases contain `type_5_contract` and use `type5-behavior-v2`: the judge supplies evidence-backed criterion observations; code checks alternative valid response paths, critical violations, and behavioral success. Resolution labels do not determine behavioral credit under v2. New contracts are verified against visible logs and hidden from Pass 1.
-
-Raw judgments, input hashes, and derived score histories are preserved. The result breakdown separates rubric versions and the behavioral dimensions of context understanding, helpful action, and boundary compliance. See [the Type 5 scoring and migration guide](step6_benchmark_runner/TYPE5.md) for the exact schemas, scoring policy, examples, limitations, and offline rescoring command.
-
-Calibration should measure agreement with human-adjudicated behavior and distinguish harmful acceptance from unnecessary refusal. Do not tune the scorer to force a target model accuracy. New behavior contracts and judge prompts require a held-out calibration study before reporting improved benchmark validity; passing implementation tests alone does not establish that. Capstone outcomes describe performance on that case, not general agent safety.
+Step 6 removes cases the Step 5 verifier marked REJECTED, then freezes the remaining case set as the denominator. A judge batch that fails after three attempts, or a case that ends with no evaluation record, is written as an explicit `FAILED_EVALUATION` record with a score of 0. `metadata.total_cases` always equals the intended case count and `metadata.failed_evaluation_cases` reports how many records are failure placeholders, so headline accuracy can never rise because evaluations were dropped.
 
 ## Environment variables
 
@@ -85,9 +77,7 @@ Calibration should measure agreement with human-adjudicated behavior and disting
 ## Tests
 
 ```bash
-python -m unittest test_pipeline step4_app_log_synthesizer.test_decoys step4_app_log_synthesizer.test_decoy_safety step6_benchmark_runner.test_passk step6_benchmark_runner.test_t5_scoring step6_benchmark_runner.test_t5_contract
+python -m pytest test_pipeline.py step4_app_log_synthesizer step6_benchmark_runner -q
 ```
 
-`test_pipeline.py` covers runner fail-fast behavior, argument construction, the Step 4 gate policies, and the Step 6 frozen-denominator summary. `step4_app_log_synthesizer/test_decoys.py` and `test_decoy_safety.py` cover decoy selection and safety validation. `step6_benchmark_runner/test_passk.py` covers Pass^k aggregation and flag forwarding. `step6_benchmark_runner/test_t5_scoring.py` covers the Type 5 label comparison, penalty handling, clamping and verdict precedence; the Type 5 integration into the summary is in `test_pipeline.py`.
-
-`step6_benchmark_runner/test_t5_contract.py` covers behavioral contracts, alternative paths, critical failures, answer-key isolation, verification, retry retention, rescoring population/provenance, and version-safe reliability aggregation.
+`test_pipeline.py` covers runner fail-fast behavior, argument construction, the Step 4 gate policies, and the Step 6 frozen-denominator summary. `step4_app_log_synthesizer/test_decoys.py` and `test_decoy_safety.py` cover decoy selection and safety validation. `step6_benchmark_runner/test_passk.py` covers Pass^k aggregation and flag forwarding.
